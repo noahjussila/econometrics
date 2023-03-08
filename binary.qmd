@@ -1,0 +1,80 @@
+# Binary Choice 
+
+
+
+```{r}
+
+library(tidyverse)
+
+tibble(
+  x = seq(-2, 2, length = 1000),
+  logit = plogis(x),
+  probit = pnorm(x),
+  `Xβ` = x
+) %>% 
+  gather("F", "val", -x) %>% 
+  ggplot(aes(x, val, color = F)) +
+  geom_line() +
+  theme_minimal() +
+  labs(x = "Xβ", y = "p = Prob(y = 1 | x)") +
+  theme(legend.position = "bottom") +
+  ylim(-0.25,1.25)
+
+
+tibble(
+  x = seq(-5, 5, length = 1000),
+  logit = dlogis(x),
+  normal = dnorm(x)
+) %>% 
+  gather("density", "val", -x) %>% 
+  ggplot(aes(x, val, color = density)) +
+  geom_line() 
+```
+
+```{r}
+
+n <- 10000
+x <- runif(n, -5, 5)
+p <- plogis(0.1 + 0.2*x)
+X <- cbind(1, x)
+y <- sapply(p, rbinom, size = 1, n = 1)
+
+binary_choice_MLE <- function(y, X, Fun){
+  K <- ncol(X)
+  
+  # define negative log-likelihood
+  neg_LL <- function(beta) {
+    -sum(y*log(Fun(X %*% beta)) + (1-y)*log(1 - Fun(X %*% beta)))
+  }
+  
+  # minimize neg_LL
+  mle <- optim(
+    par = rep(0,K), 
+    fn = neg_LL,
+    hessian = TRUE, 
+    control = list(reltol = 1e-8)
+  )
+  
+  # access mle parameter and SEs from optimization
+  beta_hat <- mle$par
+  var_hat <- solve(mle$hessian)
+  se_hat <- sqrt(diag(var_hat))
+  
+  #calculate z score, CI, and p-val
+  z <- beta_hat/se_hat
+  lower_CI <- beta_hat - pnorm(0.975)*se_hat
+  upper_CI <- beta_hat + pnorm(0.975)*se_hat
+  p_val <- 2*(1 - pnorm(z))
+  
+  #combine everything into one table to return
+  output <- cbind(beta_hat, se_hat, z, lower_CI, upper_CI, p_val)
+  rownames(output) <- paste("β", 1:K, sep = "")
+  colnames(output) <- c("Estimate", "Std.Error", "z-Stat", "Lower 95% CI", "Upper 95% CI", "p-Value")
+  return(output)
+}
+
+
+binary_choice_MLE(y, X, plogis) 
+glm(y ~ x, family = "binomial") %>% summary()
+lm(y ~ x)
+```

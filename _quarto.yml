@@ -1,0 +1,84 @@
+project:
+  type: book
+
+book:
+  title: "Advanved Econometrics with Examples"
+  number-sections: true
+  search: True
+  author: "Noah Jussila"
+  date: "10/29/2022"
+  chapters:
+    - index.qmd
+    - part: "Statistical Theory"
+      chapters:
+      - estimators.qmd
+      - asymptotics.qmd
+      - testing.qmd
+      - exp_fam.qmd
+    - part: "Linear Models"
+      chapters:
+      - ols.qmd
+      - endog.qmd
+    #- gls.qmd
+    #- simul.qmd
+    - part: "Estimation Frameworks"
+      chapters:
+      - extremum.qmd
+    #- gmm.qmd
+    #- mle.qmd
+    - part: "Basic Microeconometrics and Time Series"
+      chapters:
+      - binary.qmd
+    #- panel.qmd
+    #- time_series.qmd
+    - part: "Advanced Topics"
+      chapters:
+      - nonpar.qmd
+    #- quant.qmd
+    #- semipar.qmd
+    #- sieve.qmd
+    #- partial_id.qmd
+    #- endog_nonlinear.qmd
+    #- weak_inst.qmd
+    #- discrete_choice.qmd
+    #- tobit.qmd
+    #- survival.qmd
+    #- count.qmd
+    #- GLM.qmd
+    #- panel2.qmd
+    #- mixed.qmd
+    #- time_math.qmd
+    #- causal1.qmd
+    #- matching.qmd
+    #- rdd.qmd
+    #- did.qmd
+    #- LATE.qmd
+    #- hetero.qmd
+    #- experiment.qmd
+    #- bayes1.qmd
+    #- bayes2.qmd
+    #- bayes3.qmd
+    #- modelselection.qmd
+    #- robust.md
+    #- ML1.md
+    #- ML2.md
+    #- ML3.md
+    #- ML4.md
+    - references.qmd
+    
+bibliography: references.bib
+
+execute:
+  cache: true
+
+format:
+  html:
+    code-tools: true
+    code-fold: false
+    theme: cosmo
+    linestretch: 1.5
+  pdf:
+    documentclass: scrreprt
+
+
+

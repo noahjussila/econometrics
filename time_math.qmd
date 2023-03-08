@@ -1,0 +1,78 @@
+### Stochastic Processes and the Brownian Bridge
+
+A topic in probability we've yet to encounter is stochastic processes. These will appear briefly when considering the asymptotic behavior of the empirical distribution function, so we'll now introduce the relevant material for just this particular context. 
+
+::: {#def-}
+Given a probability space $(\mathcal X, \mathcal F, P)$, a  <span style="color:red">**_stochastic process_**</span> $\{X_t\}_{t\in \mathcal T}$ is a sequence of random variables $X_t$ indexed by the elements of some set $\mathcal T$. Each random variable is a measurable function from $\mathcal X\to\R$, so a stochastic process can be thought of as a mapping $I\times\mathcal X\to \R$. If $\mathcal T = \mathbb Z^+$, then $\{X_t\}_{t\in \mathcal T}$ is a <span style="color:red">**_discrete-time stochastic process_**</span>. If $\mathcal T = \R^{+}=[0,\infty)$, then $\{X_t\}_{t\in \mathcal T}$ is a <span style="color:red">**_continuous-time stochastic process_**</span>.
+:::
+
+One way to think about a stochastic process is as random process whose corresponding random variable varies over time. An especially important stochastic process is the Wiener process. 
+
+::: {#def-}
+The <span style="color:red">**_Wiener Process_**</span> is a continuous-time stochastic process $\{W_t\}_{t\in\R^+}$ such that:
+
+1. $W_0 = 0$;
+2. For all $0\le s< t$, $W_t - W_s \sim N(0, t-s)$;
+3. For all $t>0$, the future increments $W_{t+u}-W_t$, where $u \ge 0$, are independent of past values $W_s$ ($s\le t$).
+4. The function $t\mapsto W_t$ is continuous. 
+:::
+
+One way to think about the Wiener process is as the successive addition of independent standard normal draws, where we draw values continuously for all $t\ge 0$. For now, think about $W_t$ being a discrete-time process. The process begins at $0$ at $t=0$. At $t = 1$, the second property of the process gives:
+
+\begin{align*}
+& W_1 - W_0 \sim N(0, 1 - 0),\\
+\implies & W_1 - 0 \sim N(0,1),\\
+\implies & W_1 \sim N(0,1).
+\end{align*}
+For $W_2$ we have 
+\begin{align*}
+& W_2 - W_1 \sim N(0, 2 - 1),\\
+\implies & W_2 - W_1 \sim N(0,1),\\
+\implies & W_2 \sim W_1 + N(0,1),\\
+\implies & W_2 \sim N(0,1) + N(0,1).
+\end{align*}
+If we repeat this process, at time $T$ we have $W_T = \sum_{t=1}^T N(0,1)$, where all these draws are independent by the third property of the Wiener process. Of course, the process is continuous-time, so we draw a standard normal value for all times $t\in[0,\infty)$. It's easy to simulate a Wiener process using the ```cumsum()``` function. 
+
+```{r}
+#| code-fold: true
+#| label: fig-plot412e172
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: " "
+#| code-summary: "Show code which generates figure"
+
+# set number of discrete draws to approximate [0,10] with
+t_max <- 10
+N <- 1e6
+tibble(
+  t = seq(0, t_max, length = N),
+  W_t1 = cumsum(rnorm(N, 0, 1)), 
+  W_t2 = cumsum(rnorm(N, 0, 1)),
+  W_t3 = cumsum(rnorm(N, 0, 1)),
+  W_t4 = cumsum(rnorm(N, 0, 1))
+) %>% 
+  gather("group", "val", - t) %>% 
+  ggplot(aes(t, val, color = group)) +
+  geom_line(size = 0.1) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(x = "Time, t", y = "W_t")
+```
+
+```{r}
+#| code-fold: true
+#| label: fig-plot412e17298
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: " "
+#| code-summary: "Show code which generates figure"
+N <- 1e4
+t_max <- 1
+t <- seq(0, t_max, length = N)
+W_t <- cumsum(rnorm(N, 0, 1))
+W_T <- tail(W_t, 1)
+B_t <- W_t - (t/t_max)*W_T
+```
+

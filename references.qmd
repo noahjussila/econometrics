@@ -1,0 +1,8 @@
+# References {.unnumbered}
+
+```{r}
+sessionInfo()
+```
+
+::: {#refs}
+:::

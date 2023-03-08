@@ -1,0 +1,905 @@
+\DeclareMathOperator{\plim}{plim}
+\DeclareMathOperator{\argmin}{argmin}
+\DeclareMathOperator{\argmax}{argmax}
+\newcommand{\var}[1]{\text{Var}\left(#1\right)}
+\newcommand{\avar}[1]{\text{Avar}\left(#1\right)}
+\newcommand{\E}[1]{\text{E}\left[#1\right]}
+\newcommand{\cov}[1]{\text{Cov}\left(#1\right)}
+\newcommand{\mse}[1]{\text{MSE}\left(#1\right)}
+\newcommand{\se}[1]{\text{se}\left(#1\right)}
+\newcommand{\limfunc}{lim} 
+\newcommand{\X}{\mathbf{X}}
+\newcommand{\Xm}{\mathbb{X}}
+\newcommand{\EER}{\bar{\thet}_\text{EE}}
+\newcommand{\NLS}{\hat{\bet}_\text{NLLS}}
+\newcommand{\z}{\mathbf{z}}
+\newcommand{\rr}{\mathbf{r}}
+\newcommand{\C}{\mathbf{C}}
+\newcommand{\Pe}{\mathbf{P}}
+\newcommand{\y}{\mathbf{y}}
+\newcommand{\Y}{\mathbf{Y}}
+\newcommand{\uu}{\mathbf{u}}
+\newcommand{\e}{\mathbf{e}}
+\newcommand{\D}{\mathbf{D}}
+\newcommand{\x}{\mathbf{x}}
+\newcommand{\xm}{\mathbb{x}}
+\newcommand{\Zm}{\mathbb{Z}}
+\newcommand{\Wm}{\mathbb{W}}
+\newcommand{\Hm}{\mathbb{H}}
+\newcommand{\W}{\mathbf{W}}
+\newcommand{\Z}{\mathbf{Z}}
+\newcommand{\Hess}{\mathbf{H}(\mathbf{\Z\mid\thet})}
+\newcommand{\Score}{\mathbf{S}(\mathbf{\Z\mid\thet})}
+\newcommand{\A}{\mathbf{A}}
+\newcommand{\h}{\mathbf{h}}
+\newcommand{\Q}{\mathbf{Q}}
+\newcommand{\F}{\mathbf{F}}
+\newcommand{\G}{\mathbf{G}}
+\newcommand{\I}{\mathbf{I}}
+\renewcommand{\D}{\mathbf{D}}
+\renewcommand{\C}{\mathbf{C}}
+\newcommand{\zer}{\mathbf{0}}
+\newcommand{\OLS}{\hat{\boldsymbol\beta}_\text{OLS} }
+\newcommand{\OLSOV}{\hat{\boldsymbol\beta}_\text{OLS,OV} }
+\newcommand{\OLSME}{\hat{\boldsymbol\beta}_\text{OLS,ME} }
+\newcommand{\EE}{\hat{\boldsymbol\theta}_\text{EX} }
+\newcommand{\ME}{\hat{\boldsymbol\theta}_\text{M} }
+\newcommand{\MDE}{\hat{\boldsymbol\theta}_\text{MDE} }
+\newcommand{\IV}{\hat{\boldsymbol\beta}_\text{IV} }
+\newcommand{\TSLS}{\hat{\boldsymbol\beta}_\text{2SLS} }
+\newcommand{\thet}{\boldsymbol{\theta}}
+\newcommand{\et}{\boldsymbol{\eta}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Sig}{\boldsymbol{\Sigma}}
+\newcommand{\ep}{\boldsymbol{\varepsilon}}
+\newcommand{\Omeg}{\boldsymbol{\Omega}}
+\newcommand{\Thet}{\boldsymbol{\Theta}}
+\newcommand{\bet}{\boldsymbol{\beta}}
+\newcommand{\rk}{rank}
+\newcommand{\tsum}{\sum}
+\newcommand{\tr}{tr}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\abs}[1]{\left\lvert#1\right\rvert}
+\newcommand{\ms}{\overset{ms}{\to}}
+\newcommand{\pto}{\overset{p}{\to}}
+\newcommand{\iid}{\overset{iid}{\sim}}
+\newcommand{\dto}{\overset{d}{\to}}
+\newcommand{\asim}{\overset{a}{\sim}}
+
+# Extremum Estimators 
+
+```{r}
+#| echo: false
+#| message: false
+library(tidyverse)
+```
+
+The estimation of linear models turned out to be fairly straightforward, as all our estimators were somehow related to OLS. When moving beyond linear models, we need to consider more general approaches to estimation, such as the generalized method of moments (GMM) or maximum likelihood estimation (MLE). Both of these estimators fall into a very broad class of estimators formalized by @takeshi1985advanced known as extremum estimators. We'll establish the properties of this broad class of estimators before considering special cases in Section \@ref(generalized-method-of-moments) and Section \@ref(maximum-likelihood-estimation). A great deal of this will be based off of @newey1994large, and requires comfort with [real analysis](https://github.com/noahjussila/analysis_notes/blob/master/Analysis%20Notes.pdf). It may be helpful to review the relationship between continuity and limits, sequences of functions, properties of uniform convergence, compactness (and how it relates to extrema), convexity (in the context of sets and functions), and the mean value theorem as it applies to gradients and Hessians.
+
+## Definition and Identification
+
+As the name implies, an extremum estimator is one that is defined via optimization.
+
+:::{.definition}
+Suppose $\Wm = [\W_1,\ldots, \W_n]' \sim P_\thet$ where $P_\thet\in\mathcal P$ for a known model $\mathcal P$. An <span style="color:red">**_extremum estimator_**</span> $\EE:\mathcal W\to \Thet$ is an estimator of the form 
+$$ \EE = \argmax_{\thet \in \Thet} Q_n(\thet \mid \Wm)$$ for an objective function $Q_n(\thet \mid \Wm)$ which depends on realized observations and sample size. A more general definition defines $\EE$ as the value which satisfies 
+$$Q_n(\EE) \ge \sup_{\thet \in \Thet} Q_n(\thet) + o_p(1).$$
+:::
+
+We've written $\EE$ as the argument which maximizes an objective function, but this implicitly includes the case where $\EE$ is the minimizing argument of a function, as 
+$$ \argmax_{\thet \in \Thet} Q_n(\thet) = \argmin_{\thet \in \Thet} [-Q_n(\thet)].$$ The idea that an estimate should arise from an optimization problem should feel natural. We generally want an estimator to be "better" than other estimators, and extremum estimators achieve this in terms of some criterion $Q_n(\thet)$. 
+
+:::{.example}
+The estimator $\OLS$ is an extremum estimator.
+$$\OLS = (\Xm'\Xm)^{-1}\Xm'\Y = \argmin_{\mathbf b \in \mathbb R^k} \sum_{i=1}^n (Y_i - \X_i\mathbf b)^2 = \argmax_{\mathbf b \in \mathbb R^k}\left[ - \sum_{i=1}^n (Y_i - \X_i\mathbf b)^2\right] = \argmax_{\mathbf b \in \mathbb R^k} -\norm{\Y - \Xm\mathbf b}^2$$ We could also maximize any monotonic transformation of this, giving way to a few other common objectives:
+\begin{align*}
+Q_n(\bet) = -\sum_{i=1}^n (Y_i - \X_i\bet)^2 \propto -\frac{1}{n} \sum_{i=1}^n (Y_i - \X_i\bet)^2 \propto -\frac{1}{2} \sum_{i=1}^n (Y_i - \X_i\bet)^2 = -\frac{1}{2}\norm{\Y - \Xm\mathbf b}^2
+\end{align*}
+:::
+
+Before we consider the properties of extremum estimators and give a handful of example, we need to address a major problem from optimization that could plague us. If asked to calculate $\EE$, it's tempting to inspect the first order condition
+$$\frac{\partial Q_n(\thet)}{\partial \thet} = \zer.$$ Not only does this assume $Q_n$ is differentiable (which it may not be), we may find that the first order condition has several solutions, even if there is a unique maximum. Furthermore that unique maximum could be local and not global. To avoid these complications, we'll think about $\EE$ as a global maximum, and not a solution to a first order condition.
+
+::: {.hypothesis name="Numerical Optimization"}
+In most non-trivial situations, extremum estimators will not have an analytic form, so we need to turn to numerical methods to solve the requisite optimization problem. Numerical optimization is a behemoth subject spanning applied math, computer science, operations research, and engineering. Most standard econometrics references dedicate some time to the subject:
+
+- Chapter 10 of @cameron2005microeconometrics
+- Section 7.5 of @hayashi2011econometrics
+- Section 12.7 of @wooldridge2010econometric
+- Appendix E of @greene2003econometric
+- Chapter 12 of @hansen2022probability
+
+A more comprehensive treatment is @judd1998numerical. 
+:::
+
+## Consistency
+
+Despite the definition of $\EE$ being wildly general, we can establish that $\EE\pto \thet$ under certain conditions. The only defining features of $\EE$ are the function being maximized ($Q_n$), and the space over which it is being maximized ($\Thet$), so we should expect that we'll need to impose some conditions on one of (if not both) of these objects. Let's start by writing the definition of convergence in this case.
+$$ \plim \argmax_{\thet \in \Thet} Q_n(\thet) = \thet_0$$
+
+The fact that we are dealing with the limiting process of $\argmax_{\thet \in \Thet} Q_n(\thet)$ instead of $Q_n$ complicates things. Limiting processes of function do not play well with many of our favorite operators.^[If you're a real analysis nerd, you likely see what assumption we're heading towards.] 
+
+:::{.example}
+Suppose $\Theta = [-1,\infty]$ and $\theta_0 = -1/2$. Define functions $Q$, $g_n$, and $Q_n$ as: 
+\begin{align*}
+Q(\theta) &= \begin{cases}1+\theta & -1\le\theta\le\theta_0 \\ -\theta & \theta_0<\theta\le 0 \\ 0 & \text{otherwise}  \end{cases}\\
+g_n(\theta) &= \begin{cases}\theta - n & n\le\theta\le n + 1 \\ n + 2 - \theta & n + 1\le\theta\le n + 2 \\ 0 & \text{otherwise} \end{cases}\\
+Q_n(\theta) & = Q(\theta) + g_n(\theta)
+\end{align*}
+These functions don't contain random variables, so the $\plim$ operator coincides with $\lim_{n\to\infty}$ The apparently nonsense function $Q_n$ is actually defined such that we can determine it's limit and maximum by inspecting a plot. 
+ 
+```{r, echo=FALSE, fig.align='center', fig.asp = 0.7, fig.width = 8, fig.cap ="test", warning=FALSE}
+Q <- function(t){
+  if (t >= -1 & t <= -0.5) {
+    1 + t
+  } else {
+    if (t > -0.5 & t <= 0 ) {
+      -t
+    } else {
+      0
+    }
+  }
+}
+
+H <- function(t,n){
+  if (n <= t & t <= n+ 1) {
+    t - n
+  } else {
+    if (n + 1 <= t & t <= n + 2) {
+      n + 2 - t
+    } else {
+      0
+    }
+  }
+}
+
+QH <- function(t,n){
+  Q(t) + H(t,n)
+}
+
+df <- expand.grid(t = seq(-1,22, length = 1000), n = c(5, 10, 15,20))
+df$y <- sapply(1:nrow(df), function(i)QH(df[i,1], df[i,2]) )
+df %>% 
+  ggplot(aes(t,y)) +
+  geom_line() +
+  theme_minimal() +
+  labs(x = "θ",
+       y = "Qn",
+       color = "n") +
+  facet_wrap(~as.factor(n), scales = "free") +
+  theme(legend.position = "bottom")
+```
+
+It appears that $\plim Q_n = Q$, as the height of the the "triangle" formed on $\theta \in [n,n+2]$ shrinks (this is the the contribution of $g_n/n$), leaving the triangle formed by $f$. Formally, 
+$$ \plim Q_n(\theta) = \plim Q(\theta) + \plim g_n(\theta) = Q(\theta)  + 0 = Q(\theta).$$
+If we compare the limit of the $\argmax$ and the $\argmax$ of the limit, we have 
+\begin{align*}
+\plim \argmax_{\thet \in \Thet} Q_n(\thet) & = \plim n + 1 = \infty\\
+\argmax_{\thet \in \Thet} \plim Q_n(\thet) & = \argmax_{\thet \in \Thet} f = \theta_0
+\end{align*}
+:::
+
+One reason this happens, is because the nature in which $Q_n$ converges. While we have $\plim Q_n(\thet) = Q(\thet)$ for all $\thet \in \Thet$, the function does not converge uniformly in the sense that $Q_n$ does not approaches $Q$ on all of $\Thet$ simultaneously. We need to strengthen our definition of convergence in probability to insure this happens.
+
+:::{.definition}
+A sequence of functions random variables $f_n(X)$ <span style="color:red">**_converges in probability uniformly (on $\mathcal X$)_**</span> to a function $f$ if for all $\varepsilon > 0$ and $\delta > 0$ there exists a fixed $N$ independent of $X_n$ such that 
+$$ \Pr(\abs{f_n(X) - f} > \varepsilon,\ \forall X \in\mathcal X) < \delta,$$ which is equivalent to 
+$$ \lim_{n\to\infty}\Pr(\abs{f_n(X) - f} < \varepsilon,\ \forall X \in\mathcal X) = 0  $$. Yet another definition is 
+$$\sup_{\thet\in \Thet}\abs{f_n(X) - f} \pto 0.$$
+::: 
+The definition using the supremum follows from the fact that if the maximum distance between $f_n(X)$ and $f$ shrinks as $n\to\infty$, then is must be the case that the distance between $f_n$ and $f$ at any point in the support is shrinking as well. So let's assume that $Q_n$ converges uniformly to some limit $Q_0$. Let's look at another example, but this time define $Q_n$ such that it converges uniformly to some $Q_0$. 
+
+:::{.example}
+Suppose $\Theta = [0,\theta_0]$ and $Q_n(\theta) = \theta/n$. Once again, there are no random variables in the picture, so $\plim$ reduces to $\lim_{n\to\infty}$. We have 
+$$ \sup_{\theta \in [0,1]}\abs{\theta/n - 0} = 1/n \to 0,$$ so $Q_n(\theta)$ converges uniformly to $Q_0(\theta) = 0$ on $[0,\theta_0]$. The maximum of $Q_n$ is achieved at $\theta_0$ for all $n$. Despite the uniform convergence, we have 
+\begin{align*}
+\plim \argmax_{\thet \in \Thet} Q_n(\thet) & = \plim \theta_0 = \theta_0\\
+\argmax_{\thet \in \Thet} \plim Q_n(\thet) & = \argmax_{\theta \in[0,\theta_0]} Q_0(\theta) = \argmax_{\theta \in[0,1]} 0 = [0,\theta_0]
+\end{align*}
+:::
+
+We need to rule out situations where the limit of $Q_n$ does not have a unique maximum, or that unique maximum is not achieved at the true value $\thet_0$. Finally, consider a third example.
+
+:::{.example}
+Suppose $\Theta = [-2,1]$ and $\theta_0 = -1$. Define 
+$$Q_n(\theta) = \begin{cases}(1-2^{1-n})\theta + 2 - 2^{2-n} & -2\le \theta\le -1
+\\(2^{1-n}-1)\theta & -1 < \theta \le 0 \\ \frac{2^{n+1}-2}{2^{n+1}-1}\theta & 0  < \theta\le 1-2^{1-n}\\ \frac{2^{n+1}-2}{2^{n+1}-1}\theta + 2 - 2^{2-n} & 1-2^{1-n}\le \theta < 1\\0 & \theta = 1\end{cases}$$.
+
+```{r, echo=FALSE, fig.align='center', fig.asp = 0.7, fig.width = 8, fig.cap ="test", warning=FALSE}
+Q1 <- function(t,n){
+  (-2 <= t & t <= -1)*( (1-2^(1-n))*t + 2 - 2^(2-n) )
+}
+Q2 <- function(t,n){
+  (-1 <= t & t <= 0)*(-(1-2^(1-n))*t)
+}
+Q3 <- function(t,n){
+  (0 < t & t <= (1-2^(1-n)))*(  ((2^(n+1) - 2)/(2^(n+1) - 1))*t )
+}
+Q4 <- function(t,n){
+  ((1-2^(1-n)) < t & t < 1)*(  ((2^(n+1) - 2)/(2^(n+1) - 1))*t + 2 - 2^(1-n) )
+}
+Q5 <- function(t,n){
+  (t == 1)*(0)
+}
+
+Q <- function(t,n){
+  Q1(t,n) + Q2(t,n) + Q3(t,n) + Q4(t,n) + Q4(t,n) + Q5(t,n)
+}
+df <- expand.grid(t = seq(-2,1, length = 1000), n = 1:6)
+df$y <- sapply(1:nrow(df), function(i)Q(df[i,1], df[i,2]) )
+
+df %>% 
+  mutate(n = paste("n=", n, sep="")) %>% 
+  ggplot(aes(t,y)) +
+  geom_point(size = 0.3) +
+  theme_minimal() +
+  labs(x = "θ",
+       y = "Qn") +
+  facet_wrap(~n) +
+  theme(legend.position = "bottom")
+```
+
+By inspecting $Q_n$ for $n = 1,\ldots, 6$, we see that 
+\begin{align*}
+ \argmax_{\thet \in \Thet} \plim Q_n(\thet) & = \plim \theta_0 = \theta_0,\\
+\plim \argmax_{\thet \in \Thet}  Q_n(\thet) & = 1.
+\end{align*}
+The limit $Q_0$ has a discontinuity at the point where $\plim \argmax_{\thet \in \Thet} Q_n(\thet) = 1$. If we wanted to insure that $Q_0$ is continuous on all of $\Thet$, we could redefine $\Thet = [-2,1)$. Unfortunately, this would mean that the limit of the sequence formed by \argmax_{\thet \in \Thet}  Q_n(\thet) converges to a point outside of $\Thet$.
+:::
+
+This final examples shows that things can go wrong when our function $Q_0$ is not continuous, or when $\Thet$ does not contain the limit of the maximized objective. In this example the limit in question was not in $\Thet$ because $\Thet$ did not contain all its limit points, i.e it isn't a closed set. Something like this could also happen if $\Thet$ is unbounded and the limit diverges. To ensure that this limit is always in $\Thet$ we need $\Thet$ to be compact.^[A set is compact is every open cover submits a finite open subcover.] If $\Thet \subset \mathbb R^k$, then this is equivalent to being closed and bounded. 
+
+We now have all the building blocks required to show that $\EE$ is consistent: continuity of $Q_0$,^[Assuming $Q_n\pto Q_0$ uniformly, we could also have that $Q_n$ is continuous for all $n$, as the uniform limit of continuous functions is continuous.] $Q_n \pto Q_0$ uniformly, $\Thet$ compact, and $Q_0(\thet)$ is uniquely maximized at $\Thet_0$. There are a few ways to prove this result, but I'll follow @takeshi1985advanced. The first proof seems to be due to @amemiya1973regression. Other great proofs are given by econometrician Xiaoxia Shi in [these notes](https://www.ssc.wisc.edu/~xshi/econ715/Lecture_3_consistency.pdf), and by @newey1994large.
+
+
+:::{.theorem name="Consistency of Extremum Estimators I" #excon}
+Suppose there exists some (non-stochastic) function $Q_0(\thet)$ such that:
+
+1. $\thet_0 = \argmax_{\thet \in \Thet}Q_0(\thet)$;
+2. $\Thet$ is compact;
+3. $Q_0(\thet)$ is continuous on $\Thet$;
+4. $Q_n(\thet)$ converges uniformly in probability to $Q_0(\thet)$.
+
+Then $\EE \pto \thet_0$.
+:::
+
+:::{.proof}
+Let $N_r(\thet_0)$ be the open neighborhood/ball centered at $\thet_0$ with radius of $r > 0$, where $r$ is arbitrary. The neighborhood $N_r(\thet_0)$ is not necessarily a subset of $\Thet$.^[In the event that $\thet_0$ is an interior point of $\Thet$, then $N_r(\thet_0) \subset \Thet$.] If $N^c_r(\thet_0)$ is the compliment of $N$, then $N^c_r(\thet_0)$ is closed, and $N^c_r(\thet_0) \cap \Thet \subset \Thet$ is compact.^[The intersection of a closed set and compact set is compact.] Define $$\thet^* = \argmax_{\thet \in N^c_r(\thet_0) \cap \Thet} Q_0(\thet).$$  The point $\Thet^*$ is guaranteed to exists because $Q_0$ is a continuous function and $N^c_r(\thet_0)\cap \Thet$ is a compact set. Define $\varepsilon = Q_0(\thet_0) - \thet^*$, and let $A_n$ be the event $``|Q_n(\thet) - Q_0(\thet)| < \varepsilon/2$ for all $\thet"$.^["Event" in the probabilistic sense, as $Q_n(\thet \mid \Wm)$ is a random variable.]  Event $A_n$ holds *for all* $\thet$, including $\EE$ and $\thet_0$, so:
+\begin{align}
+& |Q_n(\EE) - Q_0(\EE)| < \varepsilon/2 \\
+\implies & Q_n(\EE) - Q_0(\EE) < \varepsilon/2\\
+\implies &  Q_0(\EE) > Q_n(\EE) - \varepsilon/2 (\#eq:a1)\\\\
+& |Q_n(\thet_0) - Q_0(\thet_0)| < \varepsilon/2 \\
+\implies & Q_n(\thet_0) - Q_0(\thet_0) < -\varepsilon/2\\
+\implies &  Q_n(\thet_0) > Q_0(\thet_0) - \varepsilon/2 (\#eq:a2)
+\end{align}
+By the definition of $\EE$, $Q_n(\EE) \ge Q_n(\thet_0)$. If we combine this with \@ref(eq:a1), we have 
+\begin{equation}
+Q_0(\EE) > Q_n(\thet_0) - \varepsilon/2 (\#eq:a3).
+\end{equation}
+If we add inequalities \@ref(eq:a2) and \@ref(eq:a3), event $A_n$ implies 
+\begin{align*}
+&Q_0(\EE)  + Q_n(\thet_0) > Q_n(\thet_0) - \varepsilon/2 + Q_0(\thet_0) - \varepsilon/2\\
+\implies & Q_0(\EE) >  Q_0(\thet_0) - \varepsilon \\ 
+\implies &  Q_0(\EE) >  Q_0(\thet_0) - Q_0(\thet_0) - \thet^* & (\varepsilon = Q_0(\thet_0) - \thet^*)\\
+\implies &  Q_0(\EE) >  \thet^* \\
+\implies & \EE \notin N^c \cap \Thet & \left(\thet^* = \argmax_{\thet \in N^c_r(\thet_0) \cap \Thet} Q_0(\thet)\right)\\
+\implies & \EE \in N_r(\thet_0) &(\EE \in \Thet)\\
+\implies & \abs{\EE - \thet_0} < r & (\text{definition of }N_r(\thet_0))
+\end{align*}
+If the event $A_n$ implies that $\abs{\EE - \thet_0} < r$, then $\Pr(A_n) \le \Pr\left(\abs{\EE - \thet_0} < r\right)$. We have assumed $Q_n \pto Q_0$ uniformly, so 
+\begin{align*}
+&\lim_{n\to \infty}\Pr(|Q_n(\thet) - Q_0(\thet)| < \varepsilon/2) = 1\\
+\implies & \lim_{n\to \infty}\Pr(A_n) = 1\\
+\implies & \lim_{n\to \infty}\Pr\left(\abs{\EE - \thet_0} < r\right) = 1 & \left(\Pr(A_n) \le \Pr\left(\abs{\EE - \thet_0} < r\right)\right)
+\end{align*}
+We've taken the radius $r$ to be arbitrary, so 
+\begin{align*}
+& \lim_{n\to \infty}\Pr\left(\abs{\EE - \thet_0} < r\right) = 1 & (\forall r > 0).
+\end{align*}
+This is the definition of convergence in probability, so $\EE \pto \thet_0$!
+:::
+
+
+This theorem applies to any metric space $\Thet$, not just subsets of Euclidean space.^[@newey1994large asserts it holds for any topological space, but the concept of uniform convergence not only requires a notion of proximity (given by open sets in a topology), but also some concept of distance (given by a metric).] @newey1994large provide slightly weaker conditions under which this theorem holds, the details of which can be studied in @aliprantisinfinite. 
+
+Actually applying Theorem, which we would like to do \@ref(thm:excon) in Section \@ref(generalized-method-of-moments) and Section \@ref(maximum-likelihood-estimation), can be a bit tricky. On particular problem comes with the assumption that $\Thet$ is compact. This will not hold whenever $\Thet = \mathbb R^k$, which is the cases we've been most concerned with. Realistically, we could restrict our attention to some closed subset $\Thet' \subset \mathbb R^k$ in most applications. For example, if we're estimating a linear model where we want to estimate the returns of schooling to log earnings $\beta$, we can confidently assume $\beta \in [0, 10]$. There are situations where we cannot do this though, so we need a second consistency result holds in the absence of compactness.  
+
+:::{.theorem name="Consistency of Extremum Estimators II" #excon2}
+Suppose there exists some (non-stochastic) function $Q_0(\thet)$ such that:
+
+1. $\thet_0 = \argmax_{\thet \in \Thet}Q_0(\thet)$;
+2. $\thet_0$ is an interior point of $\Thet$;
+3. $\Thet$ is a convex set;
+4. $Q_n(\thet)$ is a concave function on $\Thet$;
+5. $Q_n(\thet) \pto Q_0(\thet)$ (pointwise) on $\Thet$.
+
+Then $\EE$ exists with probability approaching 1, and $\EE \pto \thet_0$.
+:::
+
+:::{.proof}
+The point $\thet_0$ is an interior point of $\Thet$, so there exists a compact neighborhood of radius $2\varepsilon$ centered at $\thet_0$ contained in $\Thet$, $C\subset \Thet$. The boundary of this neighborhood is $\partial C$. Appealing to some more obscure real analysis results, we can conclude:
+
+1. $Q_0$ is concave (the pointwise limit of concave functions is concave).
+2. $Q_0$ is continuous on $C$ (concave functions are continuous on the interior of their domains).
+3. $Q_n \pto Q_0$ uniformly on $C$ (pointwise convergence of concave functions of a dense subset of an open set implies uniform convergence on compact subsets of an open set)
+
+Define $\tilde {\thet} = \argmax_{\thet\in C} Q_n(\thet)$. In light of points 2 and 3, we have $\tilde {\thet} \pto \thet_0$ by  \@ref(thm:excon). We will now show that $\tilde {\thet}$ not only maximizes $Q_n$ over $C$, but also over $\Thet$, so $\tilde{\thet} = \EE$ and $\EE \pto \thet_0$.
+
+If $\tilde{\thet} \pto \thet_0$, then $\Pr(\abs{\tilde{\thet} - \thet_0} < \varepsilon)\to 1$. This is equivalent to $$\Pr\left(Q_n(\tilde{\thet}) \ge \max_{\partial C} Q_n(\thet)\right)\to 1.$$ By the convexity of $\Thet$, in the event that $Q_n(\tilde{\thet}) \ge \max_{\partial C} Q_n(\thet)$, there exists a convex combination $\alpha \tilde{\thet} + (1-\alpha)\tilde{\thet} \in \partial C$ ($\alpha$ < 1) for any $\thet \notin C$. If we evaluate $Q_n$ at this convex combination, we have 
+\begin{equation}
+Q_n(\tilde{\thet}) \ge Q_n(\alpha \tilde{\thet} + (1-\alpha)\tilde{\thet} ). (\#eq:a4)
+\end{equation}
+ But $Q_n$ is concave, so 
+ \begin{equation}
+ Q_n(\alpha \tilde{\thet} + (1-\alpha)\tilde{\thet} ) \ge \alpha Q_n( \tilde{\thet}) + (1-\alpha)Q_n( \tilde{\thet}). (\#eq:a5)
+\end{equation}
+If we combine inequalities \@ref(eq:a4) and \@ref(eq:a5), we have 
+$$(1-\alpha)Q_n(\tilde{\thet}) \ge (1-\alpha)Q_n({\thet}),$$
+so $\tilde{\thet} = \EE$.
+:::
+
+## Extremum Identification
+
+Perhaps the most important stipulation in Theorems  \@ref(thm:excon) and \@ref(thm:excon2) is that $\plim Q_n = Q_0$ is uniquely maximized at the true value $\thet_0 \in \Thet$. We can think of $Q_0$ as a "population" counterpart to $Q_n$. In the event his non-stochastic/true population function $Q_0$ is maximized at multiple values $\{\thet_0, \thet_0'\}$, then we have no way of knowing if our extremum estimator is consistently estimating $\thet_0$ or $\thet_0'$. This problem should sound *very familiar*. It seems to be similar, if not the same, exact problem that arises when a model $\mathcal P$ is unidentified! It happens to be the same exact problem. 
+
+Suppose we have a model $\mathcal P$ with a parameterization $\mu : \Thet \to \mathcal P$, where $\mu$ is injective such that $\mathcal P$ is identified. The true parameter value for $P$ is $\mu^{-1}(P)$ (where this is the left inverse of $\mu$). Consider the problem of assigning real numbers to combinations of parameters and model values $(\thet, P) \in \Thet \times \mathcal P$ such that we can identify each $P$ using these numbers. We can use a function $Q_0:\Thet \times \mathcal P \to \mathbb R$ for this, and define $\phi:\Thet \to \mathcal P$ such that its left inverse is:
+$$ \phi^{-1}(P) = \argmax_{\thet \in \Thet}Q_0(P, \thet).$$ If we wanted to reparameterize $\mathcal P$ with $\phi$ and maintain identification, then what conditions would $Q_0$ need to satisfy? It would need to be the case that $Q_0$ has a unique maximum (otherwise $\phi$ would assign multiple parameters to $P$ and we would not have identification), *and* that unique maximization needs to occur at true parameter $\theta = \mu^{-1}(P)$ associated with $P$:
+$$ \mu^{-1}(P) = \argmax_{\thet \in \Thet}Q_0(P, \thet).$$ This is precisely the first condition required for consistency! For more details about this, see @davidson1993estimation and @lewbel2019identification, the latter of which coined the term "extremum identification". A concrete example may illuminate the link between identification and $Q_0$ achieving a unique maximum at $\thet_0$
+
+:::{.example #olsEX}
+Return to the classic linear model $\mathcal P_\text{LM}$ and the estimator $\OLS$. 
+$$ \OLS = \argmin_{\mathbf b} \sum_{i=1}^n(Y_i-\X_i\mathbf b)^2 = \argmax_{\mathbf b}\underbrace{ -\frac{1}{n}\sum_{i=1}^n(Y_i-\X_i\mathbf b)^2}_{Q_n}.$$
+By the law of large numbers $$ \underbrace{ -\frac{1}{n}\sum_{i=1}^n(Y_i-\X_i\mathbf b)^2}_{Q_n}\pto \underbrace{-\E{(Y - \X\mathbf b)^2}}_{Q_0}$$
+
+Under what conditions is $Q_0$ uniquely maximized at the true parameter value $\bet$? The first order condition for $\argmax Q_0$ can be reduced to two different equations: 
+\begin{align*}
+\E{\X'Y}&=\bet\E{\X'\X}\\
+\E{\X'\ep}&=0
+\end{align*}
+Therefore $Q_0$ is uniquely maximized at the true parameter value $\bet$ when $\E{\X'\ep}=0$ and $\E{\X'\X}$ is invertible. These are precisely the same conditions which we determined identified $\mathcal P_\text{LM}$.
+:::
+
+:::{.example}
+Consider the linear projection model $\mathcal P_\text{LP}$ where $\bet$ was defined as 
+$$\bet =\argmax_{\mathbf b}-\E{(Y - \X\mathbf b)^2}$$ to begin with (opposed to $\bet$ having a structural interpretation like in $\mathcal P_\text{LM}$). The parameterization is already given by a maximization problem here! In this special case, we can think of an extremum estimator as originating from the analog principle, because $\OLS$ (when written as the solution to the maximization problem) is the sample analog to $\bet$. This model is identified when $\text{rank}\left(\E{\X'\X}\right) = K$, which has the roll of insuring that the maximization problem which defines $\bet$ has a unique solution. Once again, this is condition 1 in \@ref(thm:excon). 
+:::
+
+
+::: {.hypothesis name="Consistency and Identification"}
+In general, consistency and identification are inherently related. Consider the classical linear model $\mathcal P_\text{LM}$ where $\bet = \E{\X'\X}^{-1}\E{\X'Y}$. The model is identified, so $\bet$ is unique to $P_{\bet, \sigma^2}\in\mathcal P$. Heuristically, we can think of identification as the ability to estimate the parameter perfectly at the population level with an infinite amount of data. If given an infinite amount of data, we could calculate the moments  $\E{\X'Y}$ and $\E{\X'\X}$, enabling us to calculate $\bet$.^[This is why @wooldridge2010econometric define parameterization in the context of linear models as "[the parameter] can be written in terms of population moments in observable variables".] We will never have infinite data, so the best we can do is define the sample analog of $\bet$ and $\OLS$, and appeal to the fact that as our sample size grows and approaches infinity, our estimates become arbitrarily better. This just happens to be consistency.  Formally, suppose under an assumed model value $P\in\mathcal P$ we have an estimator $\hat{\thet}$ with a unique limit in probability $\plim \hat{\thet}$. If we define the parameterization $\thet \mapsto P_{\thet}$ as $\thet = \plim \hat{\thet}$, then we've leveraged consistency such that  our model is identified by construction.
+:::
+
+## Asymptotic Normality 
+
+Our next technical result is that $\EE$ happens to be root-n CAN under certain conditions. This will require a bit more work now that we aren't restricting our attention to linear models. Recall the steps we took to prove Theorem \@ref(thm:asymols). From the onset of this proof, we had an closed form solution for $\EE$. Given $Q_n =  -\norm{\Y - \Xm\mathbf b}^2$, we were able to solve the associated first order condition for a unique solution in the form of $\EE = \OLS = (\Xm'\Xm)^{-1}\Xm'\Y$, because the first order condition was itself a linear equation with one root:
+$$ \frac{\partial Q_n}{\partial \mathbf b} = 2\Xm'(\Y -\Xm \mathbf b).$$ Once we move beyond linear models, it may be the case that the first order condition $\frac{\partial Q_n}{\partial \thet}$ is nonlinear and cannot be solved explicitly for $\EE$, even if we assume the first order condition has a unique root. The easiest way to handle this is using the mean value theorem to approximate the first order condition linearly (i.e a first order Taylor expansion). Doing this requires additional assumptions about $Q_n$, in particular assumptions about the existence of derivatives. Using the mean value theorem require continuous differentiability, but in our case we're going to apply it to the derivative $\frac{\partial Q_n}{\partial \thet}$, so we will need $Q_n$ to be twice continuous differentiability. This means our theorem will involve the hessian $\mathbf H(\thet)$ of $Q_n$.    
+
+
+:::{.theorem name="Asymptotic Normality of Extremum Estimators" #exasy}
+Suppose that:
+
+1. $\frac{\partial Q_n(\EE)}{\partial \thet} = o_p(n^{-1/2})$ (the FOC holds as $n\to\infty$);
+2. $\EE \pto \thet_0$
+3. $\Thet_0$ is in the interior of $\Thet$;
+4. $Q_n(\thet)$ is twice continuously differentiable in a neighborhood $N_r(\thet_0)$;
+5. $\sqrt n \frac{\partial Q_n(\thet_0)}{\partial \thet} \dto N(\zer, \boldsymbol \Omega)$;
+6. $\frac{\partial^2 Q_n(\thet)}{\partial\thet\partial\thet'} \pto \mathbf H(\thet)$ *uniformly* for some $\mathbf H(\thet)$ continuous at $\thet_0$;
+7. $\mathbf H(\thet_0)$ is invertible.
+Then 
+\begin{align*}
+\sqrt{n}(\EE - \thet_0) &\dto N(\zer, \mathbf H(\thet_0)^{-1} \boldsymbol \Omega \mathbf H(\thet_0)^{-1}).
+\end{align*}
+:::
+
+:::{.proof}
+We will begin by performing a first-order Taylor expansion of $\frac{\partial Q_n(\EE)}{\partial \thet}$ about $\thet_0$.^[Technically, we're performing $\dim(\Thet) = K$ different expansions and just writing them succinctly in matrix form.]
+
+\begin{align}
+&\frac{\partial Q_n(\EE)}{\partial \EE} = o_p(n^{-1/2})\\
+\implies & o_p(n^{-1/2})= \frac{\partial Q_n(\thet_0)}{\partial \thet} + \frac{\partial^2 Q_n(\tilde{\thet})}{\partial\thet\partial\thet'}(\EE - \thet_0) & (\hat\theta_{\text{EE},j} < \tilde\theta_{j} <  \theta_{0,j} \ \forall j) (\#eq:a7)
+\end{align}
+The vector $\tilde{\thet}$ "lies between" $\EE$ and $\thet_0$ (element-wise, where the elements of $\tilde{\thet}$ are given by the $K$ expansions), so $\tilde{\thet}\pto \thet_0$ as a consequence of $\EE \pto \thet_0$. Using assumption 6, 
+\begin{align}
+&\frac{\partial^2 Q_n(\thet)}{\partial\thet\partial\thet'} \pto \mathbf H(\thet) & (\forall \thet\in \Thet)\\
+\implies & \frac{\partial^2 Q_n(\tilde{\thet})}{\partial\thet\partial\thet'} \pto \mathbf H(\tilde{\thet})\\
+\implies & \plim \frac{\partial^2 Q_n(\tilde{\thet})}{\partial\thet\partial\thet'} = \plim  \mathbf H(\tilde{\thet})\\ 
+\implies & \plim \frac{\partial^2 Q_n(\tilde{\thet})}{\partial\thet\partial\thet'} = \mathbf H(\plim\tilde{\thet}) & (\mathbf H\text{ continuous at } \thet_0 = \plim \tilde{\thet})\\
+\implies & \plim \frac{\partial^2 Q_n(\tilde{\thet})}{\partial\thet\partial\thet'} = \mathbf H(\thet_0) & (\thet_0 = \plim \tilde{\thet})\\
+\implies & \frac{\partial^2 Q_n(\tilde{\thet})}{\partial\thet\partial\thet'} = \mathbf H(\thet_0) + o_p(1) (\#eq:a8)
+\end{align}
+If we substitute equation \@ref(eq:a8) into equation \@ref(eq:a7), then 
+\begin{align*}
+& o_p(n^{-1/2}) = \frac{\partial Q_n(\thet_0)}{\partial \thet} + (\mathbf H(\thet_0) + o_p(1))(\EE - \thet_0)\\
+\implies & \underbrace{\sqrt n \cdot o_p(n^{-1/2})}_{o_p(1)} = \sqrt{n}\frac{\partial Q_n(\thet_0)}{\partial \thet} + (\mathbf H(\thet_0) + o_p(1))\sqrt{n}(\EE - \thet_0)\\
+\implies &\sqrt{n}(\EE - \thet_0) = -(\mathbf H(\thet_0) + o_p(1))^{-1}\sqrt{n}\frac{\partial Q_n(\thet_0)}{\partial \thet} - \underbrace{o_p(1)(\mathbf H(\thet_0) + o_p(1))^{-1}}_{o_p(1)}\\
+\implies & \sqrt{n}(\EE - \thet_0) \pto -\mathbf H(\thet_0)^{-1} \sqrt{n}\frac{\partial Q_n(\thet_0)}{\partial \thet}\\
+\implies & \sqrt{n}(\EE - \thet_0) \dto -\mathbf H(\thet_0)^{-1} \underbrace{\sqrt{n}\frac{\partial Q_n(\thet_0)}{\partial \thet}}_{\dto N(\zer, \boldsymbol \Omega)} & (\pto \implies \dto)\\
+\implies & \sqrt{n}(\EE - \thet_0) \dto -\mathbf H(\thet_0)^{-1} N(\zer, \boldsymbol \Omega)\\
+\implies & \sqrt{n}(\EE - \thet_0) \dto N(\zer, [-\mathbf H(\thet_0)^{-1}]'\boldsymbol \Omega[-\mathbf H(\thet_0)^{-1}]) & (\mathbf H(\thet_0)\text{ invertible})\\
+\implies & \sqrt{n}(\EE - \thet_0) \dto N(\zer, \mathbf H(\thet_0)^{-1}\boldsymbol \Omega\mathbf H(\thet_0)^{-1}) & (\mathbf H(\thet_0)\text{ symmetric})
+\end{align*}
+<span style="color:white">space</span>
+:::
+
+::: {.hypothesis name="Sandwhich Variance/Covariance Matrix"}
+The asymptotic variance of $\EE$ exhibits a nice pattern. It's the variance $\boldsymbol\Omega$ "sandwiched" between $\mathbf H(\thet_0)^{-1}$. This is why a(n) (asymptotic) variance/covariance matrix of this form, 
+$$\avar{\hat{\thet}} = a \mathbf B^{-1}\mathbf A \mathbf B^{-1},$$ is called a **_sandwich variance/covariance matrix_**. Many root-n CAN estimators have a sandwich variance/covariance matrix because the delta method along with the properties of variance naturally lend themselves to this sandwich form. 
+\begin{align*}
+\var{\mathbf B \X + \mathbf c} &= \mathbf B\var{\X}\mathbf B'\\
+\sqrt{n}[\mathbf g(\X_n) - \mathbf g(\mathbf t)] &\dto N\left(\zer, \left[\frac{\partial \mathbf g}{\partial\x}(\mathbf t)\right]\avar{\X_n}\left[\frac{\partial \mathbf g}{\partial\x}(\mathbf t)\right]'\right) & (\X_n \dto N(\zer, \avar{\X_n}))
+\end{align*}
+In the event that $\avar{\X_n}$ is a symmetric matrix $\mathbf B'$, we have the sandwich form $\mathbf B^{-1}\mathbf A \mathbf B^{-1}$ (which may be scaled by some $a$). In certain special cases, $a \mathbf B^{-1}\mathbf A \mathbf B^{-1}$ may reduce to $a \mathbf B^{-1}$.
+:::
+
+## The Hypothesis Testing "Trinity"
+
+There are three main approaches to testing hypotheses using $\EE$, one that we are familiar with, and two new ones. In each case, we'll need a consistent estimator $\widehat{\text{Avar}}(\EE)$. Unfortunately, Theorem \@ref(thm:exasy) is so general that it doesn't provide much guidance as to estimating $$\avar{\EE} = \frac{\mathbf H(\thet_0)^{-1}\boldsymbol \Omega\mathbf H(\thet_0)^{-1}}{n}.$$ We only know that $\mathbf H$ is the limit of the Hessian of $Q_n$, and that $\boldsymbol \Omega$ is the asymptotic variance of the gradient of $\mathbf H$. Without more information about $Q_n$, there isn't much we can do right now to estimate the asymptotic variance of $\EE$. Instead, we'll derive consistent estimators $\widehat{\text{Avar}}(\EE)$ for special cases of extremum estimators, and assume they exist for now, allowing us to construct test statistics.   
+
+Theorem \@ref(thm:exasy) establishes that $\EE$ is root-n CAN, so we can test a general nonlinear hypothesis $\mathbf h(\thet) = \zer$ using a Wald test:
+$$ W = \mathbf h(\EE)'\left[\frac{\partial \mathbf h}{\partial \thet}(\EE)\widehat{\text{Avar}}(\EE)\frac{\partial \mathbf h}{\partial \thet}(\EE)'\right]^{-1}\mathbf h(\EE).$$ We can also test hypotheses about $\hat\theta_{\text{EX,}j}$ using the $t-$test 
+$$ t = \frac{\hat\theta_{\text{EX},j} - \theta_0}{\widehat{\text{se}}(\hat\theta_{\text{EX},j})}.$$ These tests are based on the discrepancy between $\EE$ and $\thet_0$ scaled by the precision (asymptotic variance) of our estimator $\EE$. This is not the only way to measure how "far" estimates are from a null hypothesis. 
+
+Consider the definition of $\EE$ in general, and under $H_0:\mathbf h(\thet) = \zer$:
+\begin{align*}
+\EE & = \argmax_{\thet \in \Thet} Q_n(\thet),\\
+\bar{\thet}_\text{EE} & = \argmax_{\mathbf h(\thet) = \zer} Q_n(\thet).
+\end{align*}
+We usually refer to an estimator such as $\bar{\thet}_\text{EE}$ as a **_restricted estimator_**, because it is calculated under the restriction that the null hypothesis is true.
+
+@rao1948large proposed an alternate statistic based solely on $\bar{\thet}_\text{EE}$. Appealing to the method of Lagrange multipliers, the restricted estimator $\bar{\thet}_\text{EE}$ is given as the solution to the following first order conditions (after being scaled by $\sqrt{n}$):
+\begin{align*}
+\sqrt{n}\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE}) + \mathbf h(\bar{\thet}_\text{EE})'\sqrt{n}\boldsymbol\lambda  & = \zer (\#eq:lm1)\\
+\sqrt{n}\boldsymbol\lambda\frac{\partial \mathbf h}{\partial \thet} & = \zer(\#eq:lm2)
+\end{align*}
+
+In the event that $H_0$ is true, then the multiplier $\boldsymbol\lambda = \zer$. This suggests testing the equivalent hypothesis $H_0:\boldsymbol\lambda = \zer$. The Wald statistic associated with this problem is 
+$$ \boldsymbol\lambda'\left[\widehat{\text{Avar}}(\boldsymbol\lambda)\right]^{-1}\boldsymbol\lambda,$$ which can be simplified if we find $\avar{\boldsymbol\lambda}$.
+
+
+We can derive a test statistic from these FOCs assuming $\sqrt n \frac{\partial Q_n(\thet_0)}{\partial \thet} \dto N(\zer, \boldsymbol \Omega)$ and that we are able to perform a mean value expansion on $\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE})$ and $\mathbf h$. For some values $\EER<\tilde{\thet}<\thet_0$ and $\EER<\thet^\dagger<\thet_0$,^[Once again, we're actually performing mean value expansions in several variables at once but consolidating it using vectors and matrices. This means that these inequalities hold element-wise.]
+\begin{align*}
+\sqrt{n}\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE}) &= \sqrt{n}\frac{\partial Q_n}{\partial \thet}(\thet_0) + \frac{\partial^2 Q_n}{\partial \thet\partial \thet'}(\thet^\dagger)\sqrt{n}(\EER - \thet_0)\\
+\sqrt{n}\mathbf h(\EER) &= \underbrace{\sqrt{n}\mathbf h(\thet_0)}_\zer + \frac{\partial\mathbf h}{\partial \thet}(\tilde{\thet})\sqrt{n}(\EER - \thet_0)
+\end{align*}
+If we assume that $\EER\pto \thet_0$, then $\tilde{\thet} \pto\thet_0$ and $\thet^\dagger\pto\thet_0$, because they're "squeezed" in between $\EER$ and $\thet_0$. If we take the limit (in probability) of these expansions, we have 
+\begin{align*}
+\sqrt{n}\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE}) &= \sqrt{n}\frac{\partial Q_n}{\partial \thet}(\thet_0) +\mathbf H(\thet_0)\sqrt{n}(\EER - \thet_0) + o_p(1) (\#eq:lm3)\\
+\sqrt{n}\mathbf h(\EER) &= \frac{\partial\mathbf h}{\partial \thet}(\thet_0)\sqrt{n}(\EER - \thet_0) + o_p(1) (\#eq:lm4)
+\end{align*}
+where the definition of $\mathbf H$ is given in Theorem \@ref(thm:exasy). If we assume that $\EER \pto \thet_0$ under $H_0$, then 
+\begin{align*}
+\mathbf h(\bar{\thet}_\text{EE})'\boldsymbol\lambda = \mathbf h(\thet_0)'\boldsymbol\lambda + o_p(1) (\#eq:lm5)
+\end{align*}
+If we substitute equations \@ref(eq:lm3), \@ref(eq:lm4), and \@ref(eq:lm5) into the first order conditions given by equations (\#eq:lm1) and (\#eq:lm2), we have (after some consolidation into matrices):
+$$ \begin{bmatrix} \mathbf H(\thet_0) & \frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\\
+\frac{\partial \mathbf h}{\partial \thet}(\thet_0) & \zer\end{bmatrix}\begin{bmatrix}\sqrt{n}(\EER - \thet_0)\\ \sqrt n \boldsymbol \lambda \end{bmatrix} = \begin{bmatrix} -\sqrt n \frac{\partial Q_n}{\partial \thet}(\thet_0)\\ \zer \end{bmatrix} + o_p(1)$$
+
+If we solve this system we have:
+\begin{align*}
+&\begin{bmatrix}\sqrt{n}(\EER - \thet_0)\\ \sqrt n \boldsymbol \lambda \end{bmatrix}  = \begin{bmatrix} \mathbf H(\thet_0) & \frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\\
+\frac{\partial \mathbf h}{\partial \thet}(\thet_0) & \zer\end{bmatrix}^{-1}\begin{bmatrix} -\sqrt n \frac{\partial Q_n}{\partial \thet}(\thet_0)\\ \zer \end{bmatrix} + o_p(1)\\
+\implies & \sqrt{n}\boldsymbol \lambda = -\left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\right]^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\sqrt n \frac{\partial Q_n}{\partial \thet}(\thet_0) + o_p(1)\\
+& \sqrt{n}(\EER - \thet_0)=-\left[\mathbf H(\thet_0)^{-1} - \mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\left(\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\right)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0) \mathbf H(\thet_0)^{-1}\right]\sqrt{n}\frac{\partial Q_n(\thet_0)}{\partial \thet} + o_p(1) (\#eq:lm6)\\
+\implies & \sqrt{n}\boldsymbol \lambda \pto -\left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\right]^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\underbrace{\sqrt n \frac{\partial Q_n}{\partial \thet}(\thet_0) }_{N(\zer, \boldsymbol \Omega)}\\
+\implies & \sqrt{n}\boldsymbol \lambda \dto N\left(\zer,  \left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\right]^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\boldsymbol \Omega  \mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\right]^{-1} \right)\\
+\implies & \avar{\boldsymbol \lambda} = \frac{1}{n}\left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\right]^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\boldsymbol \Omega  \mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\right]^{-1}
+\end{align*}
+Therefore, the Wald statistic associated with $H_0:\boldsymbol\lambda = \zer$ (taking the asymptotic variance to be known at the moment) is 
+\begin{align*}
+&\boldsymbol\lambda' \left[\avar{\boldsymbol\lambda}\right]^{-1}\boldsymbol\lambda\\
+\implies & \boldsymbol\lambda' \left[\frac{1}{n}\left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\right]^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\boldsymbol \Omega  \mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\right]^{-1}\right]^{-1}\boldsymbol\lambda\\
+\implies & n\boldsymbol\lambda'\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\boldsymbol \Omega  \mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\right]^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\boldsymbol\lambda.
+\end{align*}
+Under $H_0$ we have $\nabla_\thet Q_n(\EER) = \zer$. Combining this with \@ref(eq:lm2) gives $$\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\boldsymbol \lambda =  \frac{\partial Q_n}{\partial \thet}(\EER),$$ which can be used to simplify our test statistic.
+
+$$ n\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE})'\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\boldsymbol \Omega  \mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\right]^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE})'.$$
+In practice, we only know $H_0:\mathbf h(\thet) = \thet_0$, $Q_n$, and $\EER$, so we need to estimate $\boldsymbol \Omega$ and $\mathbf H(\thet_0)$. Once we substitute in suitable estimators, we have our Wald statistic for $H_0:\boldsymbol \lambda = \zer$, which is usually considered it's own seperate test statistic. 
+
+:::{.definition}
+Suppose $\EE$ is an extremum estimator for which $\sqrt n \frac{\partial Q_n}{\partial \thet}(\thet_0) \dto N(\zer, \boldsymbol \Omega)$, and $\frac{\partial^2 Q_n}{\partial \thet\partial\thet'}(\thet_0) \pto \mathbf H(\thet_0)$.  If a null hypothesis $H_0$ is summarized by some (possibly nonlinear) function $\mathbf h(\thet) = \zer$ the <span style="color:red">**_Lagrange multiplier statistic_**</span> is defined as 
+$$ LM = n\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE})' \hat{\mathbf H}(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\hat{\mathbf H}(\thet_0)^{-1}\hat{\boldsymbol \Omega}\hat{\mathbf H}(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\right]^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\hat{\mathbf H}(\thet_0)^{-1}\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE}),$$ where $\EER$ is the extremum estimator subject to $H_0$.  The statistic is also known as the <span style="color:red">**_Rao test statistic_**</span> or <span style="color:red">**_score test statistic_**</span>
+:::
+
+If $\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE}) \gg 0$, then $LM \gg 0$, and it is likely that $H_0$ is false. An immediate consequence of our derivation of $LM$ is that $LM \dto \chi_q^2$, as it is a special case of the Wald statistic. A formal statement of this will be presented after deriving one last test statistic. 
+
+A third option to test $H_0$ is by looking at the difference $Q_n(\EE) - Q_n(\EER)$ (which is always positive). If $H_0$ is likely to be true then $\EE \approx \EER$, so $Q_n(\EE) - Q_n(\EER)\approx 0$. A test statistic based on this criterion would have a major advantage over the Wald and Lagrange multiplier statistics because it would not require us to estimate any asymptotic variances. Unfortunately, as we'll soon see, this advantage comes at the cost of an assumption about $\boldsymbol \Omega$ and $\mathbf H(\thet_0)$. First, let's look at the second-order Taylor expansion of $Q_n(\EER)$ about $\EE$. For some $\EE <\tilde{\thet} < \EER$,
+\begin{align*}
+& Q_n(\EER) =  Q_n(\EE) + \frac{\partial Q_n}{\partial\thet}(\EER-\EE) + \frac{1}{2}(\EER-\EE)'\frac{\partial^2 Q_n}{\partial\thet\partial\thet'}(\tilde{\thet})(\EER-\EE)\\
+\implies & 2[Q_n(\EE) -  Q_n(\EER)] = -\frac{\partial Q_n}{\partial\thet}(\EER-\EE) - \frac{1}{2}(\EER-\EE)'\frac{\partial^2 Q_n}{\partial\thet\partial\thet'}(\tilde{\thet})(\EER-\EE)
+\end{align*}
+Under the assumption that $\sqrt{n}\frac{\partial Q_n}{\partial\thet} \dto N(\zer, \boldsymbol \Omega)$, the first term of this expansion is $o_p(1)$.
+\begin{align*}
+& 2\sqrt{n}[Q_n(\EE) - Q_n(\EER)] = -\sqrt{n}(\EER-\EE)'\frac{\partial^2 Q_n}{\partial\thet\partial\thet'}(\tilde{\thet})(\EER-\EE)+ o_p(1)\\
+\implies & 2n[Q_n(\EE) - Q_n(\EER)] = -[\sqrt{n}(\EER-\EE)]'\frac{\partial^2 Q_n}{\partial\thet\partial\thet'}(\tilde{\thet})[\sqrt{n}(\EER-\EE)] + o_p(1)
+\end{align*}
+If $\EE \pto \thet_0$, then we also have $\tilde{\thet} \pto \thet_0$, so 
+$$2n[Q_n(\EE) - Q_n(\EER)] = -[\sqrt{n}(\EER-\EE)]'\mathbf H(\thet_0)[\sqrt{n}(\EER-\EE)] + o_p(1).$$ The term $[\sqrt{n}(\EER-\EE)]$ looks a lot like something that would be asymptotically normal, in which case $2n[Q_n(\EE) - Q_n(\EER)]$ would be a function of a quadratic form of (asymptotically) normal vectors meaning it could be distributed according to some $\chi^2$ distribution. From the Taylor expansion used to prove Theorem \@ref(thm:exasy) and Equation Theorem \@ref(eq:lm6), we have 
+\begin{align*}
+\sqrt{n}(\EE - \thet_0)&-\mathbf H(\thet_0)^{-1}\sqrt{n}\frac{\partial Q_n}{\partial \thet}(\thet_0) + o_p(1),\\
+\sqrt{n}(\EER - \thet_0)&=-\left[\mathbf H(\thet_0)^{-1} - \mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\left(\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\right)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0) \mathbf H(\thet_0)^{-1}\right]\sqrt{n}\frac{\partial Q_n(\thet_0)}{\partial \thet} + o_p(1).
+\end{align*}
+These imply 
+\begin{align*}
+\sqrt{n}(\EER-\EE) & = \sqrt{n}(\EER - \thet_0) - \sqrt{n}(\EE - \thet_0)\\
+& = -\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)' \left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\right]^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1} \left[\sqrt{n}\frac{\partial Q_n(\thet_0)}{\partial \thet}\right] + o_p(1)
+\end{align*}
+If we plug this into our last expression for $2n[Q_n(\EE) - Q_n(\EER)]$,^[Many of the terms involving $\frac{\partial \mathbf h}{\partial \thet}(\thet_0)$ and $\mathbf H(\thet_0)$ will cancel. $$ $$] we have 
+\begin{align*}
+2n[Q_n(\EE) - Q_n(\EER)] & = \underbrace{\left[\sqrt{n}\frac{\partial Q_n(\thet_0)}{\partial \thet}\right]}_{\dto N(\zer, \boldsymbol \Omega)}' \mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)' \left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\right]^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1} \underbrace{\left[\sqrt{n}\frac{\partial Q_n(\thet_0)}{\partial \thet}\right]}_{\dto N(\zer, \boldsymbol \Omega)} + o_p(1)\\
+&  \dto \left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1} N(\zer, \boldsymbol \Omega)\right]' \left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\right]^{-1}\left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1} N(\zer, \boldsymbol \Omega)\right]\\
+& = N\left(\zer,\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1} \boldsymbol \Omega \mathbf H(\thet_0)^{-1} \frac{\partial \mathbf h}{\partial \thet}(\thet_0)' \right)' \left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\right]^{-1} N\left(\zer,\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1} \boldsymbol \Omega \mathbf H(\thet_0)^{-1} \frac{\partial \mathbf h}{\partial \thet}(\thet_0)' \right)
+\end{align*}
+The limiting distribution is a quadratic form of normally distributed variables, *but* the matrix in the center which "weights" the quadratic form does not correspond properly to the variance of the distributions such that we have a chi-squared distribution. We need this matrix in the center to be equal to the variance of the normal distribution in order to "standardize" it and give us the square of two standard normal distributions (which is the definition of a chi-squared distributed). 
+$$\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1} \boldsymbol \Omega \mathbf H(\thet_0)^{-1} \frac{\partial \mathbf h}{\partial \thet}(\thet_0)' \neq  \frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'$$
+For this relation to hold with equality, we need to make an assumption about the relationship between $\mathbf H(\thet_0)$ and $\boldsymbol \Omega$. 
+
+:::{.definition}
+Suppose $\EE$ is an extremum estimator for which $\sqrt n \frac{\partial Q_n}{\partial \thet}(\thet_0) \dto N(\zer, \boldsymbol \Omega)$, and $\frac{\partial^2 Q_n}{\partial \thet\partial\thet'}(\thet_0) \pto \mathbf H(\thet_0)$. In addition assume that there exists some scalar $c\in \mathbb R$ such that
+$$\boldsymbol \Omega = c \mathbf H(\thet_0),$$ giving and $\boldsymbol \Omega \propto \mathbf H(\thet_0)$. The equality associated with this assumption is the 
+<span style="color:red">**_generalized information matrix equality_**</span>. 
+:::
+
+This assumption seems completely arbitrary, but once we start working with concrete examples of extremum estimators, we'll see it hold in many familiar settings that motivate it holding in this general case.^[We could also weaken this assumption by assuming there is a sequence of constants $c_n$ whose limit gives the proportion.] Also note that as we've defined $\EE$, $c < 0$. If $Q_0$ is uniquely maximized at $\thet_0$, then its Hessian $\mathbf H(\thet_0)$ is negative semi-definite, while $\boldsymbol \Omega$ corresponds to a variance (meaning its positive semi-definite). These facts imply $c< 0$. 
+
+If we assume the generalized information matrix equality holds, then 
+\begin{align*}
+\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1} \boldsymbol \Omega \mathbf H(\thet_0)^{-1} \frac{\partial \mathbf h}{\partial \thet}(\thet_0)'& = \frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1} c \mathbf H(\thet_0) \mathbf H(\thet_0)^{-1} \frac{\partial \mathbf h}{\partial \thet}(\thet_0)'= c\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'
+\end{align*}
+All we need to do is divide our statistic by $c$ to account for the proportionality. 
+$$\frac{2n}{c}[Q_n(\EE) - Q_n(\EER)]\dto N\left(\zer,\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}  \frac{\partial \mathbf h}{\partial \thet}(\thet_0)' \right)' \left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\right]^{-1} N\left(\zer,\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1} \frac{\partial \mathbf h}{\partial \thet}(\thet_0)' \right) = \chi_q^2.$$
+
+:::{.definition}
+Suppose $\EE$ is an extremum estimator for which $\sqrt n \frac{\partial Q_n}{\partial \thet}(\thet_0) \dto N(\zer, \boldsymbol \Omega)$, and $\frac{\partial^2 Q_n}{\partial \thet\partial\thet'}(\thet_0) \pto \mathbf H(\thet_0)$, and $\boldsymbol \Omega = c \mathbf H(\thet_0)$ for some $c < 0$. The <span style="color:red">**_distance metric statistic_**</span> for the null hypothesis $H_0$ is 
+$$DM = \frac{2n}{\hat c}[Q_n(\EE) - Q_n(\EER)],$$ where $\EER$ is the extremum estimator subject to $H_0$.
+:::
+
+Now we can formalize things into a theorem.
+
+:::{.theorem name="Equivelence of Testing Trinity" #trintest}
+Let $H_0:\mathbf h(\thet) = \zer$ be some hypothesis where $\mathbf h:\Thet \to \mathbb R^q$ ($q \le \dim(\Thet) = K$), $\EE$ be an extremum estimator for $\thet$, and $\bar{\thet}_\text{EE}$ be the restricted extremum estimator for $\thet$ under $H_0$. Suppose:
+
+a. The function $\mathbf h(\thet)$ is continuously differentiable in a neighborhood of $\thet_0$;
+b. The conditions of  Theorem \@ref(thm:exasy) are satisfied. 
+c. $\frac{\partial \mathbf h(\thet)}{\partial \thet}$ is invertible;
+d. $\hat {\mathbf H}(\thet_0)$ and $\hat {\boldsymbol\Omega}$ are consistent estimators of $\mathbf H(\thet_0)$ and $\boldsymbol \Omega$, respectively;
+e. $\bar{\thet}_\text{EE} \pto \thet_0$ under $H_0$.
+f. There exists some scalar $c\in \mathbb R$ such that $\boldsymbol \Omega = c \mathbf H(\thet_0)$, and $\hat c$ is a consistent estimator for $c$.
+
+Then:
+
+1. Under assumptions a-d, $W \dto \chi_q^2$;
+2. Under assumptions a-e, $LM \dto \chi_q^2$. If assumption f holds, then
+$$LM = \frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE})' \hat {\boldsymbol\Omega}\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE}) $$
+3. Under assumptions a-f, $DM \dto \chi_q^2$. 
+
+:::
+
+
+:::{.proof}
+<span style="color:white">space</span>
+
+1. We proved that $W\dto \chi_q^2$ in Theorem \@ref(thm:wald). All we need is a consistent estimator for $\avar{\EE} = \mathbf H(\thet_0)^{-1}\boldsymbol\Omega\mathbf H(\thet_0)^{-1}$. By Assumption d, we have this in the form of $\widehat{\text{Avar}}(\EE) = \hat {\mathbf H}(\thet_0)^{-1} \hat {\boldsymbol\Omega}{\mathbf H}(\thet_0)^{-1}$
+2. We showed that $LM$ is a special case of $W$ with the additional assumption that $\EER \pto \thet_0$ under $H_0$. IIf assumption f holds, we have a consistent estimator for $\boldsymbol \Omega$ in the form of $\hat {\boldsymbol\Omega} = \hat c\hat{\mathbf H}(\thet_0)$:
+\begin{align*}
+LM &= n\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE})' \hat{\mathbf H}(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\hat{\mathbf H}(\thet_0)^{-1}\hat c\hat{\mathbf H}(\thet_0)\hat{\mathbf H}(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\right]^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\hat{\mathbf H}(\thet_0)^{-1}\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE})\\
+& = \frac{n}{\hat c}\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE})' \hat{\mathbf H}(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\hat{\mathbf H}(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\right]^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\hat{\mathbf H}(\thet_0)^{-1}\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE})\\
+& = \frac{n}{\hat c}\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE})' \hat{\mathbf H}(\thet_0)^{-1}\underbrace{\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\right]^{-1}}_{\mathbf I}\underbrace{\left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\hat{\mathbf H}(\thet_0)^{-1}\right]^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\hat{\mathbf H}(\thet_0)^{-1}}_{\mathbf I}\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE})\\
+& = \frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE})'\frac{\hat{\mathbf H}(\thet_0)^{-1}}{\hat c} \frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE})\\
+& = \frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE})' \hat {\boldsymbol\Omega}^{-1}\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE})
+\end{align*}
+3. We already established that the test statistic converges in distribution to $\chi_q^2$ when $c$, is known. By Slutsky's theorem, this will still hold for a consistent estimator $\hat c$. 
+
+<span style="color:white">space</span>
+:::
+
+If we assume $\dim(\Thet) = \dim(\mathbf h) = 1$, we can plot $Q_n$, $H_0:h(\theta) = 0$ and the distances corresponding to our these three statistics.
+
+```{r, echo=FALSE, fig.align='center', fig.asp = 0.7, fig.width = 8, fig.cap ="test", warning=FALSE, message=FALSE}
+x = seq(1,9,length = 10000)
+data.frame(x = x) %>% 
+  mutate(`Objective function Qn` = 10 - (x - 5)^2,
+         `Derivative of Qn` = -2*x + 10,
+         `Null Hypothesis h` = sqrt(30*x-80) - 6) %>% 
+  gather("group", "value", -x) %>% 
+  ggplot(aes(x,value, color = group)) +
+  geom_line() +
+  theme_minimal() +
+  theme(axis.text.x=element_blank(),
+        legend.position = "bottom") +
+  ylim(-2, 10) +
+  labs(y = "",
+       x = "θ",
+       color = "") +
+  geom_hline(yintercept = 0, linetype = "dashed", size = 0.25) +
+  geom_segment(aes(x = 5, y = 0, xend = 5, yend = 10), linetype = "dashed", color = "black", size = 0.25) +
+  geom_segment(aes(x = 116/30, y = 0, xend = 116/30, yend = -2*(116/30) + 10), linetype = "dashed", color = "black", size = 0.25) + 
+  geom_segment(aes(x = 116/30, y = 0, xend = 116/30, yend = 10 - (116/30 - 5)^2), linetype = "dashed", color = "black", size = 0.25) + 
+  geom_segment(aes(x = 116/30, y = 10 - (116/30 - 5)^2, xend = 5, yend = 10 - (116/30 - 5)^2), linetype = "dashed", color = "black", size = 0.25) +
+  geom_segment(aes(x = 5, y = 10 - (116/30 - 5)^2, xend = 5, yend = 10), size = 1, color = "purple") +
+  geom_segment(aes(x = 116/30, y = 0, xend =  116/30, yend = 10 - 116/15), size = 1, color = "purple") +
+  geom_segment(aes(x = 5, y = 0, xend = 5, yend = sqrt(30*5-80) - 6), size = 1, color = "purple") + 
+  annotate("text", x = 5.3, y = 1.25, label = "Wald", color = "purple") +
+  annotate("text", x = 4.1, y = 1.25, label = "LM", color = "purple") +
+  annotate("text", x = 5.3, y = 9.3, label = "DM", color = "purple")
+
+```
+
+Despite our trio of our test statistics being asymptotically equivalent, there are still some advantages and disadvantages associated with each one. The Wald test and Lagrange multiplier test only require us to estimate the unrestricted model, whereas the distance metric test requires estimating the unrestricted model and restricted model. The distance metric test doesn't require us to estimate any asymptotic variances, only the constant $c$ where $\boldsymbol \Omega = c \mathbf H(\thet_0)$. The restricted model may also be much simpler than the unrestricted model (for example $H_0$ could be "the model is linear"), in which case the Lagrange multiplier test is much easier to use.    
+
+## M-Estimators
+
+A particular class of extremum estimators that we will work with often define $Q_n$ to be a sample average of some function of the data.
+
+:::{.definition}
+Suppose $\Wm = [\W_1,\ldots, \W_n]' \sim P_\thet$ where $P_\thet\in\mathcal P$ for a known model $\mathcal P$. An <span style="color:red">**_M-estimator_**</span> $\ME:\mathcal W\to \Thet$ is an extremum estimator where 
+\begin{align*}
+ Q_n(\thet) &= \frac{1}{n}\sum_{i=1}^n m(\thet,\W_i),\\
+\ME &= \argmax_{\thet \in \Thet} \frac{1}{n}\sum_{i=1}^n m(\thet, \W_i).
+\end{align*}
+:::
+
+@Huber formalize M-estimators in an effort to generalize MLE (hence the letter M). Clearly M-estimators are consistent and asymptotically normal under the conditions of Theorems \@ref(thm:excon) and \@ref(thm:exasy), but perhaps these conditions simplify in the special case of $Q_n(\thet)=n^{-1}\sum_{i=1}^n m(\thet, \W_i)$. For instance, $Q_n$ is the sum of sample averages, so perhaps we can use some LLN to conclude $Q_n \pto Q_0$ uniformly instead of directly verifying that $\sup_{\thet \in \Thet} \abs{Q_n - Q_0} \pto 0$. 
+
+:::{.lemma name="Uniform Weak Law of Large Numbers (UWLLN)" #uwlln}
+Suppose that $\W_i \iid P_\thet$, $\Thet$ is compact, $m(\thet, \W_i)$ is continuous on $\Thet$ for all $\W_i \in \mathcal W$, and there exists some $d(\W_i)$ such that $\norm{m(\thet,\W_i)} \le d(\W_i)$ on $\Thet$ where $\E{d(\W_i)} < \infty$. Then $\E{m(\thet, \W_i)}$ is continuous and $$n^{-1}\sum_{i=1}^n m(\thet, W_i) \pto \E{m(\thet, \W_i)}$$ uniformly on $\Thet$. 
+:::
+
+While I haven't been able to locate a formal proof of this result, it seems like a direct application of the Weierstrass M-test (Theorem 7.10 in @rudin1976principles) and the fact that the uniform limit of continuous functions is continuous. The lemma also includes two of the other conditions from \@ref(thm:excon): $\Thet$ is compact, and $Q_0 = \E{m(\thet, \W_i)}$.
+
+:::{.corollary name="Consistency of M-Estimators"}
+If the conditions of Lemma \@ref(lem:uwlln) hold and $\E{m(\thet_0, \mathbf W)} > \E{m(\thet, \mathbf W)}$ for all $\thet\neq\thet_0$, then $\ME \pto \thet_0$.
+:::
+
+:::{.proof}
+Conditions 2-4 of \@ref(thm:excon) are satisfied under the assumption that  Lemma \@ref(lem:uwlln) holds. Condition 1 is satisfied as well because 
+$$ \plim Q_n = \plim \frac{1}{n}\sum_{i=1}^n m(\thet, W_i) = \E{m(\thet_0, \mathbf W)} = Q_0,$$ and we've assumed $Q_0 = \E{m(\thet_0, \mathbf W)}$ is uniquely maximized at $\thet_0$.
+:::
+
+We can also restate Theorem \@ref(thm:exasy) in the context of M-estimators. Let's write the Jacobian and Hessian of $Q_n$ in the event that $\EE = \ME$.
+\begin{align*}
+\frac{\partial Q_n(\thet)}{\partial \thet} &= \frac{\partial}{\partial \thet}\left[\frac{1}{n}\sum_{i=1}^n m(\thet,\W_i)\right] = \frac{1}{n}\sum_{i=1}^n \frac{\partial m(\thet,\W_i)}{\partial \thet}\\
+\frac{\partial Q_n(\thet)}{\partial \thet \partial \thet'} & = \frac{1}{n}\sum_{i=1}^n \frac{\partial m(\thet,\W_i)}{\partial \thet \partial \thet'}
+\end{align*}
+The derivatives of $Q_n$ are sample averages of the derivatives of $m$. Following @wooldridge2010econometric define the random matrix
+$\Hm(\thet, \W_i) = \frac{\partial m(\thet,\W_i)}{\partial \thet \partial \thet'}$ and random vector
+$\mathbf S(\thet, \W_i)= \frac{\partial m(\thet,\W_i)}{\partial \thet}$.^[$\mathbf H$ as in "Hessian of $m$", $\mathbf S$ as in "score function" (lending from the terminology for MLE).] Theorem \@ref(thm:exasy) also involved the probability limits of the Jacobian and Hessian of $Q_n$, and in the case of M-estimators, these happen to be expected values because of the LLN. 
+\begin{align*}
+\frac{\partial Q_n(\thet)}{\partial \thet} &= \frac{1}{n}\sum_{i=1}^n \mathbf S(\thet, \W_i) \pto \E{\mathbf S(\thet, \W)}\\
+\frac{\partial Q_n(\thet)}{\partial \thet \partial \thet'} & = \frac{1}{n}\sum_{i=1}^n \Hm(\thet, \W_i) \pto \E{\Hm(\thet, \W)}
+\end{align*}
+
+:::{.corollary name="Asymptotic Normality of M-Estimators" #asyM}
+Suppose the conditions of \@ref(thm:exasy) are met where 
+\begin{align*}
+Q_n(\thet) &= \frac{1}{n}\sum_{i=1}^n m(\thet,\W_i),\\
+\mathbf S(\thet, \W_i) &= \frac{\partial m(\thet,\W_i)}{\partial \thet},\\
+\Hm(\thet, \W_i) &= \frac{\partial m(\thet,\W_i)}{\partial \thet \partial \thet'}.
+\end{align*}
+Then 
+\begin{align*}
+\sqrt{n}(\ME - \thet) &\dto N\left(\zer, \E{\Hm(\thet_0, \W)}^{-1}\var{S(\thet_0, \W)}\E{\Hm (\thet_0, \W)}^{-1}\right),\\
+\ME & \asim N\left(\thet, \frac{1}{n}\E{\Hm(\thet_0, \W)}^{-1}\var{ S(\thet_0, \W)}\E{\Hm (\thet_0, \W)}^{-1}\right).
+\end{align*}
+:::
+
+We are also able to use Lemma \@ref(lem:uwlln) to verify condition 6 of Theorem \@ref(thm:exasy). In the case of Corollary \@ref(cor:asyM), Condition 5 of Theorem \@ref(thm:exasy) establishes that $\E{\mathbf S(\thet_0, \W)} = \zer$, so the expectation of $\mathbf S$ "squared" is the variance, giving
+$$ \ME  \asim N\left(\thet, \frac{1}{n}\E{\Hm (\thet_0, \W)}^{-1}\E{\mathbf S(\thet_0, \W)\mathbf S(\thet_0, \W)'}\E{\Hm (\thet_0, \W)}^{-1}\right).$$
+In general, we didn't provide an estimator for $\avar{\EE}$, but we should be able to use the LLN to find a consistent estimator for $\avar{\ME}$. Define the Hessian and score functions evaluated for a single observation $\W_i$:
+\begin{align*}
+\hat{\Hm}_i &= \Hm(\ME, \W_i) & (i =1,\ldots,n)\\
+\hat{\mathbf S}_i &= \mathbf{S}(\ME, \W_i) & (i =1,\ldots,n)
+\end{align*}
+If the LLN holds for these random quantities, then 
+\begin{align*}
+\widehat{\E{\Hm}} &= \frac{1}{n}\sum_{i=1}^n {\Hm}_i(\ME, \W_i) \pto \E{\Hm(\thet_0, \W)}\\
+\widehat{\E{\mathbf S\mathbf S'}} &= \frac{1}{n}\sum_{i=1}^n {\mathbf S}_i(\ME, \W_i){\mathbf S}_i(\ME, \W_i)'  \pto \E{\mathbf S(\thet_0, \W)\mathbf S(\thet_0, \W)'}
+\end{align*}
+because $\ME \pto \thet_0$. The matrices of constants $\boldsymbol \Omega$ and $\mathbf H$ from Theorem \@ref(thm:exasy) now correspond to the variance of the mean-zero random vector $\mathbf S$ and expectation of random matrix $\Hm$, respectively. 
+
+:::{.theorem name="Estimating Asymptotic Variance for M-Estimators"}
+Suppose $\ME$ is an M-estimator, and define 
+$$ \widehat{\text{Avar}}(\ME) = \frac{1}{n}\widehat{\E{\Hm}}^{-1}\widehat{\E{\mathbf S\mathbf S'}}\widehat{\E{\Hm}}^{-1} = \left[\sum_{i=1}^n {\Hm}_i(\ME, \W_i)\right]^{-1}\left[\sum_{i=1}^n {\mathbf S}_i(\ME, \W_i){\mathbf S}_i(\ME, \W_i)'\right]\left[\sum_{i=1}^n {\Hm}_i(\ME, \W_i)\right]^{-1}.$$ Then $\widehat{\text{Avar}}(\ME) \pto \avar{\ME}$.
+:::
+
+:::{.proof}
+The consistency follows from the above derivation. If you factor out the $n$ terms from $\widehat{\E{\Hm}}^{-1}$ and $\widehat{\E{\mathbf S\mathbf S'}}$, they (including the $1/n$) will all cancel. 
+:::
+
+:::{.example name="OLS as an M-estimator"}
+Suppose we are estimating the classical linear model $\mathcal P_\text{LM}$ with $\OLS$. In this case we can partition the random vector $\W_i$ into $(\varepsilon_i,\X_i)$, where the model defines $Y_i = \X_i\bet + \varepsilon_i$. This is an M-estimator where 
+$$m(\bet, Y_i, \X_i) = -(Y_i - \X_i\bet)^2.$$
+We have 
+\begin{align*}
+\mathbf S_i(\bet, Y_i, \X_i) & = 2\X_i'(Y_i - \X_i\bet) = 2\X_i\varepsilon_i\\
+\Hm_i(\bet, Y_i, \X_i) & = 2\X_i'\X_i
+\end{align*}
+
+In Example \@ref(exm:olsEX), we saw that $Q_0$ is uniquely maximized at $\bet_0$. The parameter space $\Thet = \mathbb R^k$ is convex, $Q_n$ is concave, $\bet_0$ is an interior point of $\Thet$ (otherwise it would be infinity), and by \@ref(lem:uwlln) $Q_n \pto Q_0$ uniformly, so by Theorem \@ref(thm:excon2) $\OLS \pto \bet_0$. Note that by the assumptions of $\mathcal P_\text{LM}$, $\E{\mathbf S(\thet_0, \W)} = \zer$ ($\X_i$ is weakly exogenous) and $\E{\Hm(\bet, Y_i, \X_i)}$ is invertible ($\E{\X'\X}$ has full rank), along with all the other assumptions of Corollary \@ref(cor:asyM) being met. Therefore we have 
+
+\begin{align*}
+\OLS &\asim N\left(\zer, \frac{1}{n}\E{\Hm(\thet_0, \W)}^{-1}\var{\mathbf S(\thet_0, \W)\mathbf S(\thet_0, \W)'}\E{\Hm(\thet_0, \W)}^{-1}\right)\\
+& \asim  N\left(\bet, \frac{1}{n}\E{2\X'\X}^{-1}\E{2\X'\ep[2\X'\ep]'}\E{2\X'\X}^{-1}\right)\\
+& \asim N\left(\bet, \frac{1}{n}\E{\X'\X}^{-1}\E{\X'\ep\ep \X}\E{\X'\X}^{-1}\right)\\
+& \asim N\left(\bet, \frac{\sigma^2}{n}\E{\X'\X}^{-1}\E{\X'\X}\E{\X'\X}^{-1}\right)\\
+& \asim  N\left(\bet, \frac{\sigma^2}{n}\E{\X'\X}^{-1}\right).
+\end{align*}
+
+This is the *exact* same asymptotic distribution from Theorem \@ref(thm:asymols)! We can also derive an asymptotic estimator for $\avar{\OLS}$ using properties of M-estimators.
+\begin{align*}
+\widehat{\E{\Hm}} &= \frac{2}{n}\sum_{i=1}^n \X_i'\X_i\\
+\widehat{\E{\mathbf S\mathbf S'}} &= \frac{4}{n}\sum_{i=1}^n \hat{e}_i^2\X_i'\X_i =  \left(\frac{2}{n}\sum_{i=1}^n \hat e_i^2\right) \left(\frac{2}{n}\sum_{i=1}^n \X_i'\X_i\right)\\
+\widehat{\E{\Hm}}^{-1}\widehat{\E{\mathbf S\mathbf S'}} \widehat{\E{\Hm}}^{-1} & = \left(\frac{2}{n}\sum_{i=1}^n \X_i'\X_i\right)^{-1} \left(\frac{2}{n}\sum_{i=1}^n \hat e_i^2\right) \left(\frac{2}{n}\sum_{i=1}^n \X_i'\X_i\right)\left(\frac{2}{n}\sum_{i=1}^n \X_i'\X_i\right)^{-1} =\hat{\e}'\hat{\e}\left(\Xm'\Xm\right)^{-1}  \\
+\widehat{\text{Avar}}(\OLS) & = \frac{\hat{\e}'\hat{\e}}{n}\left(\Xm'\Xm\right)^{-1}
+\end{align*}
+But this doesn't look right, because $\frac{\hat{\e}'\hat{\e}}{n} \neq S^2$, as it doesn't have the bias correction of $n-K$. Technically, this isn't the end of the world because the estimator for $\sigma^2$ is asymptotically unbiased. 
+:::
+
+In general, we weren't able to estimate the asymptotic variance of $\EE$, but we can for $\ME$. This means we can use the trio of test statistics developed in the previous section. 
+
+
+:::{.corollary name="Testing Trinity, M-Estimators" #asyM}
+If $\ME$ is an M-estimator, the test statistics in Theorem \@ref(thm:trintest) become: 
+\begin{align*}
+W & = n\mathbf h(\ME)'\left[\frac{\partial \mathbf h}{\partial \thet}(\ME)\widehat{\E{\Hm}}^{-1}\widehat{\E{\mathbf S\mathbf S'}}\widehat{\E{\Hm}}^{-1}\frac{\partial \mathbf h}{\partial \thet}(\ME)'\right]^{-1}   \mathbf h(\ME);\\
+LM & =  n\widehat{\E{\mathbf S(\bar{\thet}_\text{M})}}'\widehat{\E{\Hm}}^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)' \left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0) \widehat{\E{\Hm}}^{-1}\widehat{\text{E}}{[\mathbf S(\bar{\thet}_\text{M})\mathbf S(\bar{\thet}_\text{M})']}\widehat{\E{\Hm}}^{-1} \frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\right]^{-1} \frac{\partial \mathbf h}{\partial \thet}(\thet_0)\widehat{\E{\Hm}}^{-1}\widehat{\E{\mathbf S(\bar{\thet}_\text{M})}};\\
+DM & = \frac{2}{\hat c} \left[\sum_{i=1}^n m(\ME,\W_i) - \sum_{i=1}^n m(\bar{\thet}_\text{M},\W_i)\right].
+\end{align*}
+In the generalized information inequality holds when calculating $LM$, we have 
+$$ LM = n\widehat{\E{\mathbf S(\bar{\thet}_\text{M})}}'\widehat{\text{E}}{[\mathbf S(\bar{\thet}_\text{M})\mathbf S(\bar{\thet}_\text{M})']}^{-1} \widehat{\E{\mathbf S(\bar{\thet}_\text{M})}}$$
+:::
+
+:::{.example #olstests}
+Let's employ our tests in the context of the classical linear model. In this case, let 
+$$m_i(\bet, Y_i, \X_i) = -\frac{1}{2} \sum_{i=1}^n (Y_i - \X_i\bet)^2,$$ such that the 2s are eliminated when differentiating $m_i(\bet, Y_i, \X_i)$.
+
+First, let's confirm the generalized information inequality holds and that we can use the distance metric statistic. 
+\begin{align*}
+\mathbf H(\thet_0) & = \E{\Hm(\thet_0, \mathbf W)} = \E{\X'\X} \\
+\boldsymbol \Omega & = \E{\mathbf S(\thet_0, \mathbf W)\mathbf S(\thet_0, \mathbf W)'} = \E{\X'\varepsilon\varepsilon'\X} = \E{\varepsilon^2}\E{\X'\X} = \sigma^2\E{\X'\X} 
+\end{align*}
+The inequality holds, as $\boldsymbol \Omega = c\mathbf H(\thet_0)$, where $c = \sigma^2$. We could let $\hat c = S^2$, but here we'll use $$\hat c = \frac{\hat{\boldsymbol \Omega}}{\hat{\mathbf H}(\thet_0)} = \frac{1}{n}\sum_{i=1}^n \hat e_i^2 = \frac{\hat{\e}'\hat{\e}}{n}.$$
+
+Our test statistics are
+\begin{align*}
+W & = n\mathbf h(\ME)'\left[\frac{\partial \mathbf h}{\partial \thet}(\ME)\widehat{\E{\Hm}}^{-1}\widehat{\E{\mathbf S\mathbf S'}}\widehat{\E{\Hm}}^{-1}\frac{\partial \mathbf h}{\partial \thet}(\ME)'\right]^{-1}   \mathbf h(\ME) \\
+& = \mathbf h(\ME)'\left[\frac{\partial \mathbf h}{\partial \thet}(\ME)\left[\frac{\hat{\e}'\hat{\e}}{n}\left(\Xm'\Xm\right)^{-1}\right]\frac{\partial \mathbf h}{\partial \thet}(\ME)'\right]^{-1}   \mathbf h(\ME) \\\\
+LM &= n\widehat{\E{\mathbf S(\bar{\thet}_\text{M})}}'\widehat{\text{E}}{[\mathbf S(\bar{\thet}_\text{M})\mathbf S(\bar{\thet}_\text{M})']} \widehat{\E{\mathbf S(\bar{\thet}_\text{M})}}\\
+& = n\left[\frac{1}{n}\sum_{i=1}^n  \bar{e}_i\X_i \right]'\left[\frac{1}{n}\sum_{i=1}^n \bar{e}_i^2\X_i'\X_i \right]^{-1} \left[\frac{1}{n}\sum_{i=1}^n \bar e_i\X_i \right]\\
+& = \left[\sum_{i=1}^n  \bar{e}_i\X_i \right]'\left[\frac{\bar{\e}'\bar{\e}}{n}\sum_{i=1}^n\X_i'\X_i \right]^{-1} \left[\sum_{i=1}^n \bar e_i\X_i \right]\\
+& = \Xm'\bar{\e}\left(\frac{\hat{\e}'\hat{\e}}{n}\Xm'\Xm\right)^{-1}\bar{\e}'\Xm\\\\
+
+DM & = \frac{2}{\hat c} \left[\sum_{i=1}^n m(\ME,\W_i) - \sum_{i=1}^n m(\bar{\thet}_\text{M},\W_i)\right]\\
+   & = \frac{2}{\hat{\e}'\hat{\e}/n}\left[\sum_{i=1}^n -\frac{1}{2}(Y_i-\X_i\OLS)^2 - \sum_{i=1}^n -\frac{1}{2}(Y_i-\X_i\bar{\bet}_\text{OLS})^2\right]\\
+   & = \frac{1}{\hat{\e}'\hat{\e}/n}\left[\sum_{i=1}^n \bar e_i^2 - \sum_{i=1}^n \bar e_i^2\right]\\
+   & = \frac{1}{\hat{\e}'\hat{\e}/n}\left[\bar{\e}'\bar{\e} - \hat{\e}'\hat{\e}\right]
+\end{align*}
+The residuals associated with the unrestricted estimator $\OLS$ are $\hat e_i$, while $\bar e_i$ are the residuals associated with the restricted estimator. If we let $SSR =  \hat{\e}'\hat{\e}$ and $SSR_0 = \bar{\e}'\bar{\e}$ denote the sum of squared residuals for the unrestricted and restricted models respectively, then 
+
+$$ DM = \frac{SSR_0 - SSR}{SSR/n}.$$
+Suppose $Y = 1 + 2X + \varepsilon$, where $\bet = [1,2]'$. Let's test the null hypothesis that the parameters coincide with their true underlying values, $H_0: \bet = \bet_0$. In this case 
+\begin{align*}
+\mathbf h(\bet) &= \begin{bmatrix}\beta_1 - \beta_{0,2}\\ \beta_2 - \beta_{0,1} \end{bmatrix}\\
+\frac{\partial\mathbf h(\bet)}{\partial \bet} &= \begin{bmatrix}1 & 0 \\ 0 & 1 \end{bmatrix} = \mathbf I
+\end{align*}
+where $H_0: \mathbf h(\bet) = \zer$. The image $\mathbf h(\Thet)$ is a singleton, so when we maximize $Q_n$ such that $\mathbf h(\thet) = \zer$ to get our restricted estimate, we trivially have $\bar{\bet}_\text{OLS} = \bet_0$. For this hypothesis we have 
+\begin{align*}
+W & = (\OLS - \bet_0)'\left[\frac{\hat{\e}'\hat{\e}}{n}\left(\Xm'\Xm\right)^{-1}\right]^{-1}(\OLS - \bet_0)\\
+  & = \left(\frac{\hat{\e}'\hat{\e}}{n}\right)^{-1}(\OLS - \bet_0)'\left(\Xm'\Xm\right)(\OLS - \bet_0) \\
+  & = \left(\frac{\hat{\e}'\hat{\e}}{n}\right)^{-1}(\Xm\OLS - \Xm\bet_0)'(\Xm\OLS - \Xm\bet_0)\\
+  & = \left(\frac{\hat{\e}'\hat{\e}}{n}\right)^{-1}((\Y - \hat{\e}) - (\Y - \bar{\e}))'((\Y - \hat{\e}) - (\Y - \bar{\e})) & (\Y = \X\OLS + \hat{\e},\ \Y = \X\bet_0 + \bar{\e})\\
+  & = \left(\frac{\hat{\e}'\hat{\e}}{n}\right)^{-1}(\bar{\e} - \hat{\e})'(\bar{\e} - \hat{\e})\\
+  & = \left(\frac{\hat{\e}'\hat{\e}}{n}\right)^{-1}(\bar{\e}'\bar{\e} - \bar{\e}'\hat{\e}  - \hat{\e}'\bar{\e} + \hat{\e}'\hat{\e})
+\end{align*}
+It happens to be the case that $\bar{\e}'\hat{\e}  = \hat{\e}'\bar{\e} = \hat{\e}'\hat{\e}$,^[\begin{align*} \bar{\e}'\hat{\e} & = (\Y- \Xm\bet_0)'(\Y- \Xm\bet_0) \\ & = \Y'\Y - \Y'\Xm\OLS - \bet_0'\Xm\Y + \bet_0'\Xm'\Xm\OLS \\ & = \Y'\Y - \Y'\Xm(\Xm'\Xm)^{-1}\Xm'\Y- \bet_0'\Xm\Y + \bet_0'\Xm'\Xm(\Xm'\Xm)^{-1}\Xm'\Y\\
+& = \Y'[\mathbf I - \Xm(\Xm'\Xm)^{-1}\Xm']\Y- \bet_0'\Xm\Y + \bet_0'\Xm'\Y\\
+& = \Y'\mathbb M\Y\\
+& = (\X\OLS + \hat{\e})'\mathbb M\Y \\
+& = \hat{\e}'\underbrace{\mathbf M \Y}_{\hat{\e}} + \OLS'\underbrace{\X\mathbb M}_\zer \Y \\
+& = \hat{\e}'\hat{\e} \\
+\hat{\e}'\bar{\e} & = (\bar{\e}'\hat{\e})'\\
+& = (\hat{\e}'\hat{\e})'\\
+& = \hat{\e}'\hat{\e}
+\end{align*}] so we have
+\begin{align*}
+W  =\frac{\bar{\e}'\bar{\e} - \hat{\e}'\hat{\e}}{\hat{\e}'\hat{\e}/n} = DM.
+\end{align*}
+
+```{r, warning=FALSE}
+#generate data
+n <- 10
+K <- 2
+x <- runif(n, 0, 10)
+e <- runif(n, -1, 1)
+X <- cbind(1,x)
+beta <- c(1,2)
+beta_0 <- c(1,2)
+y <- X %*% beta + e
+
+#estimate model and calculate OLS residuals and restricted OLS residual
+OLS <- solve(t(X) %*% X) %*% t(X) %*% y
+res <- y - X %*% OLS
+res_0 <- y - X %*% beta_0
+
+#Wald stat
+ee_n <- as.numeric((t(res) %*% res)/(n))
+avar <- ee_n * solve(t(X) %*% X)
+W <- t(OLS - beta_0) %*% solve(avar) %*% (OLS - beta_0)
+
+#LM stat
+LM <- t(res_0) %*% X %*% solve(ee_n * (t(X) %*% X)) %*% t(X) %*% res_0
+
+#DM stat
+SSR <- as.numeric(t(res) %*% res)
+SSR_0 <-  as.numeric(t(res_0) %*% res_0)
+DM <- (SSR_0 - SSR) / (ee_n)
+
+
+c(W, LM, DM)
+```
+
+:::
+
+### Nonlinear Least Squares
+
+We've generalized the classical linear model $\mathcal P_\text{LM}$ several ways. Section \@ref(endogeniety-i-iv-and-2sls) dropped the assumption $\E{\X'\ep}=\zer$ and introduced the model $\mathcal P_\text{IV}$. Section \@ref(generalized-least-squares) dropped the assumption $\E{\ep'\ep} =\sigma^2 \mathbf I$ and introduced the general linear regression model $\mathcal P_\text{GLRM}$. Section \@ref(endogeniety-ii-simultaneous-equation-models) extended the linear model by allowing for multiple "seemingly unrelated" linear models, $\mathcal P_\text{SUR}$. In each of these case, we assumed the structural relationship between the dependent variable and regressors was linear. Let's now drop this assumptions. 
+
+Suppose we posit that $Y$ is related to regressors $\X$ and parameters $\bet$ through some deterministic relationship given by a function $f(\X, \bet)$. We can add a structural error such that $Y_i = g(\X_i,\bet) + \varepsilon_i$, or $$ \Y = \mathbf g(\Xm,\bet) + \ep$$ where $\mathbf g$ is a vector-valued function of $n$ copies of $f$. An element of our model $\mathcal P$ will contain elements $P$ which are collections of joint distributions $F_{\Xm,\ep}$ satisfying some common conditions. We also want our model to reduce to $\mathcal P_\text{LM}$ in the event that $\mathbf g(\Xm,\bet) = \Xm\bet$. Two of the assumptions of the $\mathcal P_\text{LM}$ are pretty easy as we can replace $\Xm$ with $\mathbf g(\Xm,\bet) $:
+
+- Strict exogeneity, $\E{\ep \mid \mathbf g(\Xm,\bet)} = \zer \implies \E{\ep \mid \Xm} = \zer$ when $\mathbf g(\Xm,\bet) = \Xm\bet$. This assumption also implies weak exogeneity $\E{\mathbf g(\Xm,\bet)'\ep} = \zer$.
+- Spherical errors, $\E{\ep'\ep \mid \mathbf g(\Xm,\bet)} = \sigma^2\mathbf I \implies \E{\ep \mid \Xm} = \sigma^2\mathbf I$ when $\mathbf g(\Xm,\bet) = \Xm\bet$
+
+The one assumption of $\mathcal P_\text{LM}$ that takes some thought to generalize is $\text{rank}\left(\E{\X'\X}\right) = K$. What role did this assumption play in the linear model? It made sure that $\bet \neq \bet'$ whenever $\X\bet \neq \X\bet'$, as $\bet$ satisfies $\E{\X'\ep} = \bet \E{\X'\X}$ in this case. In the event $g(\X_i,\bet) = \X_i\bet$ for $i = 1,\ldots,n$, then this condition ensures that $\bet \neq \bet'$ implies $g(\X_i,\bet) \neq g(\X_i,\bet')$ for all $i$. This will be the analogous condition -- $\bet \neq \bet'$ implies $g(\X_i,\bet) \neq g(\X_i,\bet')$. 
+
+:::{.definition}
+The <span style="color:red">**_(classical) nonlinear model_**</span> is defined as $\mathcal P_\text{NLM} = \{P_{\bet,\sigma^2} \mid \bet \in \mathbb R^{K}, \sigma^2\in\mathbb R\}$, where 
+\begin{align*}
+P_{\bet,\sigma^2} &= \{F_{\Xm,\ep} \mid \Y = \mathbf g(\Xm,\bet) + \ep, \ \E{\ep'\ep\mid \mathbf g(\Xm,\bet)}=\sigma^2\mathbf I, \ f_{\Xm}=\textstyle\prod_{i=1}^n f_{\X_i}, \bet\neq\bet' \implies \mathbf g(\Xm,\bet) \neq \mathbf g(\Xm,\bet'),\ \E{\ep \mid \mathbf g(\Xm,\bet)} = \zer\},\\
+\Xm & = [\X_1, \cdots, \X_j, \cdots \X_K] = [\X_1, \cdots, \X_i, \cdots \X_n]',\\
+\Y & = [Y_1, \ldots, Y_n],
+\end{align*}
+for a known function $\mathbf g(\Xm, \bet)$.
+:::
+
+This definition of the model assumes that we've correctly specified $\mathbf g(\Xm, \bet)$, just like how the linear model assumed that the relationship between $\Y$ and $\Xm$ was actually $\Y = \Xm\bet + \ep$. For $\mathcal P_\text{NLM}$ this assumption is much stronger. We are not only assuming that the model contains the correct independent variables, but we are also assuming the relationship $\mathbf g(\Xm, \bet)$ is correct. The natural estimator for the nonlinear model is nonlinear least squares. 
+
+:::{.definition}
+The <span style="color:red">**_nonlinear least squares estimator_**</span> is defined as 
+$$ \NLS(\Xm, \Y) = \argmin_\bet\frac{1}{n}\sum_{i=1}^n(Y_i - g(\X_i,\bet))^2 $$
+:::
+
+This estimator is an M-estimator where $m(\bet, Y_i, \X_i) = -\(Y_i - g(\X_i,\bet))^2$, and $$Q_0 = \plim -\frac{1}{n}\sum_{i=1}^n(Y_i - g(\X_i,\bet))^2= - \E{Y - g(\X, \bet)}$$
+
+
+### Least Absolute Deviations
+
+## Minimum Distance Estimators
+
+:::{.definition}
+Suppose $\Wm = [\W_1,\ldots, \W_n]' \sim P_\thet$ where $P_\thet\in\mathcal P$ for a known model $\mathcal P$. A <span style="color:red">**_minimum distance estimator_**</span> $\MDE:\mathcal W\to \Thet$ is an extremum estimator where 
+\begin{align*}
+Q_n(\thet) &= -[\hat {\boldsymbol \pi} - \mathbf g(\thet)]'\boldsymbol \Phi [\hat {\boldsymbol \pi}- \mathbf g(\thet)],\\
+\MDE &= \argmax_{\thet \in \Thet} -[\hat {\boldsymbol \pi} - \mathbf g(\thet)]'\boldsymbol \Phi [\hat {\boldsymbol \pi}- \mathbf g(\thet)],
+\end{align*}
+for some sample statistic $\hat {\boldsymbol \pi}$ satisfying $\hat {\boldsymbol \pi} \pto \mathbf g(\thet)$ and a weighting matrix $\boldsymbol \Phi$.
+:::
+
+## Recap
+
+## Example/Replication 
+
+## Futher Reading
+
+**_Extremum estimators_**: @newey1994large, Chapter 4 of @takeshi1985advanced, [these](https://www.ssc.wisc.edu/~xshi/econ715/Lecture_6_testing2.pdf) [awesome](https://www.ssc.wisc.edu/~xshi/econ715/Lecture_3_consistency.pdf
+) [slides](https://www.ssc.wisc.edu/~xshi/econ715/Lecture_4_normality.pdf) posted by Xiaoxia Shi, Chapter Chapter 7 of @hayashi2011econometrics, Chapter 12 of @greene2003econometric
+
+**_Trinity of Hypothesis Tests_**: @engle1984wald, Section 12.4 of @lehmann2005testing, Chapter 16 of @van2000asymptotic
+
+**_M-estimators_**: Chapter 12 of @wooldridge2010econometric, Chapter 22 of @hansen2022econometrics, Chapter 12 of @greene2003econometric, Chapter 7 of @hayashi2011econometrics, Chapter 17 of @davidson1993estimation 
+
+**_Minimum distances estimators_**:
+
+**_NLLS_**: Chapter 2 of @davidson1993estimation, Chapter 7 of @greene2003econometric, Chapter 12 of @wooldridge2010econometric, Chapter 23 of @hansen2022econometrics, @mizon1977inferential, Chapter 5 of @cameron2005microeconometrics
+
+**_LAD_**:
+

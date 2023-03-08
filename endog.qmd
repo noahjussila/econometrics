@@ -1,0 +1,1485 @@
+\DeclareMathOperator{\plim}{plim}
+\DeclareMathOperator{\argmin}{argmin}
+\DeclareMathOperator{\argmax}{argmax}
+\newcommand{\var}[1]{\text{Var}\left(#1\right)}
+\newcommand{\avar}[1]{\text{Avar}\left(#1\right)}
+\newcommand{\E}[1]{\text{E}\left[#1\right]}
+\newcommand{\cov}[1]{\text{Cov}\left(#1\right)}
+\newcommand{\mse}[1]{\text{MSE}\left(#1\right)}
+\newcommand{\se}[1]{\text{se}\left(#1\right)}
+\newcommand{\limfunc}{lim} 
+\newcommand{\X}{\mathbf{X}}
+\newcommand{\Xm}{\mathbb{X}}
+\newcommand{\EER}{\bar{\thet}_\text{EE}}
+\newcommand{\NLS}{\hat{\bet}_\text{NLLS}}
+\newcommand{\z}{\mathbf{z}}
+\newcommand{\rr}{\mathbf{r}}
+\newcommand{\C}{\mathbf{C}}
+\newcommand{\Pe}{\mathbf{P}}
+\newcommand{\y}{\mathbf{y}}
+\newcommand{\Y}{\mathbf{Y}}
+\newcommand{\uu}{\mathbf{u}}
+\newcommand{\e}{\mathbf{e}}
+\newcommand{\D}{\mathbf{D}}
+\newcommand{\x}{\mathbf{x}}
+\newcommand{\xm}{\mathbb{x}}
+\newcommand{\Zm}{\mathbb{Z}}
+\newcommand{\Wm}{\mathbb{W}}
+\newcommand{\Hm}{\mathbb{H}}
+\newcommand{\W}{\mathbf{W}}
+\newcommand{\Z}{\mathbf{Z}}
+\newcommand{\Hess}{\mathbf{H}(\mathbf{\Z\mid\thet})}
+\newcommand{\Score}{\mathbf{S}(\mathbf{\Z\mid\thet})}
+\newcommand{\A}{\mathbf{A}}
+\newcommand{\h}{\mathbf{h}}
+\newcommand{\Q}{\mathbf{Q}}
+\newcommand{\F}{\mathbf{F}}
+\newcommand{\G}{\mathbf{G}}
+\newcommand{\I}{\mathbf{I}}
+\renewcommand{\D}{\mathbf{D}}
+\renewcommand{\C}{\mathbf{C}}
+\newcommand{\zer}{\mathbf{0}}
+\newcommand{\OLS}{\hat{\boldsymbol\beta}_\text{OLS} }
+\newcommand{\OLSOV}{\hat{\boldsymbol\beta}_\text{OLS,OV} }
+\newcommand{\OLSME}{\hat{\boldsymbol\beta}_\text{OLS,ME} }
+\newcommand{\EE}{\hat{\boldsymbol\theta}_\text{EX} }
+\newcommand{\ME}{\hat{\boldsymbol\theta}_\text{M} }
+\newcommand{\MDE}{\hat{\boldsymbol\theta}_\text{MDE} }
+\newcommand{\IV}{\hat{\boldsymbol\beta}_\text{IV} }
+\newcommand{\TSLS}{\hat{\boldsymbol\beta}_\text{2SLS} }
+\newcommand{\thet}{\boldsymbol{\theta}}
+\newcommand{\et}{\boldsymbol{\eta}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Sig}{\boldsymbol{\Sigma}}
+\newcommand{\ep}{\boldsymbol{\varepsilon}}
+\newcommand{\Omeg}{\boldsymbol{\Omega}}
+\newcommand{\Thet}{\boldsymbol{\Theta}}
+\newcommand{\bet}{\boldsymbol{\beta}}
+\newcommand{\rk}{rank}
+\newcommand{\tsum}{\sum}
+\newcommand{\tr}{tr}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\abs}[1]{\left\lvert#1\right\rvert}
+\newcommand{\ms}{\overset{ms}{\to}}
+\newcommand{\pto}{\overset{p}{\to}}
+\newcommand{\iid}{\overset{iid}{\sim}}
+\newcommand{\dto}{\overset{d}{\to}}
+\newcommand{\asim}{\overset{a}{\sim}}
+
+# Endogeniety I: IV and 2SLS
+
+```{r}
+#| echo: false
+#| message: false
+library(tidyverse)
+library(pracma)
+library(mvtnorm)
+library(stargazer)
+library(ivreg)
+library(AER)
+library(broom)
+```
+
+Our first departure from the classical linear model $\mathcal P_\text{LM}$ will come in the form of dropping the assumption that $\E{\X'\ep} = \zer$, i.e our regressors are endogenous. This situation is rather serious, as it prevents the linear model from being identified. Furthermore, the problem is common in applications. There are three main sources of endogeneity:
+
+1. Omitted variables
+2. Measurement error
+3. Simultaneity 
+
+For now we'll consider the first two, and discuss the third on in Section \@ref(endogeniety-ii-simultaneous-equation-models). Fortunately, we can address endogeneity with the instrumental variables estimator (a special case of which is the two-stage least squares estimator).
+
+## Omitted Variables and Measurement Error
+
+:::{#exm-ex1}
+Recall the Example \@ref(exm:endogex) where we considered a model relating income to education and other determinants of salary. Suppose the true model is 
+$$ \log(income_i) = \beta_1 + \beta_2\cdot educ_i + \beta_3 \cdot experiance_i + \varepsilon_i,$$ where $\varepsilon_i$ are the unobserved factors impacting salary, $educ_i$ measure years of post-secondary education, $experiance_i$ measures years of work experience, and $\cov{educ, experiance} < 0$ (the longer you go to school, the less work experience you tend to have). Now suppose we incorrectly specify the model $$ \log(income_i) = \gamma_1 + \gamma_2\cdot educ_i + u_i,$$ where $u_i$ are all other factors impacting salary. We've omitted $experiance_i$ as a regressor, so it's implicitly included in $u_i$:
+$$ u_i =  \beta_3 \cdot experiance_i + \varepsilon_i.$$ We no longer satisfy the assumption $\E{\X'\ep} = \zer$, as $\cov{educ_i, u_i} \neq 0$ because $\cov{educ, experiance} < 0$. What happens if we go ahead and attempt to estimate $\beta_1$ and $\beta_2$ anyway? Set $\bet = [1,3,2]'$, and $\varepsilon_i \iid N(0,1)$. 
+
+```{r}
+beta <- c(1,3,2)
+n <- 1000
+mu <- c(4,10)
+Sigma <- matrix(c(2, -0.5, -0.5, 5), nrow = 2)
+X <- rmvnorm(n, mu, Sigma)
+e <- rnorm(n)
+log_y = beta[1] + X %*% beta[-1] + e
+
+model_df <- tibble(log_income = as.numeric(log_y),
+                       educ = X[,1],
+                       exper = X[,2])
+model <- lm(log_income ~ educ, data = model_df)
+summary(model)$coefficients
+```
+
+The true parameters don't even fall within the 95% confidence intervals centered at our estimates.
+:::
+
+In general, suppose $$\Y = [\Xm,\Zm][\bet, \boldsymbol \delta]' + \ep = \Xm\bet + \Zm\boldsymbol \delta + \ep,$$ where we attempt to estimate $\bet$ via $\OLS$ despite omitting regressors $\mathbf Z$ from our model, and all our Gauss-Markov assumptions are met. Note that $\bet$ is still identified, as $\E{\X'\ep} = \zer$.
+\begin{align*}
+\OLSOV & = (\Xm'\Xm)^{-1}\Xm'\Y\\
+& = (\Xm'\Xm)^{-1}\Xm'(\Xm\bet + \Zm\boldsymbol \delta + \ep)\\
+& = \bet + (\Xm'\Xm)^{-1}\Xm'\Zm\boldsymbol\delta  + (\Xm'\Xm)^{-1}\Xm'\ep.
+\end{align*}
+Our estimator is now inconsistent: 
+\begin{align*}
+\plim \OLSOV & = \bet + \plim\left[(\Xm'\Xm)^{-1}\Xm'\Zm\boldsymbol\delta\right] + \plim\left[(\Xm'\Xm)^{-1}\right]\underbrace{\plim\left[\Xm'\ep\right]}_\zer\\
+& =  \bet + \plim\left[(\Xm'\Xm)^{-1}\Xm'\Zm\boldsymbol\delta\right].
+\end{align*}
+
+This phenomenon is referred to as **_omitted variable bias (OVB)_**. The use of the word "bias" here is a bit misleading, but follows from an interpretation of inconsistency as a persistent bias despite $n\to\infty$
+
+:::{#exm-}
+
+## OVB with a Simple Linear Model
+
+Suppose our linear model is $Y = \alpha + \beta X+ \gamma Z + \varepsilon$, and we attempt to estimate $(\beta_0,\beta_1)$ with $\OLSOV$. In this case,
+\begin{align*}
+\hat \beta_\text{OLS,OV} & =\frac{\sum_{i=1}^n (X_i -\bar X)(Y_i - \bar Y)}{\sum_{i=1}^n (X_i -\bar X)^2}\\ & = \frac{\sum_{i=1}^n (X_i -\bar X)[(\alpha + \beta X+ \gamma Z + \varepsilon) - \bar Y]}{\sum_{i=1}^n (X_i -\bar X)^2}\\ & = \beta + \frac{\sum_{i=1}^n (X_i -\bar X)(Z_i - \bar Z)}{\sum_{i=1}^n (X_i -\bar X)^2}\\ & = \bet + \gamma \cdot \frac{\sum_{i=1}^n (X_i -\bar X)(Z_i-\bar Z)}{\sum_{i=1}^n (X_i -\bar X)^2}.
+\end{align*}
+The expectation of this is
+$$\hat\beta_\text{OLS,OV} \pto \beta + \gamma \cdot \plim\frac{n^{-1}\sum_{i=1}^n (X_i -\bar X)(Z_i-\bar Z)}{n^{-1}\sum_{i=1}^n (X_i -\bar X)^2} =\bet + \gamma \frac{\cov{X,Z}}{\var{X}} .$$
+
+If we let $\alpha = 1$, $\beta = 2$, $\gamma = 3$, and $\var{X} = 1$, then $$\plim \hat\beta_\text{OLS,OV} = 2 + 3\cov{X,Y}.$$ If we simulate this estimator for different values of $\cov{X,Y}$, taking $n$ to be very large, then we should see our estimates approximately follow the line $2 + 3\cov{X,Y}$ when plotted against $\cov{X,Y}$.
+
+
+
+
+```{r}
+n <- 1e6
+mu <- c(4,10)
+estimates <- vector()
+for (j in 1:100) {
+  Sigma <- matrix(c(1, -1 + j/50, -1 +j/50, 1), nrow = 2)
+  regressors <- rmvnorm(n, mu, Sigma)
+  x <- regressors[,1]
+  z <- regressors[,2]
+  e <- rnorm(n)
+  y <- 1 + 2*x + 3*z + e
+  estimates[j] <- summary(lm(y ~ x))$coefficients[2,1]
+}
+```
+
+
+
+
+```{r, echo=FALSE, fig.align='center', fig.asp = 0.7, fig.width = 8, fig.cap ="test"}
+tibble(x = -1 + (1:100)/50, 
+       y = estimates
+       ) %>% 
+  ggplot(aes(x,y)) +
+  geom_point() +
+  labs(x = "Cov(X,Z)",
+       y = "β estimate") +
+  theme_minimal()
+```
+
+:::
+
+What happens if instead of omitting a variable from a model, our variables happen to be prone to some degree of measurement error. This is a common scenario in the social sciences where collected data is subject to human error, rounding errors, etc. Suppose a true linear model is specified as $\Y = \Xm^*\bet + \ep$ for regressors $\X^*$ where $\E{\X^{*\prime}\ep} = \zer$. Much like how we do not observe realizations of $\ep$, we do not observe realizations of $\X^*$, instead observing  $\X = \X^* + \mathbf u$ where $\mathbf u$ corresponds to **_measurement error_**. We'll assume that this measurement error is independent of $\ep$, independent of $\X^*$, and is mean zero.^[Are there situations where these assumptions may not hold?] Our model can be rewritten as 
+$$ \Y = \Xm^*\bet + \ep = (\X - \mathbf u)\bet + \ep = \X\bet + \underbrace{(\ep - \mathbf u\bet)}_{\boldsymbol \nu}.$$ In this case $$\E{\X\boldsymbol \nu} = \E{(\X^* + \mathbf u)(\ep - \mathbf u\bet)} = -\bet\E{\mathbf u'\mathbf u} = -\bet \var{\mathbf u}.$$ Much like in the case of OVB, $\OLS$ will be inconsistent.
+
+\begin{align*}
+\OLSME &= \bet + (\Xm'\Xm)^{-1}\Xm'\ep \\
+     & = \bet + (\Xm'\Xm)^{-1}\Xm'(\ep - \mathbf u\bet)\\
+     & = \bet + (\Xm'\Xm)^{-1}\Xm'\ep - (\Xm'\Xm)^{-1}\Xm'\mathbf u\bet\\
+\plim \OLSME & = \bet + \plim  (\Xm'\Xm)^{-1}\Xm'\ep + \plim (\Xm'\Xm)^{-1}\Xm'\mathbf u\bet\\
+  & = \bet + \plim (\Xm'\Xm)^{-1}\Xm'\mathbf u\bet & (\plim \Xm'\ep = \zer)
+\end{align*}
+
+For $j\neq 1$ (there won't be measurement error when $j=1$, as this is just the regressor of 1 which gives the intercept) this simplifies to
+
+$$ \plim \hat \beta_{\text{OLS,ME},j} = \beta_j \left(\frac{\var{X_j^*}}{\var{X_j^*} + \var{u_j^*}}\right).$$ This phenomenon is known as **_attenuation bias_**. The term in parentheses will always fall in the interval $(0,1)$, so $\abs{\plim \hat \beta_{\text{OLS,ME},j}} < \abs{\bet_j}$, hence the name attentuation bias. 
+
+## An Updated Linear Model, Identification, and the IV estimator
+
+In general, if $\E{\X'\ep} \neq \zer$, then $\bet$ is not identified for the linear model $\mathcal P_\text{LM}$. Estimation is a non-starter in this case. Even if we had the "perfect" estimate for $\bet,$ the parameter may map to multiple elements $P_{\bet,\sigma^2}\in  \mathcal P_\text{LM}$, so it is impossible to determine which model value our data was drawn from. If we drop the assumption $\E{\X'\ep} \neq \zer$ from the linear model, then we'll need to replace it with some additional assumptions/structure. 
+
+While $\E{\X'\ep} \neq \zer$, *perhaps* it is the case that there exists some other random vector $\Z$ which does satisfy $\E{\Z'\ep} = \zer$. Is this helpful -- no. For a given model with some structural error $\ep$, there are nearly infinite candidates for $\Z$ which satisfy this. Consider the model $$\log(income_i) = \beta_0 + \beta_1\cdot educ_i + \varepsilon_i,$$ where $\varepsilon$ are unobserved factors impacting income. What are some random variables $Z$ which are uncorrelated with $\varepsilon$. A ton! Weather during $i$'s tenth birthday, $i$'s first concert, $i$'s favorite flavor of ice cream, etc. There is an endless list of random variables that are so completely irrelevant to someone's income, that they are uncorrelated with $\varepsilon$. This is why $\E{\Z'\ep} = \zer$ is sometimes read as "$\Z$ is orthogonal to $\ep$." Not only does it hold in the mathematical sense of the word, but it also holds in the colloquial sense of the word meaning "has nothing to do with." What we want is $\Z$ to also be correlated with $\X$, such that $\Z$ is a sort of proxy/surrogate for $\X$ with no direct impact on $\Y$. We'll now generalize the linear model to introduce this set of variables $\Z$ in lieu of the assumption $\E{\X'\ep} \neq \zer$.
+
+:::{#def-}
+The <span style="color:red">**_(linear) instrumental variables (IV) model_**</span> is defined as $\mathcal P_\text{IV} = \{P_{\bet,\sigma^2} \mid \bet \in \mathbb R^{K}, \sigma^2\in\mathbb R\}$, where 
+\begin{align*}
+P_{\bet,\sigma^2} &= \{F_{\Xm,\Zm,\ep} \mid \Y= \Xm\bet +\ep, \ \E{\ep'\ep\mid \X}=\sigma^2\mathbf I,\ f_{(\Xm,\Zm)}=\textstyle\prod_{i=1}^n f_{(\X_i,\Z_i)},\ \text{rank}\left(\E{\Z'\X}\right) = K,\ \E{\ep\mid \Xm} =\boldsymbol \eta,\  \E{\ep\mid \Zm} = \zer, \E{\Z'\X} \neq \zer \},\\
+\Xm & = [\X_1, \cdots, \X_j, \cdots \X_K] = [\X_1, \cdots, \X_i, \cdots \X_n]',\\
+\Zm & = [\Z_1, \cdots, \Z_j, \cdots \Z_K] = [\Z_1, \cdots, \Z_i, \cdots \Z_n]',\\
+\dim(\Z) & = \dim(\X) = K\\
+\Y & = [Y_1, \ldots, Y_n].
+\end{align*}
+We refer to the random vector $\Z$ as <span style="color:red">**_instrumental variables (IVs)_**</span>. We have assumed that $\E{\ep\mid \Zm} = \zer$, which subsumes the assumption that $\E{\Z'\ep} = \zer$. The assumption that $\Z$ is (weakly) exogenous (uncorrelated with $\ep$) is known as <span style="color:red">**_instrumental validity_**</span>, while the assumption that $\E{\X'\Z} \neq \zer$ ($\Z$ and $\X$ are correlated) is known as the <span style="color:red">**_relevance condition_**</span>. The assumption that $\E{\Z'\ep} = \zer$ is also sometimes known as the  <span style="color:red">**_exclusion restriction_**</span> ($\Z$ is excluded from the determinants of $Y$). Finally, we sometimes refer to $\text{rank}\left(\E{\Z'\X}\right) = K$ as the <span style="color:red">**_rank condition_**</span>.
+:::
+
+Instrumental validity and the relevance condition are usually written as:
+\begin{align*}
+\cov{\Z,\ep}& = \zer,\\
+\cov{\X, \Z} &\neq \zer.
+\end{align*}
+*Technically*, this is not 100% accurate. The relevance condition is actually a combination of $\text{rank}\left(\E{\Z'\X}\right) = K$ and $\cov{\X, \Z}\neq \zer$. As highlighted by @wooldridge2010econometric, the relevance condition is not "regressors and instruments are uncorrelated". Instead, it is "instruments and endogenous regressors are partially correlated holding the exogenous regressors fixed." In other words, the linear projection of the instruments onto all regressors has nontrivial coefficients for endogenous regressors. This is equivalent to $\text{rank}\left(\E{\Z'\X}\right) = K$ and $\cov{\X, \Z}\neq \zer$.
+
+
+Even if one regressor is endogenous, $\E{X_j\ep} \neq \zer$ for some $j$, then $\E{\X'\ep} \neq \zer$. If this is the case, we can simply define a portion of $\Z$ to be the exogenous regressors. Formally, if $[X_1,\ldots, X_J]$ are weakly exogenous while $[X_{J+1}, \ldots, X_K]$ are endogenous, then define $Z_1 = X_1,\ldots ,Z_J=X_j$. 
+
+:::{#exm-spec1}
+
+## Linear Model as Special Case of IV Model
+
+A special case of the linear IV model is the classical linear model. Just let $\boldsymbol\eta = \zer$ and $\X = \Z$. This fact can be written as $\mathcal P_\text{LM}\subset \mathcal P_\text{IV}$.
+:::
+
+Whenever we define a new model, we need to make sure our parameters are identified. 
+
+:::{#thm-}
+
+## Identification of Linear IV Model
+
+The linear IV model is identified as a result of the following assumptions: $\E{\Z'\ep} = \zer$, $\E{\X'\Z} \neq \zer$, and $\text{rank}\left(\E{\Z'\X}\right) = K$.
+:::
+
+:::{.proof}
+First we will show $\bet$ is identified. Let $P_{\bet,\sigma^2} = P_{\bet^*,\sigma^2}$ for two elements of $\mathcal P_\text{IV}$, and suppose for a contradiction that $\bet\neq\bet^*$. We can begin by writing $\bet$:
+\begin{align*}
+&\E{\Z'\ep} = \zer\\
+\implies & \E{\Z'(Y-\X\bet)} = \zer & (\ep = (Y-\X\bet))\\
+\implies & \E{\Z'Y}-\bet\E{\Z'\X}= \zer\\
+\implies & \E{\Z'Y} = \bet\E{\Z'\X}\\
+\end{align*}
+By the definition of $\mathcal P_\text{IV}$, the moments $\E{\Z'\X}$ and $\E{\Z'Y}$ are the same for the model values $P_{\bet,\sigma^2}$ and  $P_{\bet^*,\sigma^2}$, so $\bet^*$ must also satisfy $\E{\Z'Y} = \bet\E{\Z'\X}$. This contradicts the assumption that $\text{rank}\left(\E{\Z'\X}\right) = K$. If $\bet$ is identified, then $\sigma^2$ is as well because we can write it in terms of $\bet$: 
+$$ \E{(\Y-\Xm\bet)'(\Y-\Xm\bet)\mid \X}=\sigma^2\mathbf I.$$
+<span style="color:white">space</span>
+:::
+
+So how do we estimate $\bet$ for the model $\mathcal P_\text{IV}$. If it wasn't clear from the examples dealing with OVB and measurement error, the answer is not with $\OLS$. 
+
+:::{#prp-}
+
+## Inconsisteny of OLS
+
+If $P_{\bet,\sigma^2} \in \mathcal P_\text{IV}$, then $\OLS$ is biased and inconsistent. In particular, 
+\begin{align*}
+\E{\OLS\mid \X} & = \bet + (\Xm'\Xm)^{-1}\Xm\boldsymbol \eta \neq \bet,\\
+\plim \OLS & = \bet + \E{\X'\X}^{-1}\boldsymbol \gamma \neq \bet,\\
+\end{align*}
+where $\E{\ep\mid \Xm} =\boldsymbol \eta$ and $\E{\X'\ep} = \boldsymbol \gamma$.
+:::
+
+:::{.proof}
+\begin{align*}
+\E{\OLS\mid \Xm} & = \E{\bet +(\Xm'\Xm)^{-1}\Xm'\ep \mid \Xm}\\
+& = \bet + (\Xm'\Xm)^{-1}\Xm'\E{\ep \mid \Xm}\\
+& = \bet + (\Xm'\Xm)^{-1}\Xm'\boldsymbol \eta\\
+\plim \OLS & = \bet + \plim\left[\left(\frac{1}{n}\sum_{i=1}^n\X_i'\X_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\X_i'\varepsilon_i\right)\right]\\
+& = \bet + \plim\left(\frac{1}{n}\sum_{i=1}^n\X_i'\X_i\right)^{-1}\plim \left(\frac{1}{n}\sum_{i=1}^n\X_i'\varepsilon_i\right) & (\text{Slutsky's Theorem})\\
+& = \bet + \E{\X'\X}^{-1}\E{\X'\ep} & (\text{LLN})\\
+& = \bet + \E{\X'\X}^{-1}\boldsymbol \gamma
+\end{align*}
+<span style="color:white">space</span>
+:::
+
+:::{#exm-}
+Let's verify that $\OLS$ is inconsistent. Suppose $\Xm = (\mathbf 1, X)$ where $(X,\varepsilon)\iid N(\boldsymbol \mu, \Sig)$ for $\boldsymbol \mu = [0,1]'$
+$$\Sig = \begin{bmatrix}5&2\\2&1  \end{bmatrix}.$$
+We have
+\begin{align*}
+\E{X\varepsilon} &= \cov{X,\varepsilon} + \underbrace{\E{X}}_0\underbrace{\E{\varepsilon}}_1 = 2.
+\end{align*}
+Therefore
+\begin{align*}
+\boldsymbol \gamma &= \E{\Xm'\ep} = \begin{bmatrix}\E{1\ep}\\\E{X\ep} \end{bmatrix} = \begin{bmatrix}1\\2 \end{bmatrix}
+\end{align*}
+
+If we draw realizations ```x``` and ```e``` of $(X,\varepsilon)$, we should find that ```colMeans(X*e)``` should be approximately $[1,2]'$ by the LLN.
+
+```{r, warning=FALSE}
+n <- 100000
+Sigma <- matrix(c(5,2,2,1), nrow = 2)
+mu <- c(0,1)
+realizations <- rmvnorm(n, mu, Sigma)
+x <- realizations[,1]
+X <- cbind(1,x)
+e <- realizations[,2]
+colMeans(X*e)
+```
+
+Let's now calculate $\plim \OLS$. 
+\begin{align*}
+\E{\X'\X}^{-1} &= \begin{bmatrix}\E{1} & \E{X} \\ \E{X} & \E{X^2} \end{bmatrix}^{-1} = \begin{bmatrix}1 & 0 \\ 0 & \var{X} \end{bmatrix}^{-1} = \begin{bmatrix}1 & 0 \\ 0 & 5 \end{bmatrix}^{-1}  =  \begin{bmatrix}1 & 0 \\ 0 & 0.2 \end{bmatrix}\\
+\plim \OLS & = \bet + \E{\X'\X}^{-1}\boldsymbol \gamma= \bet + \begin{bmatrix}1 & 0 \\ 0 & 0.2 \end{bmatrix}\begin{bmatrix}1\\2 \end{bmatrix}= \bet + \begin{bmatrix}1\\0.4 \end{bmatrix}
+\end{align*}
+If we let $\bet = [1,2']$ we should see our estimates converge to $[2, 2.4]'$ as $n\to\infty$.
+
+```{r}
+N_sim <- 10000
+estimates <- matrix(NA, nrow = N_sim, ncol = 2)
+for (n in 2:(N_sim + 1)) {
+  realizations <- rmvnorm(n, mu, Sigma)
+  x <- realizations[,1]
+  X <- cbind(1,x)
+  e <- realizations[,2]
+  y <- 1 + 2*x + e
+  summary(lm(y~x))$coefficients[,1]
+  estimates[n-1,] <- summary(lm(y~x))$coefficients[,1]
+}
+```
+
+```{r, echo=FALSE, fig.align='center', fig.asp = 0.7, fig.width = 8, fig.cap ="test", warning=FALSE}
+tibble(x = rep(2:(N_sim + 1), 2),
+       y = c(estimates[,1], estimates[,2]),
+       group = c(rep("β1", N_sim), rep("β2", N_sim))
+      ) %>% 
+  ggplot(aes(x,y)) +
+  geom_line() +
+  facet_wrap(~group, ncol =1) +
+  theme_minimal() +
+  labs(x = "Sample Size",
+       y = "Estimate") +
+  ylim(1.5,2.5)
+```
+
+:::
+An interesting feature of this problem is that our estimator for the intercept term $\beta_1$ was inconsistent even though the corresponding regressor (the trivial random variable $X_1 = 1$) is exogenous. In general, the inconsistency of $\OLS$ in the presence of endogeneity is not limited to the parameters associated with endogenous variables, and will impact each parameter $\beta_j$.  
+
+Instead of using $\OLS$, we need an estimator which makes use of the exogenous variables $\Z$. There are several different ways to motivate this estimator, so we'll go over four particularly approaches which reach the same conclusion. 
+
+1. For $\mathcal P_\text{IV}$ we can write the true population parameter as $\bet = \E{\Z'\X}^{-1}\E{\Z'Y}$. We can appeal to the analogy-principle here just like we did when deriving $\OLS$. It stands to reason that the estimator defined by the analogous samples will provide consistent estimates of $\bet$ by the LLN. This estimator is 
+$$\hat {\bet}= \left(\frac{1}{n}\sum_{i=1}^n\Z_i'\X_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\Z_iY_i\right) = (\Zm'\Xm)^{-1}\Zm'\Y.$$
+2. Another way of tackling the problem relates to marginal effects and is presented by @cameron2005microeconometrics. This will be a little informal and is only to build intuition. In an abuse of notation, we'll write marginal effects as $\frac{\partial Y}{\partial \X}$. Ideally, we want $\beta_j = \frac{\partial Y}{\partial X_j}$ for each $j$. This way, when we estimate $\bet$, we estimate the marginal effect of $\X$ on $Y$. Unfortunately, we cannot estimate this directly with $\X$ as 
+$$ \frac{\partial Y}{\partial X_j} = \beta_j + \frac{\partial \varepsilon}{\partial X_j} \implies \beta_j \neq \frac{\partial Y}{\partial X_j}.$$
+If we appeal to the chain rule, we can vary $X_j$ via our instruments $\Z$:
+\begin{align*}
+&\frac{\partial Y}{\partial \Z} = \frac{\partial Y}{\partial X_j} \frac{\partial X_j}{\partial \Z} \\
+\implies & \frac{\partial Y}{\partial X_j} = \frac{\partial Y/\partial \Z}{\partial X_j/\partial \Z}
+\end{align*}
+where $\frac{\partial Y}{\partial \Z}$ holds $\varepsilon$ constant as $\cov{\Z, \ep} = \zer$. The marginal effects $\frac{\partial X_j}{\partial \Z}$ and $\frac{\partial Y}{\partial \Z}$ correspond to the parameters in the linear projection models of $\Z$ on $X_j$ and $Y$.^[It's important to emphasize that these are linear projections, not structural linear models. There is no structural relationship between $\Z$ and $X_j$ or $\Z$ and $Y$! This is really important, and we'll introduce a definition related to this in the context of 2SLS.] These parameters are given by OLS estimates $(\Zm'\Zm)^{-1}\Zm\X_j$ and $(\Zm'\Zm)^{-1}\Zm\Y$, respectively, so
+$$ \hat\beta_j = \frac{(\Zm'\Zm)^{-1}\Zm'\Y}{(\Zm'\Zm)^{-1}\Zm\X_j}.$$ If we do this for all regressors $\X$, then 
+$$ \hat{\bet} = \frac{(\Zm'\Zm)^{-1}\Zm'\Y}{(\Zm'\Zm)^{-1}\Zm\Xm} =  (\Zm'\Xm)^{-1}\Zm'\Y$$
+3. We can take a graphical approach given by @pearl2009causality with the simple IV model with one endogenous regressor $X$ and one instrument $Z$. Suppose we have $Y = \beta_1 + \beta_2 X + \varepsilon$, where $\cov{X,\varepsilon} \neq 0$, along with $\cov{Z,X} \neq 0$ and $\cov{Z,\varepsilon} = 0$ for some instrument $Z$. These relationships can be illustrated in the form of a directed acyclic graph (DAG).
+```{r, echo=FALSE, fig.align='center', fig.asp = 0.5, fig.width = 1, fig.cap ="test", out.width = "500px"}
+knitr::include_graphics("figures/iv_dag.png")
+```
+We can think of the paths which illustrate causation as being multiplicative in the sense that $\cov{Z,X}\cdot \beta_2 = \cov{Z,Y}$, where $\beta_2$ is a "conversion rate" between changes in $X$ via $Z$ and changes in $Y$ via $Z$ (just like the chain rule approach). This implies $\beta_2 = \cov{Z,Y}/\cov{Z,X}$, so 
+$$ \hat\beta_2 = \frac{\widehat{\text{Cov}}(Z,Y)}{\widehat{\text{Cov}}(Z,X)}.$$ This happens to be a special case of $\hat{\bet}=  (\Zm'\Xm)^{-1}\Zm'\Y$.
+
+4. Another approach in the context of the simple linear model takes advantage of a simple substitution. 
+$$ \cov{Y,Z} = \cov{\beta_1 + \beta_2 X + \varepsilon, Z} = \underbrace{\cov{\beta_1, Z}}_0 + \beta_2\cov{X,Z} + \underbrace{\cov{Z,\varepsilon}}_0 = \beta_2\cov{X,Z}.$$ This is the same result we arrived at using the DAG.
+
+With all roads leading to Rome, we can define this estimator. 
+
+:::{#def-}
+The <span style="color:red">**_instrumental variables (IV) estimator_**</span> is defined as 
+\begin{align*}
+\IV(\Xm,\Zm,\Y)= (\Zm'\Xm)^{-1}(\Zm'\Y)= \left(\frac{1}{n}\sum_{i=1}^n\Z_i'\X_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\Z_iY_i\right)
+\end{align*} An realization of this estimator (an estimate) is 
+\begin{align*}
+\hat{\mathbf b}_\text{IV} = \hat{\bet}_\text{IV}(\X,\Z,\y) &= (\Z'\X)^{-1}(\Z'\y)= \left(\frac{1}{n}\sum_{i=1}^n\z_i'\z_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\z_iy_i\right)
+\end{align*} 
+and will exist when the inverse $(\Z'\X)^{-1}$ exists.
+:::
+
+:::{#exm-refex}
+Suppose $(X, Z, \varepsilon) \sim N(\boldsymbol \mu,\Sig)$ where
+\begin{align*}
+\boldsymbol \mu & = [10,10,0]',\\
+\Sig & = \begin{bmatrix}20 & 5 & 1\\5&20&0\\1&0&1 \end{bmatrix},
+\end{align*}
+and $Y = 1 + 3X + \varepsilon$. Let's simulate a sample of size $n=1000$ from this model $P_{\bet,\sigma^2} \in \mathcal P_\text{IV}$, and then calculate $\IV$.
+
+```{r}
+n <- 1000
+mu <- c(10, 10, 0)
+Sigma <- matrix(c(20,5,1, 5,20,0,1,0,1), nrow = 3)
+sample <- rmvnorm(n, mu, Sigma)
+x <- sample[,1]
+z <- sample[,2]
+e <- sample[,3]
+y <- 1 + 3*x + e
+```
+
+We should confirm that our drawn sample satisfies the assumptions of the IV model. 
+
+```{r}
+# Is x exogenous?
+cov(x,e)
+
+# Is z a valid instrument?
+cov(z,e)
+
+# Is z relevant?
+cov(z,x)
+```
+
+Now let's calculate $\IV$, keeping in mind that $\Zm$ is comprised of the instrument $Z$ *and* the exogenous random variable $1$ which gives the intercept term. 
+
+```{r}
+X <- cbind(1, x)
+Z <- cbind(1, z)
+beta_hat <- solve(t(Z) %*% X) %*% t(Z) %*% y 
+beta_hat
+```
+
+:::
+
+:::{#exm-spec2}
+
+## OLS is a Special Case of IV
+
+In Example \@ref(exm:spec1) we saw that $\mathcal P_\text{LM}\subset\mathcal P_\text{IV}$. In the event $P_{\bet,\sigma^2} \in \mathcal P_\text{LM}$, i.e $\Zm = \Xm$ and , then 
+$$ \IV = (\Zm'\Xm)^{-1}(\Zm'\Y) = (\Xm'\Xm)^{-1}(\Xm'\Y) = \OLS.$$
+:::
+
+## Properties of the IV Estimator
+
+One of the reasons OLS is so special is because we're able to characterize its finite sample properties with the Gauss-Markov theorem. This is the exception rather than the rule when assessing estimators. In most cases, we can only arrive at tractable results in the form of an estimator's asymptotic properties. Is this the case with $\IV$? Let's see if $\IV$ satisfies our "baseline" finite sample property of unbiasedness. 
+\begin{align*}
+\E{\IV} &= \E{\E{\IV \mid \Xm, \Zm}}\\
+        & =  \E{\E{(\Zm'\Xm)^{-1}(\Zm'\Y) \mid \Xm, \Zm}}\\
+        &=\E{\E{(\Zm'\Xm)^{-1}(\Zm'(\Xm\bet + \ep)) \mid \Xm, \Zm}}\\
+        &=\bet + \E{(\Zm'\Xm)^{-1}\Zm'\E{\ep \mid \Xm, \Zm}}\\
+        & \neq \bet
+\end{align*}
+In general, $\E{\ep \mid \Xm, \Zm} \neq \zer$, so $\IV$ has a bias. 
+
+:::{#exm-}
+
+## IV Estimator is Biased
+
+Return to the model from Example \@ref(exm:refex), but let $n = 10$. If we simulate the bias of $\IV$ using 10,000 simulations, we can confirm that $\IV$ is biased.  
+
+```{r}
+N_sim <- 10000
+estimates <- matrix(NA, nrow = N_sim, ncol = 2)
+for (k in 1:N_sim) {
+  n <- 10
+  mu <- c(10, 10, 0)
+  Sigma <- matrix(c(20,5,1, 5,20,0,1,0,1), nrow = 3)
+  sample <- rmvnorm(n, mu, Sigma)
+  x <- sample[,1]
+  z <- sample[,2]
+  e <- sample[,3]
+  y <- 1 + 3*x + e
+  X <- cbind(1, x)
+  Z <- cbind(1, z)
+  estimates[k,] <- solve(t(Z) %*% X) %*% t(Z) %*% y 
+}
+colMeans(estimates)
+```
+
+Okay but is this really an issue? In most settings, we would have a sample size much larger than $n = 10$. Let's repeat this experiment with $n = 1000$ and see what happens to our estimators bias.
+
+```{r}
+N_sim <- 10000
+estimates <- matrix(NA, nrow = N_sim, ncol = 2)
+for (k in 1:N_sim) {
+  n <- 1000
+  mu <- c(10, 10, 0)
+  Sigma <- matrix(c(20,5,1, 5,20,0,1,0,1), nrow = 3)
+  sample <- rmvnorm(n, mu, Sigma)
+  x <- sample[,1]
+  z <- sample[,2]
+  e <- sample[,3]
+  y <- 1 + 3*x + e
+  X <- cbind(1, x)
+  Z <- cbind(1, z)
+  estimates[k,] <- solve(t(Z) %*% X) %*% t(Z) %*% y 
+}
+colMeans(estimates)
+```
+
+Now the bias is negligible.
+:::
+
+While $\IV$ is biased, it seems as if it is asymptotically unbiased. Instead of proving this directly, we'll actually show that $\IV$ is root-N CAN, a sufficient condition for asymptotic unbiasedness. Before tackling that, let's prove that $\IV$ is consistent directly. One of the reasons we opted to not estimate $\bet$ via $\OLS$ was that $\OLS$ is not consistent for $\mathcal P_\text{IV}$, so it shouldn't be a surprise that $\IV$ is consistent. 
+
+:::{#prp-}
+
+## IV Estimator is Consistent
+
+If $P_{\bet,\sigma^2}\in \mathcal P_\text{IV}$, then $\IV\pto \bet$.
+:::
+
+:::{.proof}
+\begin{align*}
+\IV &= \left(\frac{1}{n}\sum_{i=1}^n\Z_i'\X_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\Z_iY_i\right)\\
+    & = \left(\frac{1}{n}\sum_{i=1}^n\Z_i'\X_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\Z_i[\X_i\bet + \varepsilon_i]\right)\\
+    & = \underbrace{\left(\frac{1}{n}\sum_{i=1}^n\Z_i'\X_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\Z_i'\X_i\right)}_1\bet + \left(\frac{1}{n}\sum_{i=1}^n\Z_i'\X_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\Z_i'\varepsilon_i\right)\\
+    & = \bet + \left(\frac{1}{n}\sum_{i=1}^n\Z_i'\X_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\Z_i'\varepsilon_i\right)\\
+\plim \IV & = \bet + \plim \left(\frac{1}{n}\sum_{i=1}^n\Z_i'\X_i\right)^{-1}\cdot \plim \left(\frac{1}{n}\sum_{i=1}^n\Z_i'\varepsilon_i\right) & (\text{Slutsky's theorem})\\
+& = \bet + \plim \left(\frac{1}{n}\sum_{i=1}^n\Z_i'\X_i\right)^{-1}\cdot \E{\Z'\ep} & (\text{LLN})\\
+& = \bet + \plim \left(\frac{1}{n}\sum_{i=1}^n\Z_i'\X_i\right)^{-1}\cdot \zer & (\E{\Z'\ep} = \zer)\\
+& = \bet
+\end{align*}
+<span style="color:white">space</span>
+:::
+
+
+
+:::{#thm-}
+
+## IV Estimator is Root-n CAN
+
+If $P_{\bet, \sigma^2} \in \mathcal P_\text{IV}$, then
+$$\IV \asim N\left(\bet, \sigma^2\E{\Zm'\Xm}^{-1}\E{\Zm'\Zm}\E{\Xm'\Zm}^{-1}\right) =  N\left(\bet, \frac{\sigma^2}{n}\E{\Z'\X}^{-1}\E{\Z'\Z}\E{\X'\Z}^{-1} \right)$$
+:::
+
+:::{.proof}
+The proof is almost identical to that of Theorem \@ref(thm:asymols).
+
+\begin{align*}
+\sqrt n(\IV - \bet) & = \sqrt{n}\left[\bet + \left(\frac{1}{n}\sum_{i=1}^n\Z_i'\X_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\Z_i'\varepsilon_i\right) - \bet\right]\\
+& = \left(\frac{1}{n}\sum_{i=1}^n\Z_i'\X_i\right)^{-1}\sqrt{n}\left(\frac{1}{n}\sum_{i=1}^n\Z_i'\varepsilon_i - \zer \right)\\
+& =\left(\frac{1}{n}\sum_{i=1}^n\Z_i'\X_i\right)^{-1}\sqrt{n}\left(\frac{1}{n}\sum_{i=1}^n\Z_i'\varepsilon_i - \E{\Z_i\varepsilon_i} \right) & (\E{\Z'\varepsilon} = \zer ) \\
+& = \underbrace{\left(\frac{1}{n}\sum_{i=1}^n\Z_i'\X_i\right)^{-1}}_{\pto \E{\Z'\X}^{-1}} \underbrace{\sqrt{n}\left(\frac{1}{n}\sum_{i=1}^n\Z_i'\varepsilon_i - \E{\Z_i\varepsilon_i} \right)}_{\dto N\left(\E{\Z_i\varepsilon_i}, \var{\textstyle \sum \X_i\varepsilon_i}/n\right)} & (\text{LLN and CLT})\\
+&\dto \E{\Z'\X}^{-1}\cdot N\left(\E{\Z_i\varepsilon_i}, \var{\textstyle \sum \Z_i\varepsilon_i}/n\right) & (\text{Slutsky's Theorem})\\
+& = \E{\Z'\X}^{-1}\cdot N\left(\zer, \sigma^2\E{\Z'\Z}\right) \\
+& = \E{\Z'\X}^{-1}\cdot N\left(\zer, \sigma^2\E{\Z'\Z}\right)\\
+& = N\left(\zer, \E{\Z'\X}^{-1}\sigma^2\E{\Z'\Z}\left[\E{\Z'\X}^{-1}\right]'\right)\\
+& = N\left(\zer, \E{\Z'\X}^{-1}\sigma^2\E{\Z'\Z}\E{\X'\Z}^{-1}\right).
+\end{align*}
+This implies that 
+$$\IV\asim N\left(\bet, \frac{\sigma^2}{n}\E{\Z'\X}^{-1}\E{\Z'\Z}\E{\X'\Z}^{-1} \right).$$ 
+If desired, we can write the asymptotic variance in terms of matrices $\Xm$ and $\Zm$:
+\begin{align*}
+\avar{\IV} & = \frac{\sigma^2}{n}\E{\Z'\X}^{-1}\E{\Z'\Z}\E{\X'\Z}^{-1}\\
+& = \frac{\sigma^2}{n}\left[\frac{\E{\Zm'\Xm}}{n}\right]^{-1}\left[\frac{\E{\Zm'\Zm}}{n}\right]\left[\frac{\E{\Xm'\Zm}}{n}\right]^{-1} \\
+& = n^2\cdot\frac{1}{n}\cdot\frac{\sigma^2}{n}\E{\Zm'\Xm}^{-1}\E{\Zm'\Zm}\E{\Xm'\Zm}^{-1}\\
+& = \sigma^2\E{\Zm'\Xm}^{-1}\E{\Zm'\Zm}\E{\Xm'\Zm}^{-1}
+\end{align*}
+<span style="color:white">space</span>
+:::
+
+:::{#cor-}
+
+## IV Estimator is Asymptotically Unbiased
+
+If $P_{\bet, \sigma^2} \in \mathcal P_\text{IV}$, then 
+$$ \lim_{n\to\infty}\text{Bias}(\IV) = 0.$$
+:::
+
+In order to appeal to the asymptotic distribution of $\IV$ to perform inference, we need a consistent estimator of the asymptotic variance. Fortunately, we can take nearly the same exact approach we took with $\OLS$. 
+
+:::{#prp-}
+
+## Estimation of IV Variance
+
+Define the estimator 
+\begin{align*}
+S^2 &=  \frac{\hat{\e}'\hat{\e}}{n-K}\\
+\hat{\e} &= \Y - \Xm\IV
+\end{align*} in the context of the linear IV model. Then:
+
+1. $S^2$ is an unbiased for $\var{\ep\mid\X} = \sigma^2$.
+2. $S^2$ is a consistent estimator $\var{\ep\mid\X} = \sigma^2$.
+3. The estimator $\widehat{\text{Avar}}(\IV) = S^2(\Zm'\Xm)^{-1}(\Zm'\Zm)(\Xm'\Zm)^{-1}$ is a consistent estimator for 
+${\text{Avar}}(\IV)$.
+:::
+
+:::{.proof}
+The proof is nearly identical to that of Proposition \@ref(prp:olsvar).
+:::
+
+:::{#exm-}
+
+## Coding Exercise
+
+R has no base function which implements $\IV$, so let's write our own. For reference, we can compare our results with those given by ```ivreg()``` from the ```AER``` (applied econometrics in R) package.
+
+```{r}
+IV <- function(y, X, Z){
+  #determine dimensions, perform IV
+  n <- length(y)
+  K <- ncol(X)
+  if(ncol(Z) != K) {stop("K instruments required")}
+  if(det(t(X) %*% X) == 0) {stop("rank(Z'X) < K")}
+  
+  hat_beta <- solve(t(Z) %*% X) %*% t(Z) %*% y 
+  
+  #use IV estimates to calculate residuals and estimate SEs
+  res <- (y-X %*% hat_beta)
+  S2 <- ((t(res) %*% res)/(n - K)) %>% as.numeric() 
+  var_hat <- (S2) *  solve(t(Z) %*% X) %*% (t(Z) %*% Z) %*% solve(t(X) %*% Z) 
+  se_hat <- sqrt(diag(var_hat))
+  
+  #t-stat, confidence intervals, p values
+  t <- hat_beta/se_hat
+  lower_CI <- hat_beta - qnorm(0.975)*se_hat
+  upper_CI <- hat_beta + qnorm(0.975)*se_hat
+  p_val <- 2*(1 - pt(t, n-K))
+  
+  #combine everything into one table to return
+  output <- cbind(hat_beta, se_hat, t, lower_CI, upper_CI, p_val)
+  rownames(output) <- paste("β", 1:K, sep = "")
+  colnames(output) <- c("Estimate", "Std.Error", "t-Stat", "Lower 95% CI", "Upper 95% CI", "p-Value")
+  return(output)
+}
+```
+
+Let's estimate the model from Example \@ref(exm:refex) using ```ivreg()```.
+
+```{r}
+n <- 1000
+mu <- c(10, 10, 0)
+Sigma <- matrix(c(20,5,1, 5,20,0,1,0,1), nrow = 3)
+sample <- rmvnorm(n, mu, Sigma)
+x <- sample[,1]
+z <- sample[,2]
+e <- sample[,3]
+y <- 1 + 3*x + e
+summary(ivreg(y ~ x | z))$coefficients
+```
+
+Now we can use our function and verify that the outputs are the same. 
+
+```{r}
+X <- cbind(1,x)
+Z <- cbind(1,z)
+IV(y,X,Z)
+```
+:::
+
+:::{#exm-}
+
+## Intuition behind Asymptotic Variance
+
+In Example \@ref(exm:csvarols) we provided some intuition as to how $\var{\OLS} = \frac{\sigma^2}{n} \E{\X'\X}^{-1}$ changed in response to changes in $\sigma^2$, $n$, and components of $\E{\X'\X}$. The variance of $\OLS$ is smaller for large samples and when the error term $\ep$ has a small variance. The more variance we have in our regressors (which is related to $\E{\X'\X}^{-1}$), the more efficient our estimator. So what is the intuition behind $\avar{\IV} =\frac{\sigma^2}{n}\E{\Z'\X}^{-1}\E{\Z'\Z}\E{\X'\Z}^{-1}$? Three things should look familiar. The variance increases with increases in $\sigma^2$ and decreases with increases in $n$. Consider the model $Y = X\beta + \varepsilon$ when we instrument for $X$ with $Z$, such that 
+$$\avar{\IV} =\frac{\sigma^2}{n}\frac{\E{Z^2}}{\E{ZX}^2} = \frac{\var{Z} + \E{Z}^2}{[\cov{X,Z} + \E{Z}\E{X}]^2}.$$ Holding the average of $Z$ and $X$ fixed, we see that the asymptotic variance of our estimator increases with linearly with $\var{Z}$, and decreases quadratically as $\cov{X,Z}$. The latter of these facts shouldn't be surprising. The larger $\cov{X,Z}$, the more relevant ("stronger") our instrument $Z$ is, and the better our estimates.   
+:::
+
+## Many Instruments, 2SLS
+
+When defining $\mathcal P_\text{IV}$, we assumed $\dim(\Z) = \dim(\X) = K$. What happens if we have $L = \dim(\Z) > \dim(\X) = K$? Let's consider a special case first.
+
+
+:::{#exm-ref3}
+
+## OLS vs. IV
+
+Consider a model $\Y = \Xm \bet + \ep$ which satisfies the Gauss-Markov assumption, *but* also specifies the existence of $K$ separate instrumental variables $\Z$. In other words, we have $2K$ instruments in the form of $\X$ and $\Z$. Should we estimate $\bet$ via OLS (equivalent to IV using $\X$ as instruments for $\X$), or should we estimate $\bet$ via IV using $\Z$? It may be tempting to pick the latter. What if we are confident that $\Z$ are valid instruments, but aren't positive that $\X$ is exogenous. If we estimated $\bet$ with $\IV = (\Zm'\Xm)^{-1}\Zm'\Y$, then we would be playing it safe and not risk inconsistent estimates via $\IV'=(\Xm'\Xm)^{-1}\Xm'\Y = \OLS$. Unfortunately this approach has a cost in the form of variance/standard errors. 
+\begin{align*}
+\text{Avar}(\IV) &= \sigma^2\E{\Zm'\Xm}^{-1}\E{\Zm'\Zm}\E{\Xm'\Zm}^{-1}\\
+\text{Avar}(\IV') &= \text{Avar}(\OLS) = \sigma^2\E{\Xm'\Xm}^{-1} & (\Xm = \Zm)
+\end{align*}
+The difference $\text{Avar}(\IV) - \text{Avar}(\OLS)$ is PSD, so 
+$$ \se{\hat\beta_{\text{IV},j}'} = \se{\hat\beta_{\text{OLS},j}} < \se{\hat\beta_{\text{IV},j}}.$$
+As the next simulation shows, this difference can be fiarly large.
+
+```{r}
+N_sim <- 10000
+estimates <- matrix(NA, nrow = 2*N_sim, ncol = 3)
+estimates[,3] <- rep(c("OLS", "IV"), N_sim)
+
+for (k in 1:N_sim) {
+  n <- 1000
+  mu <- c(10, 10, 0)
+  Sigma <- matrix(c(20,5,0, 5,20,0,0,0,1), nrow = 3)
+  sample <- rmvnorm(n, mu, Sigma)
+  x <- sample[,1]
+  z <- sample[,2]
+  e <- sample[,3]
+  y <- 1 + 3*x + e
+  X <- cbind(1,x)
+  Z <- cbind(1,z)
+  estimates[2*k-1 ,1:2] <- solve(t(X) %*% X) %*% t(X) %*% y
+  estimates[2*k,1:2] <- solve(t(Z) %*% X) %*% t(Z) %*% y 
+}  
+```
+
+```{r, echo=FALSE, fig.align='center', fig.asp = 0.7, fig.width = 8, fig.cap ="test", warning=FALSE}
+df2 <- as.data.frame(estimates) %>% 
+  rename(`β1` = V1, `β2` = V2, estimator = V3) %>% 
+  gather("term", "value", -estimator) %>% 
+  mutate(value = as.numeric(value))
+
+df2 %>% 
+  ggplot(aes(value)) +
+  geom_histogram(color = "black", fill = "white", bins = 50) +
+  facet_grid(estimator ~ term, scales = "free") +
+  theme_minimal() +
+  labs(x = "Estimate",
+       y = "Frequency")
+  
+```
+
+If we calculate the simulated standard errors of our estimators, we find that using $\IV$ results in nearly a four fold decrease in standard error.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+df2 %>% 
+  group_by(estimator, term) %>% 
+  summarize(value = sd(value)) %>% 
+  knitr::kable(col.names = c("Estimator", "Term", "Standard Error"))
+```
+:::
+
+:::{#exm-ex4}
+
+## IV vs... IV?
+
+Suppose $Y = X\beta + \varepsilon$ for an endogenous $X$. Fortunately, we have two instruments $Z_1$ and $Z_2$. Which instrument do we use to estimate $\beta$. At first the answer seems simple -- just estimate the model using each instrument separately, and then pick the estimates with the lower standard error. This won't consider all the relevant cases though, as *any* linear combination of $Z_1$ and $Z_2$ are also instruments. Define $Z_3 = aZ_1 + bZ_2$. 
+\begin{align*}
+\E{Z_3\varepsilon} & = \E{(aZ_1 + bZ_2)\varepsilon} = a\underbrace{\E{Z_1\varepsilon}}_0 + b\underbrace{\E{Z_2\varepsilon}}_0 = 0\\
+\E{Z_3X} & = \E{(aZ_1 + bZ_2)X} = a\underbrace{\E{Z_1X}}_{\neq 0} + b\underbrace{\E{Z_2X}}_{\neq 0} \neq 0
+\end{align*}
+There are an infinite number of candidates for instruments, so what do we do? Let's simulate some standard errors and see if we can notice patterns between them and the choice of instruments. We'll restrict our attention to instruments in the set $\{aZ_1 + bZ_2\mid a,b\in[0,1]\}$. We will calculate the $\var{\IV \mid \Xm,\ \Zm}$ for a fixed sample drawn from $(X,Z_1,Z_2,\varepsilon)\iid N(\boldsymbol \mu, \Sig)$ where
+
+\begin{align*}
+\boldsymbol \mu & = [10,10,10,0]',\\
+\Sig & = \begin{bmatrix}20 & 5 & 10 & 1\\5&30&7&0\\10&7&50&0\\1&0&0&1 \end{bmatrix},
+\end{align*}
+
+```{r}
+n <- 50
+mu <- c(10, 10, 10, 0)
+Sigma <- matrix(c(20,5,10,1,5,30,7,0,10,7,50,0,1,0,0,1), nrow = 4)
+sample <- rmvnorm(n, mu, Sigma)
+x <- sample[,1] 
+z1 <- sample[,2]
+z2 <- sample[,3]
+e <- sample[,4]
+y <- 1 + 2*x + e
+
+A <- seq(0.01, 1, length = 500)
+B <- seq(0.01, 1, length = 500) 
+store <- list()
+i <- 0
+for (a in A) {
+  for (b in B) {
+    i <- i +1
+    X <- as.matrix(x)
+    Z <- as.matrix(a*z1 + b*z2)
+    store[[i]] <- (IV(y, X, Z)[2])^2
+  }
+}
+```
+
+Now let's plot the calculated variances (conditional on the fixed sample) over the values $a\times b\in [0,1]^2$ which determined the instrument used to calculate $\IV$. 
+
+```{r, echo=FALSE, fig.align='center', fig.asp = 0.7, fig.width = 8, fig.cap ="test", warning=FALSE}
+df <- expand_grid(a = A,b = B) %>% 
+  mutate(var = unlist(store)) %>% 
+  arrange(var) %>% 
+  mutate(var_scale = row_number()/(500*500))
+
+
+ggplot(df, aes(a, b, fill = var_scale)) +
+  geom_tile() +
+  theme_minimal() +
+  labs(x = "a",
+       y = "b",
+       fill = "IV Conditional Variance, Scaled") +
+  theme(legend.position = "bottom") 
+```
+
+As anticipated, $\IV$ is more efficient when using certain linear combinations of elements. Furthermore, it appears that using some non-trivial linear combination of $Z_1$ and $Z_2$ is a better choice than simply using one or the other.   
+:::
+
+Before considering this problem in general, let's extend the IV model to allow for more instruments than regressors. 
+
+:::{#def=}
+The <span style="color:red">**_(linear) instrumental variables (IV) model_**</span> is defined as $\mathcal P_\text{IV} = \{P_{\bet,\sigma^2} \mid \bet \in \mathbb R^{K}, \sigma^2\in\mathbb R\}$, where 
+\begin{align*}
+P_{\bet,\sigma^2} &= \{F_{\Xm,\Zm,\ep} \mid\ \text{rank}\left(\E{\Z'\Z}\right) = L,\ \text{rank}\left(\E{\Z'\X}\right) = K, \ldots  \},\\
+\Xm & = [\X_1, \cdots, \X_j, \cdots \X_K] = [\X_1, \cdots, \X_i, \cdots \X_n]',\\
+\Zm & = [\Z_1, \cdots, \Z_j, \cdots \Z_L] = [\Z_1, \cdots, \Z_i, \cdots \Z_n]',\\
+\dim(\Z) & = L,\\ 
+\dim(\X) &= K,\\
+\Y & = [Y_1, \ldots, Y_n].
+\end{align*}
+A necessary condition for the rank condition $\text{rank}\left(\E{\Z'\X}\right) = K$ is the <span style="color:red">**_order condition_**</span>, $L\ge K$. In the event $L = K$ we say the model is <span style="color:red">**_exactly identified_**</span>. If $L > K$, the model is <span style="color:red">**_over-identified_**</span>.
+:::
+
+When $L=K$ this is just the original IV model, and we know how to estimate this with $\IV$. In the event $L > K$, the model is still identified, as we haven't modified the identifying assumptions that $\E{\Z'\ep} = \zer$, $\E{\X'\Z} \neq \zer$, and $\text{rank}\left(\E{\Z'\X}\right) = K$. In fact, our model would still be identified if we discarded $L - K$ instruments! This is where the term "over-identified" comes from, and as far as "problems" go, it's not a bad problem to have. We have so many instruments, that we have an infinite number of ways to estimate the model! 
+
+In general, any linear combination of instruments $Z_1,\ldots, Z_L$ is also an instrument. We can only use $K$ instruments with the estimator $\IV$, so we want to find the $K$ linear combinations of our instruments (some of which could reduce to a single $Z_j$) which give us the most efficient estimator. The $K$ linear combinations of the $L$ instruments can be expressed as a $L\times K$ matrix $\F$ which gives instruments $\Z\F$. If we elect to use the new instruments $\Z\F$, the IV estimator becomes $$\IV = [(\Zm\F)'\Xm]^{-1}[(\Zm\F)'\Y].$$ The problem of selecting $\F$ such that we maximize the efficiency of $\IV$ is given as:  
+$$\argmin_{\F} \text{Avar}(\IV) = \argmin_{\F} \sigma^2\E{(\Zm\F)'\Xm}^{-1}\E{(\Zm\F)'(\Zm\F)}\E{\Xm'(\Zm\F)}^{-1}.$$ Solving this looks like a miserable time, so let's stop appealing directly to math and consider what we're *actually* doing here. We're looking for the "best" instruments. It stands to reason that "good" instruments will be those that have more explanatory power with respect to the endogenous regressors $\X$ than others. So given draws of $(\Z,\X)$, how can we determine the best way to predict/explain $\X$ given $\Y$ --- by estimating the linear projection associated with $(\Z,\X)$ via OLS. For each $j = 1,\ldots,K$ we have 
+\begin{align*}
+\OLS^j &= (\Zm'\Zm)^{-1}\Zm'\X_j & (j = 1,\ldots, K)
+\end{align*} where $\OLS^j$ define the instrument formed from linear combinations of $Z_1,\ldots, Z_L$ which has the most predictive power for $X_j$:
+\begin{align*}
+\hat X_j &= \Z \OLS^j = \hat\beta_1^jZ_1 + \hat\beta_2^jZ_2 + \cdots + \hat\beta_L^jZ_L & (j = 1,\ldots, K)
+\end{align*}
+Written compactly using matrices, we have 
+\begin{align*}
+\hat{\X} &=  \Z(\Zm'\Zm)^{-1}\Zm'\Xm,\\
+\hat{\Xm} &=  \Zm(\Zm'\Zm)^{-1}\Zm'\Xm,
+\end{align*}
+where $\hat{\X}$ is a random vector of instruments, and $\hat{\Xm}$ is $n$ random vectors $\hat{\X}$ "stacked" to form a random matrix. If we elect to use these instruments to estimate our model, then 
+$$ \IV = [(\Zm(\Zm'\Zm)^{-1}\Zm'\Xm)'\Xm]^{-1}[(\Zm(\Zm'\Zm)^{-1}\Zm'\Xm)'\Y].$$
+This estimator is a special case of $\IV$ where we have determined the $K$ instruments via linear projection, and is known as two-stage least squares.
+
+:::{#def-}
+The <span style="color:red">**_two-stage least squares (2SLS) estimator_**</span> is defined as 
+\begin{align*}
+\TSLS(\Xm, \Zm, \Y) &= [\Xm'\Zm(\Zm'\Zm)^{-1}\Zm'\Xm]^{-1}\Xm'\Zm(\Zm'\Zm)^{-1}\Zm'\Y= [\hat{\Xm}'\Xm]^{-1}\hat{\Xm}'\Y,\\
+                 \hat{\Xm} &=  \Zm(\Zm'\Zm)^{-1}\Zm'\Xm.   
+\end{align*}
+Calculating $\hat{\Xm}$ via OLS is referred to as the <span style="color:red">**_first stage_**</span>, while calculating $\IV$ using $\hat{\Xm}$ is the <span style="color:red">**_second stage_**</span>. It can be useful to define the projection matrix associated with the first stage, 
+\begin{align*}
+\mathbb P_{\Zm} &= \Zm(\Zm'\Zm)^{-1}\Zm'\\
+ \hat{\Xm} & = \mathbb P_{\Zm}\Xm.
+\end{align*}
+:::
+
+The name "two-stage least squares" can be a bit misleading depending on how it is presented. It's very common to think of each stage of 2SLS as an application of OLS. In the first stage we perform OLS to calculate the instruments $\hat{\X}$, and then regress $Y$ on $\hat{\X}$ via OLS in the second stage. At first these seems at odds with our definition, because the second stage relies on the IV estimator, but it is equivalent in a sense. We'll explore this in depth in Example \@ref(exm:se).
+
+:::{#exm-}
+
+## OLS as 2SLS
+
+Consider the situation from Example \@ref(exm:ref3) where $\X$ is comprised of entirely exogenous regressors. In this case our vector of instruments is actually a $L+K$ vector $[\X,\Z]$. Instead of directly calculating
+\begin{align*}
+\hat{\Xm} &= [\Xm, \Zm]([\Xm, \Zm]'[\Xm, \Zm])^{-1}[\Xm, \Zm]'\Xm,\\
+\end{align*}
+we can intuit the result of the first stage. If we regress $X_j$ on $X_1,\ldots, X_j,\ldots,Z_1,\ldots,Z_L$, then all coefficients should be zero except that associated with the independent variable $X_j$ which will be 1. Therefore the OLS estimates from stage one should be a $L \times K$ matrix where the first $K$ rows are a diagonal matrix of $1$'s and the bottom $L - K$ rows are 0. If we multiply $[\Xm, \Zm]$ by this, then we have 
+$$ \hat{\Xm} = \mathbf 1\Xm + \zer \Zm = \Xm.$$
+This gives 
+$$ \TSLS = [\hat{\Xm}'\Xm]^{-1}\hat{\Xm}'\Y = [{\Xm}'\Xm]^{-1}{\Xm}'\Y = \OLS.$$
+:::
+
+:::{#exm-}
+
+## Exactly Identified Case
+
+In the event that $L = K$, there is no 
+:::
+
+Because $\TSLS$ is just a special case of $\IV$ using instruments $\hat{\Xm}$, the properties of $\TSLS$ follow directly from those of $\IV$. 
+
+:::{#thm-}
+
+## IV Estimator is Root-n CAN
+
+If $P_{\bet, \sigma^2} \in \mathcal P_\text{IV}$, then $\TSLS \pto \bet$ and 
+$$\TSLS \asim N\left(\bet, \sigma^2\E{\hat{\Xm}'\hat{\Xm}}^{-1}\right) =  N\left(\bet, \frac{\sigma^2}{n}\E{\hat{\X}'\hat{\X}}^{-1}\right).$$ 
+:::
+
+:::{.proof}
+We know that $\TSLS$ is Root-n CAN because $\IV$ is. All we need to show is that the asymptotic variance simplifies to the given expression when using instruments $\hat{\X}$.
+\begin{align*}
+\text{Avar}(\TSLS) &= \sigma^2\E{\hat{\Xm}\Xm}^{-1}\E{\hat{\Xm}\hat{\Xm}}\E{\Xm'\hat{\Xm}}^{-1}\\
+& = \sigma^2\E{[\Zm(\Zm'\Zm)^{-1}\Zm'\Xm]'\Xm}^{-1}\E{[\Zm(\Zm'\Zm)^{-1}\Zm'\Xm]'[\Zm(\Zm'\Zm)^{-1}\Zm'\Xm]}\E{\Xm'[\Zm(\Zm'\Zm)^{-1}\Zm'\Xm]}^{-1}\\
+& = \sigma^2\E{\Xm'\Zm(\Zm'\Zm)^{-1}\Zm'\Xm}^{-1}\text{E}[\Xm'\Zm\underbrace{(\Zm'\Zm)^{-1}\Zm'\Zm}_{\mathbf I}(\Zm'\Zm)^{-1}\Zm'\Xm]\E{\Xm'\Zm(\Zm'\Zm)^{-1}\Zm'\Xm}^{-1}\\
+ & = \sigma^2\text{E}[\Xm'\underbrace{\Zm\Zm^{-1}}_{\mathbf I}\underbrace{(\Zm')^{-1}\Zm'}_{\mathbf I}\Xm]^{-1}\text{E}[\Xm'\underbrace{\Zm\Zm^{-1}}_{\mathbf I}\underbrace{(\Zm')^{-1}\Zm'}_{\mathbf I}\Xm]\E{\Xm'\Zm(\Zm'\Zm)^{-1}\Zm'\Xm}^{-1}\\
+ & = \sigma^2\underbrace{\text{E}[\Xm'\Xm]^{-1}\text{E}[\Xm'\Xm]}_{\mathbf I}\E{\Xm'\Zm(\Zm'\Zm)^{-1}\Zm'\Xm}^{-1}\\
+ & = \sigma^2\E{\Xm'[\Zm(\Zm'\Zm)^{-1}\Zm']'\Zm(\Zm'\Zm)^{-1}\Zm'\Xm}^{-1} & (\Zm (\Zm'\Zm)^{-1}\Zm'\text{ sym. and idem.}) \\
+ & = \sigma^2\E{[\Zm(\Zm'\Zm)^{-1}\Zm'\Xm]'[\Zm(\Zm'\Zm)^{-1}\Zm'\Xm]}^{-1}\\
+& = \sigma^2\E{\hat{\Xm}'\hat{\Xm}}^{-1} & (\hat{\Xm} = \Zm(\Zm'\Zm)^{-1}\Zm'\Xm)
+\end{align*}
+:::
+
+The motivation for introducing $\TSLS$ was not all choices of instruments being equal with respect to efficiency, and perhaps the instruments which result from projecting $\X$ onto $\Z$ result in an IV estimator which is more efficient than most others. This IV estimator is not just more efficient that most others, it is *the* most efficient IV estimator. The proof of this is adapted from @wooldridge2010econometric.  
+
+
+:::{#thm-eff2}
+
+## 2SLS is Asymptotically Efficient
+
+If $P_{\bet, \sigma^2} \in \mathcal P_\text{IV}$, then $\TSLS$ is efficient in the class of $\IV$ estimators calculated using instruments linear in $\Z$. 
+:::
+
+:::{.proof}
+Suppose $\tilde{\bet}$ is some arbitrary IV estimator which is linear in instruments $\Z$. The instruments for this estimator can be written as $\tilde{\X} = \Z\F$ for some $L\times K$ matrix $\F$. We want to show that $\avar{\TSLS}$ is "less than" $\avar{\tilde{\bet}}$. Both of these objects are matrices, so "less" than translates to the difference being PSD. This difference is 
+\begin{align*}
+\avar{\tilde{\bet}} - \avar{\TSLS} & =\frac{\sigma^2}{n}\E{\tilde{\X}'\X}^{-1}\E{\tilde{\X}'\tilde{\X}}\E{\X'\tilde{\X}}^{-1} -  \frac{\sigma^2}{n}\E{\hat{\X}'\hat{\X}}^{-1}\\& = \frac{\sigma^2}{n}\left[\E{\tilde{\X}'\X}^{-1}\E{\tilde{\X}'\tilde{\X}}\E{\X'\tilde{\X}}^{-1} - \E{\hat{\X}'\hat{\X}}^{-1}\right]\\
+& = \frac{\sigma^2}{n}\left[\left[\E{\tilde{\X}'\X}\E{\tilde{\X}'\tilde{\X}}^{-1}\E{\X'\tilde{\X}}\right]^{-1} - \E{\hat{\X}'\hat{\X}}^{-1}\right] & (\text{properties of inversion})
+\end{align*}
+Accounting for the bracketed term being the difference of two inverted matrices, this matrix will be PSD if and only if the following is PSD: 
+\begin{equation}
+\E{\hat{\X}'\hat{\X}} - \E{\tilde{\X}'\X}\E{\tilde{\X}'\tilde{\X}}^{-1}\E{\X'\tilde{\X}}  (\#eq:diff).
+\end{equation}
+
+We can show this by relying on a certain "trick". Define the difference between the regressors $\X$ and 2SLS instruments $\hat{\X}$ as $\mathbf r = \hat{\X} -  \X$. This remainder term $\mathbf r$ is uncorrelated with $\Z$:
+\begin{align*}
+\E{\Z'\mathbf r} & = \E{\Z'\hat{\X}} - \E{\Z'\X}\\
+& = \E{\Z'\Z(\Z'\Z)^{-1}\Z'\X} - \E{\Z'\X} & (\hat{\X} = \Z(\Z'\Z)^{-1}\Z'\X)\\
+& = \E{\Z'\X} - \E{\Z'\X}\\
+& = \zer
+\end{align*}
+As a result, $\tilde{ \X}$ and $\mathbf r$ are uncorrelated. $$\E{\tilde{ \X}'\mathbf r} = \E{(\Z\F')\mathbf r}= \mathbf F'\underbrace{\E{\Z'\mathbf r}}_\zer = \zer$$ Now we use these expectations and the definition of $\mathbf r$ to arrive at our "trick".
+\begin{align*}
+&\E{\tilde{ \X}'\mathbf r} = \zer \\
+\implies & \E{\tilde{ \X}'(\hat{\X} -  \X)} = \zer & (\mathbf r = \hat{\X} -  \X)\\
+\implies & \E{\tilde{ \X}'\hat{\X}} - \E{\tilde{ \X}'\X} = \zer\\
+\implies & \E{\tilde{ \X}'\hat{\X}} = \E{\tilde{ \X}'\X}
+\end{align*}
+Using this equality, we can rewrite the difference in Equation \@ref(eq:diff) in terms of $\tilde{\X}$ and $\hat{\X}$ only.
+\begin{equation}
+\E{\hat{\X}'\hat{\X}} - \E{\hat{\X}'\tilde{\X}}\E{\tilde{\X}'\tilde{\X}}^{-1}\E{\tilde{\X}'\hat{\X}}  (\#eq:diff2).
+\end{equation} This may seem like a random equation, but it's very special if you consider the linear projection of $\hat{\X}$ onto $\tilde{\X}$. This projection is given by the coefficient $\boldsymbol\gamma = \E{\tilde{\X}'\tilde{\X}}^{-1}\E{\tilde{\X}'\hat{\X}},$ which happens to show up in \@ref(eq:diff2). The errors associated with this linear projection are given as $\boldsymbol \nu = \hat{\X} - \tilde{\X}\boldsymbol\gamma$, and have an expected value of $\zer$ by the definition of $\boldsymbol\gamma$ and linear projection. But what is the expected value of these errors squared? 
+
+\begin{align*}
+ \boldsymbol \nu' \boldsymbol \nu& = [\hat{\X} - \tilde{\X}\boldsymbol\gamma]'[\hat{\X} - \tilde{\X}\boldsymbol\gamma]\\
+& = \hat{\X}'\hat{\X} - 2\boldsymbol\gamma'\tilde{\X}'\hat{\X} + \boldsymbol\gamma'\tilde{\X}'\tilde{\X}\boldsymbol\gamma\\
+\E{ \boldsymbol \nu' \boldsymbol \nu} & = \E{\hat{\X}'\hat{\X}} - 2\boldsymbol\gamma'\E{\tilde{\X}'\hat{\X}} + \boldsymbol\gamma'\E{\tilde{\X}'\tilde{\X}}\boldsymbol\gamma & (\boldsymbol\gamma \text{ is a constant})\\
+& = \E{\hat{\X}'\hat{\X}} - 2\left[\E{\tilde{\X}'\tilde{\X}}^{-1}\E{\tilde{\X}'\hat{\X}}\right]'\E{\tilde{\X}'\hat{\X}} + \left[\E{\tilde{\X}'\tilde{\X}}^{-1}\E{\tilde{\X}'\hat{\X}}\right]'\E{\tilde{\X}'\tilde{\X}} \left[\E{\tilde{\X}'\tilde{\X}}^{-1}\E{\tilde{\X}'\hat{\X}}\right]\\
+& = \E{\hat{\X}'\hat{\X}} - 2\E{\tilde{\X}\hat{\X}'}\E{\tilde{\X}'\tilde{\X}}^{-1}\E{\tilde{\X}'\hat{\X}} + \E{\tilde{\X}\hat{\X}'}\underbrace{\E{\tilde{\X}'\tilde{\X}}^{-1}\E{\tilde{\X}'\tilde{\X}}}_{\mathbf I} \E{\tilde{\X}'\tilde{\X}}^{-1}\E{\tilde{\X}'\hat{\X}}\\
+& = \E{\hat{\X}'\hat{\X}} - (2-1)\E{\tilde{\X}\hat{\X}'}\E{\tilde{\X}'\tilde{\X}}^{-1}\E{\tilde{\X}'\hat{\X}} \\
+& = \E{\hat{\X}'\hat{\X}} - \E{\hat{\X}'\tilde{\X}}\E{\tilde{\X}'\tilde{\X}}^{-1}\E{\tilde{\X}'\hat{\X}}
+\end{align*}
+Equations \@ref(eq:diff) and \@ref(eq:diff2) are the expectation of the sum of squared errors associated with the linear projection of $\hat{\X}$ onto $\tilde{\X}$, meaning the matrix in question must be PSD!^[Intuitively, this matrix must be PSD in the same way the sum of squared numbers cannot be negative.] This gives the desired result.
+:::
+
+In Section \@ref(generalized-method-of-moments) we'll see another way to show this result that is a bit more intuitive. 
+
+
+:::{#exm-se}
+
+## What's in A Name?
+
+Let's estimate the model from \@ref(exm:ex4) via 2SLS. We already have defined a function ```IV()``` to calculate $\IV$, so we can just use pass the instruments $\hat {\X}$ to this function to perform 2SLS.
+
+```{r}
+TSLS <- function(y,X,Z){
+  X_hat <- Z %*% solve(t(Z) %*% Z) %*% t(Z) %*% X
+  IV(y, X, X_hat)
+}
+```
+
+For a simulated sample of size $n=50$ let's estimate the model using ```TSLS()```.  
+
+```{r}
+n <- 50
+mu <- c(10, 10, 10, 0)
+Sigma <- matrix(c(20,5,10,1,5,30,7,0,10,7,50,0,1,0,0,1), nrow = 4)
+sample <- rmvnorm(n, mu, Sigma)
+x <- sample[,1] 
+z1 <- sample[,2]
+z2 <- sample[,3]
+e <- sample[,4]
+y <- 1 + 2*x + e
+X <- cbind(1, x)
+Z <- cbind(1, z1, z2)
+TSLS(y,X,Z)
+```
+
+This is not the only way we could calculate $\TSLS$. Note that $\Zm(\Zm'\Zm)^{-1}\Zm'$ is symmetric and idempotent, so 
+\begin{align*}
+\TSLS & = \IV(\Xm, \hat{\Xm}, \Y)\\
+& = [\hat{\Xm}'{\Xm}]^{-1}\hat{\Xm}'\Y\\
+& = [\Xm'\Zm(\Zm'\Zm)^{-1}\Zm'\Xm]^{-1}\Xm'\Zm(\Zm'\Zm)^{-1}\Zm'\Y\\
+& = [\Xm'[\Zm(\Zm'\Zm)^{-1}\Zm']\Zm(\Zm'\Zm)^{-1}\Zm'\Xm]^{-1}\Xm'\Zm(\Zm'\Zm)^{-1}\Zm'\Y\\
+& = [[\Zm(\Zm'\Zm)^{-1}\Zm'\Xm]'[\Zm(\Zm'\Zm)^{-1}\Zm'\Xm]]^{-1}\Xm'\Zm(\Zm'\Zm)^{-1}\Zm'\Y\\
+& = [\hat{\Xm}'\hat{\Xm}]^{-1}\hat{\Xm}'\Y\\
+& = \OLS(\hat{\Xm}, \Y).
+\end{align*}
+So we can interpret $\TSLS$ in one of two ways:
+
+1. Use $\OLS(\Zm, \Xm)$ to calculate $\hat{\Xm} = \Zm\OLS(\Zm, \Xm)$ (stage 1), followed by $\IV(\Xm, \hat{\Xm}, \Y)$ (stage 2). This is how our ```TSLS()``` function works.
+2. Use $\OLS(\Zm, \Xm)$ to calculate $\hat{\Xm} = \Zm\OLS(\Zm, \Xm)$ (stage 1), followed by $\OLS(\hat{\Xm}, \Y)$ (stage 2).
+
+The second interpretation is where 2SLS gets its name -- we run OLS twice. But what happens when we implement $\TSLS$ this way?
+ 
+```{r}
+X_hat <- lm(x ~ z1 + z2)$fitted.values
+summary(lm(y ~ X_hat))$coefficients
+```
+
+We get the same exact estimates (which we already showed would be the case), but our standard errors don't coincide with those given by ```TSLS()```. What is happening here? 
+
+When we run ```lm(y ~ X_hat)```, we are estimating the model associated with linear projection model $Y = \hat{\X}\boldsymbol \delta + \nu$. The function ```lm()``` has no way of knowing that this is the second step in an estimation process aimed at estimating the structural linear model $Y = \X\bet + \varepsilon$. It just happens that $\hat{\X}$ is defined such that the population parameters satisfy $\boldsymbol \delta = \bet$. When ```lm()``` goes to calculate the standard errors, it calculates the residuals associated with the model $Y = \hat{\X}\boldsymbol \delta + \nu$. These errors have no structural/economic meaning, and we don't care about them at all (for this purpose). We really want the residuals associated with the error $\varepsilon$ in the actual IV model $Y = \X\bet + \varepsilon$, and these residuals are not the same!
+$$ \hat{\mathbf u} = \Y - \hat{\Xm}\OLS(\hat{\Xm}, \Y) \neq \Y - \Xm\OLS(\hat{\Xm}, \Y) = \Y- \Xm\IV(\Xm, \hat{\Xm}, \Y) = \hat{\e}$$
+The moral of the story is that when we are calculating the residuals we need to be very deliberate and remember the actual model we are estimating. Fortunately, any statistical software with an implementation for $\TSLS$ will calculate the correct standard errors, which is why it's best to not do each step "by hand" if you favor the interpretation of $\TSLS$ as two OLS regressions.
+
+```{r}
+summary(ivreg(y ~ x | z1 + z2))$coefficients
+```
+
+:::
+
+The example emphasizes something that has been mentioned in passing before. The models estimated in the first and second stage, $\X = \Z\boldsymbol + \gamma$ and  $Y = \hat{\X}\boldsymbol \delta + \nu$, are entirely void of structural meaning. Nevertheless it is useful to us because it expresses the outcome of interest in terms of exogenous variables $\hat{\X}$ and $\Z$. We refer to such an equation as the **_reduced form_** of the structural model $Y = \X\bet + \ep$. We'll talk about this term much more in Section \@ref(endogeniety-ii-simultaneous-equation-models).
+
+## Testing Hypotheses
+
+At this point, we have just assumed we know how to select between the classical linear model $\mathcal P_\text{LM}$ and the linear IV model $\mathcal P_\text{IV}$, but in practice we want to be able to form hypothesis tests that inform our selection between the two models. In particular we want to be able to test: 
+
+1. Are our regressors exogenous, i.e $H_0: \E{\X'\ep} = \zer$?
+2. Are our instruments valid, i.e...
+
+### Durbin–Wu–Hausman Test
+
+We'll start with considering tests for exogenous/endogenous regressors. One sign that our model contains endogenous regressors is if there is a significant difference between $\OLS$ and $\IV$. This is why it's always a good idea to estimate a model with $\OLS$ even if you think regressors are endogenous. It provides a good reference to compare IV estimates with. In fact, comparing $\OLS$ and $\IV$ serve as the basis for one of the most common tests for endogeneity as formalized by @hausman1978specification.^[This happens to be one of the most cited papers in all of economics.] 
+
+In the face of endogeneity, $\OLS$ is an abject failure in light of its inconsistency. Fortunately, $\IV$ is consistent when $\X$ is endogenous. Furthermore, $\IV$ is also consistent when $\X$ is exogenous, as the instruments $\Z$ are still valid and relevant. In other words, if $\X$ is exogenous, then $\OLS\pto \bet$ *and* $\IV\pto\bet$, so 
+$$ \OLS - \IV \pto \zer.$$ This suggests the following: 
+$$ H_0: \X \text{ exogenous} \iff H_0:\plim\left(\OLS - \IV\right) = \zer.$$ We can construct a Wald test statistic
+$$ W = (\OLS - \IV)' \left[\widehat{\text{Avar}}(\OLS - \IV) \right]^{-1}(\OLS - \IV),$$ but we will run into a roadblock in the form of $\avar{\OLS - \IV}$. If we expand this, we have 
+
+$$ \avar{\OLS - \IV} = \avar{\IV} + \avar{\OLS} - 2\text{Acov}\left(\IV,\OLS\right),$$ as $\IV$ and $\OLS$ are presumably correlated. We don't have a formula for the covariance of these estimators handy, and deriving one would be a pain. Fortunately, we don't have to, because Lemma 2.1 of @hausman1978specification asserts that the covariance term is such that 
+$$  \avar{\OLS - \IV} =  \avar{\IV} - \avar{\OLS}$$
+due to $\OLS$ being efficient relative to $\IV$.^[In Example \@ref(exm:ref3) we saw that $\OLS$ is more efficient than $\IV$ in the event that our regressors are exogenous. This was formalized in Theorem \@ref(thm:eff2), because in the event that all regressors $\X$ are exogenous and we have non-trivial instruments $\Z$, then $\TSLS$ "picks" the optimal trivial instruments $\X$ and our estimator reduces to $\OLS$.] This is a particular useful equality, and interesting result in it's own right. @hansen2022econometrics refers to it as the "Hausman equality", and gives details about it in Section 8.11. This gives the test statistic
+\begin{align*}
+W &= (\OLS - \IV)'\left[\widehat{\text{Avar}}(\IV) - \widehat{\text{Avar}}(\OLS)\right]^{-1} (\OLS - \IV).
+\end{align*}
+
+Unfortunately, the term corresponding to the asymptotic variance will likely fail to be invertible. Unless $\X$ and $\Z$ contain no common variables, some column of  $(\hat{\Xm}'\hat{\Xm})^{-1} - (\Xm'\Xm)^{-1}$ will be a linear combination of other columns. For example, if our model contains an intercept, than we cannot use this statistic, as $\X$ and $\Z$ will both contain a column of 1's. This rules out just about every single situation we would ever want to consider. To address this shortcoming, we can take the [pseudo-inverse](https://mathworld.wolfram.com/Moore-PenroseMatrixInverse.html) of this matrix.
+
+$$W = (\OLS - \IV)'\left[\widehat{\text{Avar}}(\IV) - \widehat{\text{Avar}}(\OLS)\right]^+ (\OLS - \IV)$$
+The hypothesis $\OLS - \IV\pto \zer$ is comprised of $K$ separate hypotheses, so it's tempting to conclude  $W\sim \chi_K^2$. Unfortunately, this will only be the case when $\avar{\IV} - \avar{\OLS}$ is invertible, otherwise we will have $W\sim \chi_q^2$ where $q = \text{rank} \left[ \avar{\IV} - \avar{\OLS} \right]$.
+
+:::{#thm-}
+
+## Hausman Specification Test
+
+Given the hypothesis $H_0:\hat{\thet}_1\pto\thet, \hat{\thet}_2\pto\thet$ for some asymptotically efficient estimator $\hat{\thet}_1$, the <span style="color:red">**_Hausman statistic_**</span> is defined as 
+$$H = (\hat{\thet}_2 - \hat{\thet}_1)'\left[\widehat{\text{Avar}}(\hat{\thet}_2) - \widehat{\text{Avar}}(\hat{\thet}_1)\right]^+ (\hat{\thet}_2 - \hat{\thet}_1).$$ Under $H_0$,
+$$ H\sim \chi_q^2$$
+where $q = \text{rank}\left[\avar{ \hat{\thet}_2} - \avar{ \hat{\thet}_1}\right]$. The test associated with this statistic is known as the <span style="color:red">**_Hausman specification test_**</span>. 
+:::
+ 
+The Hausman test is far more general that testing for endogeneity, it just happens that testing for endogeneity is a great application of it. In this particular application, there is a much more convenient formulation that allows us to bypass the pseudo-inverse complication. We'll begin by partitioning our regressors into the exogenous and endogenous regressors, i.e $\X = [\X_\text{exo},\X_\text{end}]$. The $\OLS$ and $\IV$ estimators can also be partitioned accordingly.
+\begin{align*}
+\hat\beta_\text{OLS} & = \begin{bmatrix}\hat\beta_\text{OLS,exo}  \\ \hat\beta_\text{OLS,end}\end{bmatrix}\\
+\hat\beta_\text{IV} & = \begin{bmatrix}\hat\beta_\text{IV,exo}  \\ \hat\beta_\text{IV,end}\end{bmatrix}
+\end{align*}
+With some clever algebra, we can show that $(\hat\beta_\text{OLS,exo} - \hat\beta_\text{IV,exo})$ is a linear function of $(\hat\beta_\text{IV,end} - \hat\beta_\text{OLS,end})$. The estimator $\OLS$ solves the first order condition associated with minimizing the sum of squared residuals: $$\Xm'\Xm\OLS = \Xm'\Y.$$ If we partition this first order condition according to $\X = [\X_\text{exo},\X_\text{end}]$, we have 
+
+\begin{align*}
+&\begin{bmatrix} \Xm_\text{exo} & \Xm_\text{end}\end{bmatrix}'\begin{bmatrix} \Xm_\text{exo} & \Xm_\text{end}\end{bmatrix}\begin{bmatrix} \hat\beta_\text{OLS,exo} \\ \hat\beta_\text{OLS,end}\end{bmatrix} = \begin{bmatrix} \Xm_\text{exo} & \Xm_\text{end}\end{bmatrix}'\Y\\
+\implies & \begin{bmatrix} \Xm_\text{exo}' \\ \Xm_\text{end}' \end{bmatrix} \begin{bmatrix} \Xm_\text{exo} & \Xm_\text{end} \end{bmatrix} \begin{bmatrix} \hat\beta_\text{OLS,exo} \\ \hat\beta_\text{OLS,end}\end{bmatrix} = \begin{bmatrix} \Xm_\text{exo}' \\ \Xm_\text{end}'\end{bmatrix} \Y \\
+\implies & \begin{bmatrix} \Xm_\text{exo}'\Xm_\text{exo} \hat\beta_\text{OLS,exo} + \Xm_\text{exo}' \Xm_\text{end}\hat\beta_\text{OLS,end} \\ 
+ \Xm_\text{end}'\Xm_\text{exo}\hat\beta_\text{OLS,exo} + \Xm_\text{end}'\Xm_\text{end}\hat\beta_\text{OLS,end} \end{bmatrix} = \begin{bmatrix} \Xm_\text{exo}'\Y \\ \Xm_\text{end}'\Y \end{bmatrix}\\ 
+ \implies & \Xm_\text{exo}'\Xm_\text{exo} \hat\beta_\text{OLS,exo} + \Xm_\text{exo}' \Xm_\text{end}\hat\beta_\text{OLS,end} = \Xm_\text{exo}'\Y & (\text{First Row})\\ 
+ \implies & \Xm_\text{exo}'\Xm_\text{exo} \hat\beta_\text{OLS,exo}  = \Xm_\text{exo}'\left(\Y -  \Xm_\text{end}\hat\beta_\text{OLS,end}\right)
+\end{align*}
+
+Solving this for $\hat\beta_\text{OLS,exo}$ gives
+
+$$ \hat\beta_\text{OLS,exo} = \left(\Xm_\text{exo}'\Xm_\text{exo}\right)^{-1}\Xm_\text{exo}'\left(\Y -  \Xm_\text{end}\hat\beta_\text{OLS,end}\right) .$$ {#eq-63}
+
+We can repeat these calculations for $\IV$, and conclude 
+
+$$ \hat\beta_\text{OLS,exo} = \left(\Xm_\text{exo}'\Xm_\text{exo}\right)^{-1}\Xm_\text{exo}'\left(\Y -  \Xm_\text{end}\hat\beta_\text{IV,end}\right) .$$ {#eq-64}
+
+If we subtract @eq-64 from @eq-63, we have 
+
+$$ \hat\beta_\text{OLS,exo} - \hat\beta_\text{IV,exo} = \left(\Xm_\text{exo}'\Xm_\text{exo}\right)^{-1}\Xm_\text{exo}'\Xm_\text{end}\left(\hat\beta_\text{IV,end} - \hat\beta_\text{OLS,end}\right).$$
+
+This equality means that if $\plim(\OLS - \IV)$ (in which case the difference in the exogenous components approaches zero), then the difference in the endogenous portions approach zero as well. In short, we lose nothing from focusing on the difference $\hat\beta_\text{OLS,end} - \hat\beta_\text{IV,end}$, which means the variance term which standardizes the Hausman statistic has full rank. 
+
+$$ H = (\hat\beta_\text{OLS,end} - \hat\beta_\text{IV,end})'\left[\widehat{\text{Avar}}(\hat\beta_\text{IV,end}) - \widehat{\text{Avar}}(\hat\beta_\text{OLS,end})\right]^{-1} (\hat\beta_\text{OLS,end} - \hat\beta_\text{IV,end})$$ 
+
+:::{#cor-hausend}
+
+## Hausman Test for Endogeneity
+
+Given the hypothesis $H_0:\E{\X'\ep} = \zer$ where regressors are partitioned as $\X = [\X_\text{exo},\X_\text{end}]$, the <span style="color:red">**_Hausman statistic_**</span> simplifies to
+$$H = (\hat{\boldsymbol\beta}_\text{OLS,end} - \hat{\boldsymbol\beta}_\text{IV,end})'\left[\widehat{\text{Avar}}(\hat{\boldsymbol\beta}_\text{IV,end}) - \widehat{\text{Avar}}(\hat{\boldsymbol\beta}_\text{OLS,end})\right]^{-1} (\hat{\boldsymbol\beta}_\text{OLS,end} - \hat{\boldsymbol\beta}_\text{IV,end}).$$ Under $H_0$,
+$$ H\sim \chi_q^2$$
+where $q = \dim(\X_\text{end})$. I will call the test associated with this statistic is known as the <span style="color:red">**_Hausman test for endogeneity_**</span>. 
+:::
+
+:::{#exm-}
+
+Suppose $(X, Z, \varepsilon) \sim N(\boldsymbol \mu,\Sig)$ where
+\begin{align*}
+\boldsymbol \mu & = [10,10,0]',\\
+\Sig & = \begin{bmatrix}20 & 5 & 0\\5&20&0\\0&0&1 \end{bmatrix},
+\end{align*}
+and $Y = 1 + 3X + \varepsilon$. We have $\cov{X,\varepsilon} = 0$, so $\E{X\varepsilon} = 0$ and our model meets the assumptions of the classical linear model ($P_{\bet,\sigma^2} \in \mathcal P_\text{LM}\subset\mathcal P_\text{IV}$). If we draw a sample of size $n = 1,00$, we can test $H_0:\E{X\varepsilon} = 0$ using the Hausman statistic calculated using only $\beta_2$ (the slope coefficient). If we repeat this simulation many times, then the distribution of our test statistic should approach $\chi_1^2$, as $H_0$ is true for our model. 
+
+```{r}
+hausman_stat <- function(y, X, Z, end_col){
+  K <- ncol(X)
+  
+  # Calculate OLS and variance
+  OLS <- solve(t(X) %*% X) %*% t(X) %*% y
+  res <- (y-X %*% OLS)
+  S2 <- ((t(res) %*% res)/(n - K)) %>% as.numeric() 
+  var_OLS <- (S2) * solve( t(X) %*% X )
+  
+  # calculate IV and variance
+  IV <- solve(t(Z) %*% X) %*% t(Z) %*% y
+  res <- (y-X %*% IV)
+  S2 <- ((t(res) %*% res)/(n - K)) %>% as.numeric() 
+  var_IV <- (S2) *  solve(t(Z) %*% X) %*% (t(Z) %*% Z) %*% solve(t(X) %*% Z)
+  
+  # construct the statistic using only the endogenous columns given by end_col
+  i <- end_col
+  (OLS[i] - IV[i])*solve(var_IV[i,i] - var_OLS[i,i])*(OLS[i] - IV[i])
+}
+
+store <- vector("numeric", 10000)
+for (j in 1:10000) {
+  n <- 1000
+  mu <- c(10, 10, 0)
+  Sigma <- matrix(c(20,5,0, 5,20,0,0,0,1), nrow = 3)
+  sample <- rmvnorm(n, mu, Sigma)
+  x <- sample[,1]
+  z <- sample[,2]
+  e <- sample[,3]
+  y <- 1 + 3*x + e
+  X <- cbind(1, x)
+  Z <- cbind(1, z)
+  K <- ncol(X)
+  
+  store[j] <- hausman_stat(y, X, Z, 2)
+}
+```
+
+Now let's plot the simulated test statistics.
+
+```{r}
+#| code-fold: true
+#| fig-align: center
+#| warning: false
+#| message: false
+#| fig-asp: 1
+#| fig-width: 11
+#| fig-cap: "Histogram of the Hausman statistic calculated for 10,000 simulations with limiting distribution overlaid"
+#| code-summary: "Show code which generates figure"
+tibble(store) %>% 
+  ggplot(aes(store)) +
+  geom_histogram(aes(y=..density..), color = "black", fill = "white", binwidth = 0.1) +
+  geom_function(fun = dchisq,  args = list(df = 1), color = "red") +
+  theme_minimal() +
+  ylim(0,1.5)
+```
+
+:::
+
+Another means of testing for exogeneity is due to  @wu1973alternative and @durbin1954errors. Begin by performing the first step of 2SLS on the possible endogenous regressors.
+$$ \Xm_\text{end} =  \Zm \boldsymbol \delta + \mathbb V$$ The residuals now form a matrix, because we have multiple dependent variables $\X_\text{end}$.
+Using the estimated projection coefficient $\hat{\boldsymbol \delta}$, we calculated the residual values $\hat{\mathbb V}$. Finally we augment the original linear model by including $\hat{\mathbb V}$.
+
+$$\y = \Xm\bet + \hat{\mathbb V}\boldsymbol\gamma + \ep^* = \begin{bmatrix} \Xm_\text{exo} & \Xm_\text{end}\end{bmatrix}\begin{bmatrix} \bet_\text{exo} \\ \bet_\text{end}\end{bmatrix} + \underbrace{\hat{\mathbb V}\gamma + \boldsymbol {\ep}^*}_{\ep}$$ Consider the hypothesis $H_0:\boldsymbol\gamma = \zer$, and how that may related to whether $\Xm_\text{end}$ is endogenous or exogenous. When we perform the first step of this process (regressing $\Xm_\text{end}$ on $\Zm$) we break variation in $\Xm_\text{end}$ into two parts: the exogenous portion explained through $\Zm$,^[We know it's exogenous because $\Zm$ is a valid instrument and is exogenous], and unexplained part $\boldsymbol \nu$ which we capture through $\hat{\mathbb V}$. If $\boldsymbol \gamma \neq \zer$, then the structural error $\ep$ includes the unexplained part of the variation in $\X_\text{end}$, which is another way of saying $\cov{\X_\text{end}, \varepsilon}\neq 0$. 
+
+So do we use the Hausman test, or this new test which uses artificial regressions? Well it turns out, we don't need to make a choice because they're equivalent if we are attentive about which residuals we use to calculate asymptotic variance! It also turns out that we could perform the artificial regression test using the fitted values $\hat{\Xm}_\text{end}$ instead of $\hat{\mathbb V}$. 
+
+
+
+:::{#thm-}
+
+## Durbin-Wu-Hausman Test
+
+Suppose we want to test $H_0:P_{\bet, \sigma^2}\in\mathcal P_\text{LM}$ (i.e $H_0: \X$ exogenous) for $P_{\bet, \sigma^2}\in \mathcal P_\text{IV}$. The following test statistics are equivalent:
+
+ 
+1. The Wald statistic associated with the null hypothesis $H_0: \boldsymbol\gamma = \zer$ calculated using $\hat{\boldsymbol\gamma}_\text{OLS}$, where $\boldsymbol\gamma$ is from the modified regression $\y = \Xm\bet + \hat{\mathbf v}\boldsymbol\gamma + \ep^*$, and $\hat{\mathbf v}$ are the residuals associated with the first step projection $\Xm_\text{end} =  \Zm \boldsymbol \delta + \boldsymbol \nu$. $$W_{\boldsymbol\gamma}= \hat{\boldsymbol\gamma}_\text{OLS}' \left[\widehat{\text{Avar}}(\hat{\boldsymbol\gamma}_\text{OLS} )\right]^{-1}\hat{\boldsymbol\gamma}_\text{OLS}$$
+2. The Wald statistic associated with the null hypothesis $H_0: \boldsymbol\eta = \zer$ calculated using $\hat{\boldsymbol\eta}_\text{OLS}$, where $\boldsymbol\gamma$ is from the modified regression $\y = \Xm\bet + \hat{\Xm}_\text{end}\boldsymbol\eta + \ep^*$, and $\hat{\Xm}_\text{end}$ are the fitted values associated with the first step projection $\Xm_\text{end} =  \Zm \boldsymbol \delta + \boldsymbol \nu$. $$W_{\boldsymbol\eta}= \hat{\boldsymbol\eta}_\text{OLS}' \left[\widehat{\text{Avar}}(\hat{\boldsymbol\eta}_\text{OLS} )\right]^{-1}\hat{\boldsymbol\eta}_\text{OLS}$$
+3. The Hausman statistics from @cor-hausend, $$H = (\hat{\boldsymbol\beta}_\text{OLS,end} - \hat{\boldsymbol\beta}_\text{IV,end})'\left[\widehat{\text{Avar}}(\hat{\boldsymbol\beta}_\text{IV,end}) - \widehat{\text{Avar}}(\hat{\boldsymbol\beta}_\text{OLS,end})\right]^{-1} (\hat{\boldsymbol\beta}_\text{OLS,end} - \hat{\boldsymbol\beta}_\text{IV,end}),$$ when $\widehat{\text{Avar}}(\hat{\boldsymbol\beta}_\text{IV,end})$ and $\widehat{\text{Avar}}(\hat{\boldsymbol\beta}_\text{OLS,end})$ are calculated using $S^2$ from the artificial regression $\y = \Xm\bet + \hat{\mathbf v}\boldsymbol\eta + \ep^*$.^[We could also use calculate $S^2$ from $\y = \Xm\bet + \hat{\Xm}_\text{end}\boldsymbol\eta + \ep^*$, as these two estimates for $\sigma^2$ are algebraically equivalent.] 
+
+:::
+
+:::{.proof}
+
+<span style="color:white">space</span>
+
+$(W_{\boldsymbol\gamma} = W_{\boldsymbol\eta})$ Recall that we think of $\hat{\mathbf v}$ and $\hat{\Xm}_\text{end}$ in terms of linear projection. We have 
+
+\begin{align*}
+\hat{\Xm}_\text{end} & = \mathbb P_{\Zm}\Xm_\text{end} & (\mathbb P_{\Zm} = \Zm(\Zm'\Zm)^{-1}\Zm')\\
+\hat{\mathbb V} & =  \mathbb M_{\Zm}\Xm_\text{end} & (\mathbb M_{\Zm} = \mathbb I - \mathbb P_{\Zm})
+\end{align*}
+
+$(W_{\boldsymbol\gamma} = H)$
+
+:::
+
+
+:::{#exm-}
+test
+
+```{r}
+n <- 10000
+mu <- c(10, 10, 0)
+Sigma <- matrix(c(20,5,1, 5,20,0,1,0,1), nrow = 3)
+sample <- rmvnorm(n, mu, Sigma)
+x <- sample[,1]
+z <- sample[,2]
+e <- sample[,3]
+y <- 1 + 3*x + e
+X <- cbind(1, x)
+Z <- cbind(1, z)
+K <- ncol(X)
+
+## Method 1
+reg_1.1 <- lm(x ~ z)
+v_hat <- reg_1.1$residuals
+reg_1.2 <- lm(y ~ x + v_hat)
+summary(reg_1.2)$coefficients
+```
+
+
+```{r}
+summary(reg_1.2)$coefficients[3,3]^2
+```
+
+```{r}  
+## Method 2
+reg_2.1 <- lm(x ~ z)
+x_hat <- fitted.values(reg_2.1)
+reg_2.2 <- lm(y ~ x + x_hat)
+summary(reg_2.2)$coefficients
+```  
+
+
+```{r}
+summary(reg_2.2)$coefficients[3,3]^2
+```
+
+
+```{r}
+c(sum(reg_2.2$residuals^2), 
+  sum(reg_1.2$residuals^2))
+```
+
+```{r}
+#Method 3
+S2 <- sum(reg_2.2$residuals^2)/(n-K)
+OLS <- solve(t(X) %*% X) %*% t(X) %*% y
+var_OLS <- (S2) * solve( t(X) %*% X )
+IV <- solve(t(Z) %*% X) %*% t(Z) %*% y
+var_IV <- (S2) *  solve(t(Z) %*% X) %*% (t(Z) %*% Z) %*% solve(t(X) %*% Z)
+
+(OLS[2] - IV[2])*solve(var_IV[2,2] - var_OLS[2,2])*(OLS[2] - IV[2])
+```
+
+```{r}
+summary(ivreg::ivreg(y ~ x | z))
+```
+
+:::
+
+### Sargan–Hansen Test
+
+
+## Example/Replication
+
+Let's replicate @card1995using, a *classic* paper which has provided a textbook example of instrumental variables. To make sure our results are correct, we can compare them to the tables in the original paper which is found [here](https://www.nber.org/system/files/working_papers/w4483/w4483.pdf). The data is available on David Card's [website](https://davidcard.berkeley.edu/data_sets.html).
+
+@card1995using is concerned with estimating the returns to schooling with respect to wages. We tend to think that better educated workers earn higher wages, but to what extent does this relationship hold? Denote years of schooling as $S_i$, log wages as $Y_i$, and $\X_i$ as a collection of attributes associated with a worker. The linear model of interest is 
+$$ Y_i = \X_i\boldsymbol\alpha + S_i\beta + u_i,$$ where $u_i$ are unobserved components which affect earnings. We're assuming that $\E{\X_iu_i} = 0$ for all $i$ ($\X_i$ is exogenous), but we suspect that $\E{S_iu_i} = 0$ (see Example \@ref(exm:ex1)). The parameter $\beta$ is the returns of education on earnings, and is what we're primarly interested in. Let's just ignore this endogeneity for now and attempt to estimate $\beta$ with OLS. We can do this with data from the National Longitudinal Survey of Young Men (NLSYM) conducted in 1976. This survey contains information about agents' wages in 1976, along with demographic information about family background, residence in 1976, and past residence (in 1966). The details of this survey, in particular how respondents were sampled, can be found in @card1995using.
+
+```{r, message=FALSE}
+card_95 <- read.table("data/nls.dat")
+```
+
+The ```.zip``` file containing the data also contains a ```.sas``` file which processes and cleans the raw data. Each step is readily executed in R:^[I did this to the best of my ability, as I have no experience with ```.sas```, and I could have misinterpreted the accompanying documentation and commentary in the code.]
+
+```{r, message=FALSE}
+card_95 <- card_95 %>%
+  #assign the appropriate names to each variable
+  rename(
+    id = V1,
+    nearc2 = V2,
+    nearc4 = V3,
+    nearc4a = V4,
+    nearc4b = V5,
+    ed76 = V6,
+    ed66 = V7,
+    age76 = V8,
+    daded = V9,
+    nodaded = V10,
+    momed = V11,
+    nomomed = V12,
+    weight = V13,
+    momdad14  = V14,
+    sinmom14  = V15,
+    step14 = V16,
+    reg661 = V17,
+    reg662 = V18,
+    reg663 = V19,
+    reg664 = V20,
+    reg665 = V21,
+    reg666 = V22,
+    reg667 = V23,
+    reg668 = V24,
+    reg669 = V25,
+    south66 = V26,
+    work76 = V27,
+    work78 = V28,
+    lwage76 = V29,
+    lwage78 = V30,
+    famed = V31,
+    black = V32,
+    smsa76r = V33,
+    smsa78r = V34,
+    south76 = V35,
+    reg78r = V36,
+    reg80r = V37,
+    smsa66r = V38,
+    wage76 = V39,
+    wage78 = V40,
+    wage80 = V41,
+    noint78 = V42,
+    noint80 = V43,
+    enroll76 = V44,
+    enroll78 = V45,
+    enroll80 = V46,
+    kww = V47,
+    iq = V48,
+    marsta76 = V49,
+    marsta78 = V50,
+    marsta80 = V51,
+    libcrd1 = V52
+  ) %>% 
+  mutate(
+    # missing values in SAS are ".", replace those with NAs
+    across(everything(), ~replace(., . ==  "." , NA)),
+    # any column that had a "." was loaded as a string, convert them
+    across(where(is.character), as.numeric),
+    #create variables corresponding to work experience
+    exp76 = age76 - ed76 - 6,
+    exp76_sq = exp76*exp76,
+    exp76_sq_100 = (exp76*exp76)/100,
+    #create a series of indicators for parents' level of education
+    f1 = (momed > 12 & daded > 12),
+    f2 = (momed >= 12 & daded >= 12 & (momed != 12 | daded != 12)),
+    f3 = (momed == 12 & daded == 12),
+    f4 = (momed >= 12 & nodaded == 1),
+    f5 = (daded >= 12 & momed < 12),
+    f6 = (momed >= 12 & nodaded == 0),
+    f7 = (momed >= 9 & daded >= 9),
+    f8 = (nomomed == 0 & nodaded == 0)
+  )
+
+#Gather mutually exclusive region66 indicators into categorical 
+card_95 <- card_95 %>% 
+  select(id, contains("reg66")) %>% 
+  gather(region66, count, -id) %>% 
+  filter(count == 1) %>% 
+  mutate(
+    region66 = str_remove(region66,"reg66"),
+    region66 = as.factor(region66)
+  ) %>% 
+  right_join(card_95)
+```
+
+The dependent variable of interest if $\log wage_i$ (```lwage76```). Our baseline linear model is
+$$ \log( wage_i) = \alpha_0 + \beta\cdot educ_i + \alpha_1\cdot exper_i + \frac{\alpha_2}{100}\cdot exper_i^2 + \alpha_3 \cdot black_i + \alpha_4\cdot south_i + \alpha_5\cdot SMSA_i + \varepsilon_i,$$ where $educ_i$ (```ed76```) is level of education, $exper_i$ (```exp76```) is amount of work experiance, $black_i$ (```black```) indicated if respondent $i$ is Black, $south_i$ (```south76```) indicated whether the respondent lives in the South (in 1976), and $SMSA_i$ (```smsa76r```) indicates whether a respondent lives in the South and in a metropolitan area.^[The abbreviation "MSA" comes up a lot when dealing with surbey data. It stands for "metropolitan statistical area", and are used by the Census Bureau to designate areas with a high population density.] Along with estimating this model, we will estimate similar models which include various controls for family education, family structure, and where respondents lived in 1966. 
+
+```{r}
+linear_model1 <- lm(lwage76 ~ ed76 + exp76 + exp76_sq_100 + black + south76 + smsa76r, data = card_95)
+linear_model2 <- lm(lwage76 ~ ed76 + exp76 + exp76_sq_100 + black + south76 + smsa76r + smsa66r + region66, data = card_95)
+linear_model3 <- lm(lwage76 ~ ed76 + exp76 + exp76_sq_100 + black + south76 + smsa76r + smsa66r + region66 +
+                      daded + momed + nodaded + nomomed, data = card_95)
+linear_model4 <- lm(lwage76 ~ ed76 + exp76 + exp76_sq_100 + black + south76 + smsa76r + smsa66r +
+                      region66 + daded + momed + nodaded + nomomed + f1 + f2 + f3 + f4 + 
+                      f5 + f6 + f7 + f8, data = card_95)
+linear_model5 <- lm(lwage76 ~ ed76 + exp76 + exp76_sq_100 + black + south76 + smsa76r + smsa66r +
+                     region66+ daded + momed + nodaded + nomomed + f1 + f2 + f3 + f4 + 
+                      f5 + f6 + f7 + f8 + momdad14 + sinmom14, data = card_95)
+```
+
+Our results should match Table 2 of @card1995using. The ```stargazer``` package gives us a flexible means of tabulating regression results.^[Right now, the table is formatted in html and automatically included when this Rmarkdown file is knit, but you ```stargazer``` is also capable of outputting very nice tables in $\LaTeX$.]
+
+```{r, results='asis', echo=FALSE}
+# stargazer(linear_model1,
+#           linear_model2, 
+#           linear_model3, 
+#           linear_model4, 
+#           linear_model5, 
+#           header=FALSE, 
+#           type = 'html',
+#           omit = c("f", "reg", "momed", "nodaded", "daded", "momdad14", "sinmom14", "Constant", "nomomed", "smsa66"),
+#           no.space = TRUE,
+#           add.lines=list(c('Region in 1966', 'No','Yes', "Yes", "Yes", "Yes"),
+#                          c('SMSA 1966', 'No','Yes', "Yes", "Yes", "Yes"),
+#                          c('Parental Education', 'No','No', "Yes", "Yes", "Yes"),
+#                          c('Interacted Parental Education Classes', 'No','No', "No", "Yes", "Yes"),
+#                          c('Family Structure', 'No','No', "No", "No", "Yes")),
+#           omit.stat =c("f", "adj.rsq", "ser"),
+#           notes = NULL,
+#           covariate.labels =c("Education", "Experiance", "Experiance-Squared/100", "Black indicator", "Live in South", "Live in SMSA"),
+#           dep.var.labels = c("Log Hourly Earnings")
+#           )
+```
+
+For each model $\hat\beta_\text{OLS}\in[0.073,0.075]$, meaning that an additional year of education corresponds to roughly a 7.4% increase in earnings. We should be suspicious of these results though, as it's likely the case that $educ_i$ is endogenous, so we need some instrument(s) for $educ_i$.  @card1995using makes the case for using a variable which indicates whether a respondent grew up in a labor market with an accredited 4-year college, $near_\ college_i$ (```nearc4```). In other words, the respondent lived near a college in the year 1966. This proximity to a college has no baring on earnings (in theory), but it is likely correlated with $educ_i$, as the cost of higher education is lower for those who have the option to live at home while attending college. Let's use $near_\ college_i$ to calculate $\hat\beta_\text{IV}$. We can do this "by hand" by estimating the following reduced form equations via OLS:^[While we're prone to make mistakes involving standard errors here, it's sort of the equivelent of "showing your work" on a math test.]
+
+\begin{align*}
+educ_i &= \gamma_0 + \gamma_1 \cdot near_\ college_i + \gamma_2\cdot exper_i + \frac{\gamma_3}{100}\cdot exper_i^2 + \gamma_4 \cdot black_i + \gamma_5\cdot region_i + \gamma_6\cdot SMSA_i + \cdots + u_i\\
+\log( wage_i) &= \delta_0 + \delta_1 \cdot near_\ college_i + \delta_2\cdot exper_i + \frac{\delta_3}{100}\cdot exper_i^2 + \delta_4 \cdot black_i + \delta_5\cdot region_i + \delta_6\cdot SMSA_i + \cdots + \nu_i\\
+\end{align*}
+
+We could also directly estimate the structural model via $\IV$ and not worry about messing up the standard errors. If we have done everything correctly we should see:
+$$ \frac{\hat \delta_{\text{OLS},1}}{\hat \gamma_{\text{OLS},1}} = \hat\beta_\text{IV}.$$
+```{r, echo=FALSE, fig.align='center', fig.asp = 0.5, fig.width = 1, fig.cap ="test", out.width = "500px"}
+knitr::include_graphics("figures/card_dag.png")
+```
+
+We will estimate the models with and without family controls, and restrict our attention to respondents where ```lwage76``` is not missing.
+
+```{r}
+card_95 <- card_95 %>% 
+  filter(!is.na(lwage76))
+
+#Without family controls 
+reduced_form1_stage1 <- lm(ed76 ~ nearc4 + exp76 + exp76_sq_100 + black + south76 + smsa76r + smsa66r + region66, data = card_95)
+reduced_form1_stage2 <- lm(lwage76 ~ nearc4 + exp76 + exp76_sq_100 + black + south76 + smsa76r + smsa66r + region66, data = card_95)
+IV_model1 <- ivreg(lwage76 ~ ed76 + exp76 + exp76_sq_100 + black + south76 + smsa76r + smsa66r + region66 |
+                     nearc4 + exp76 + exp76_sq_100 + black + south76 + smsa76r + smsa66r + region66, data = card_95)
+
+#With family controls
+reduced_form2_stage1 <- lm(ed76 ~ nearc4 + exp76 + exp76_sq_100 + black + south76 + smsa76r + smsa66r + 
+                             region66 + daded + momed + nodaded + nomomed + f1 + f2 + f3 + f4 + 
+                             f5 + f6 + f7 + f8 + momdad14 + sinmom14, data = card_95)
+reduced_form2_stage2 <- lm(lwage76 ~ nearc4 + exp76 + exp76_sq_100 + black + south76 + smsa76r + smsa66r + region66 + 
+                             daded + momed + nodaded + nomomed + f1 + f2 + f3 + f4 + f5 + f6 + f7 + f8 + 
+                             momdad14 + sinmom14, data = card_95)
+IV_model2 <- ivreg(lwage76 ~ ed76 + exp76 + exp76_sq_100 + black + south76 + smsa76r + smsa66r + region66 + daded + momed +
+                     nodaded + nomomed + f1 + f2 + f3 + f4 +  f5 + f6 + f7 + f8 + momdad14 + sinmom14 |
+                     nearc4 + exp76 + exp76_sq_100 + black + south76 + smsa76r + smsa66r + region66 + daded + momed +
+                     nodaded + nomomed + f1 + f2 + f3 + f4 + f5 + f6 + f7 + f8 + momdad14 + sinmom14, data = card_95)
+```
+
+
+```{r, results='asis', echo=FALSE}
+# stargazer(reduced_form1_stage1,
+#           reduced_form2_stage1,
+#           reduced_form1_stage2,
+#           reduced_form2_stage2,
+#           IV_model1,
+#           IV_model2,
+#           header=FALSE,
+#           type = 'html',
+#           omit = c("f", "reg", "exp76", "smsa", "black", "south", "momed", "nodaded", "daded", "momdad14", "sinmom14", "Constant", "nomomed", "smsa66"),
+#           no.space = TRUE,
+#            add.lines=list(c('Family Background Variables', 'No','Yes', "No", "Yes", "No", "Yes")),
+#           omit.stat =c("f", "adj.rsq", "ser", "rsq"),
+#           # notes = NULL,
+#           covariate.labels =c("Live Near College in 1966 ", "Education"),
+#            dep.var.labels = c("Education", "Log Hourly Earnings"),
+#           column.labels   = c("Reduced Form (OLS) Estimates", "Strucutral (IV) Estimates"),
+#           column.separate = c(4, 2),
+#           model.names = FALSE
+#           )
+```
+
+Compare this to panel A of Table 3 in @card1995using. Note that the ratio of our reduced form estimates do equal our IV estimates. Between our original OLS estimates (of the structural model), and our IV estimates, we have seven estimates for $\beta$. We can plot these along with the corresponding 95% confidence intervals.
+
+```{r, echo=FALSE, fig.align='center', fig.asp = 0.7, fig.width = 8, fig.cap ="test", warning=FALSE}
+linear_model1 <- tidy(linear_model1) %>% 
+  mutate(model = "Linear Model 1")
+linear_model2 <- tidy(linear_model2) %>% 
+  mutate(model = "Linear Model 2")
+linear_model3 <- tidy(linear_model3) %>% 
+  mutate(model = "Linear Model 3")
+linear_model4 <- tidy(linear_model4) %>% 
+  mutate(model = "Linear Model 4")
+linear_model5 <- tidy(linear_model5) %>% 
+  mutate(model = "Linear Model 5")
+IV_model1 <- tidy(IV_model1) %>% 
+  mutate(model = "IV Model 1")
+IV_model2 <- tidy(IV_model2) %>% 
+  mutate(model = "IV Model 2")
+
+bind_rows(linear_model1,
+          linear_model2,
+          linear_model3,
+          linear_model4,
+          linear_model5,
+          IV_model1,
+          IV_model2) %>% 
+  filter(term == "ed76") %>% 
+  mutate(upper = estimate + 1.965*std.error,
+         lower = estimate - 1.965*std.error) %>% 
+  ggplot(aes(model, estimate)) +
+  geom_point() +
+  geom_linerange(aes(ymin = lower, ymax = upper)) +
+  theme_minimal() +
+  labs(x = "", y = "β Estimate, 95% Confidence Interval")
+```
+While our IV estimates are larger, all of our OLS estimates fall within the 95% confidence intervals for the IV estimates. As such, we're not able to conclude that our IV estimates are significantly larger than our OLS estimates.
+
+## Further Reading
+
+**_Technical treatment of IV/2SLS_**: Chapter 5 of @wooldridge2010econometric, Chapter 8 of @greene2003econometric, Chapter 12 of @hansen2022econometrics
+
+**_Testing for Endogeneity_**: Section 8.7 of @davidson2004econometric, @ruud1984tests

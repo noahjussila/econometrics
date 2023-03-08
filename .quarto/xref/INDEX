@@ -1,0 +1,35 @@
+{
+  "exp_fam.qmd": {
+    "exp_fam.html": "7e372146"
+  },
+  "index.qmd": {
+    "index.html": "df1a8fda"
+  },
+  "estimators.qmd": {
+    "estimators.html": "01ca3ca5"
+  },
+  "asymptotics.qmd": {
+    "asymptotics.html": "92b6ad23"
+  },
+  "testing.qmd": {
+    "testing.html": "cfde9b9a"
+  },
+  "references.qmd": {
+    "references.html": "6dcb805d"
+  },
+  "ols.qmd": {
+    "ols.html": "a91f33c3"
+  },
+  "endog.qmd": {
+    "endog.html": "b008f883"
+  },
+  "binary.qmd": {
+    "binary.html": "1364c60c"
+  },
+  "nonpar.qmd": {
+    "nonpar.html": "6cf35ab3"
+  },
+  "extremum.qmd": {
+    "extremum.html": "33d3c165"
+  }
+}

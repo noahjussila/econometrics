@@ -1,0 +1,1975 @@
+\DeclareMathOperator{\plim}{plim}
+\DeclareMathOperator{\argmin}{argmin}
+\DeclareMathOperator{\argmax}{argmax}
+\newcommand{\var}[1]{\text{Var}\left(#1\right)}
+\newcommand{\avar}[1]{\text{Avar}\left(#1\right)}
+\newcommand{\E}[1]{\text{E}\left[#1\right]}
+\newcommand{\cov}[1]{\text{Cov}\left(#1\right)}
+\newcommand{\mse}[1]{\text{MSE}\left(#1\right)}
+\newcommand{\se}[1]{\text{se}\left(#1\right)}
+\newcommand{\limfunc}{lim} 
+\newcommand{\X}{\mathbf{X}}
+\newcommand{\Xm}{\mathbb{X}}
+\newcommand{\EER}{\bar{\thet}_\text{EE}}
+\newcommand{\NLS}{\hat{\bet}_\text{NLLS}}
+\newcommand{\z}{\mathbf{z}}
+\newcommand{\rr}{\mathbf{r}}
+\newcommand{\C}{\mathbf{C}}
+\newcommand{\Pe}{\mathbf{P}}
+\newcommand{\y}{\mathbf{y}}
+\newcommand{\Y}{\mathbf{Y}}
+\newcommand{\uu}{\mathbf{u}}
+\newcommand{\e}{\mathbf{e}}
+\newcommand{\D}{\mathbf{D}}
+\newcommand{\x}{\mathbf{x}}
+\newcommand{\xm}{\mathbb{x}}
+\newcommand{\Zm}{\mathbb{Z}}
+\newcommand{\Wm}{\mathbb{W}}
+\newcommand{\Hm}{\mathbb{H}}
+\newcommand{\W}{\mathbf{W}}
+\newcommand{\Z}{\mathbf{Z}}
+\newcommand{\Hess}{\mathbf{H}(\mathbf{\Z\mid\thet})}
+\newcommand{\Score}{\mathbf{S}(\mathbf{\Z\mid\thet})}
+\newcommand{\A}{\mathbf{A}}
+\newcommand{\h}{\mathbf{h}}
+\newcommand{\Q}{\mathbf{Q}}
+\newcommand{\F}{\mathbf{F}}
+\newcommand{\G}{\mathbf{G}}
+\newcommand{\I}{\mathbf{I}}
+\renewcommand{\D}{\mathbf{D}}
+\renewcommand{\C}{\mathbf{C}}
+\newcommand{\zer}{\mathbf{0}}
+\newcommand{\OLS}{\hat{\boldsymbol\beta}_\text{OLS} }
+\newcommand{\OLSOV}{\hat{\boldsymbol\beta}_\text{OLS,OV} }
+\newcommand{\OLSME}{\hat{\boldsymbol\beta}_\text{OLS,ME} }
+\newcommand{\EE}{\hat{\boldsymbol\theta}_\text{EX} }
+\newcommand{\ME}{\hat{\boldsymbol\theta}_\text{M} }
+\newcommand{\MDE}{\hat{\boldsymbol\theta}_\text{MDE} }
+\newcommand{\IV}{\hat{\boldsymbol\beta}_\text{IV} }
+\newcommand{\TSLS}{\hat{\boldsymbol\beta}_\text{2SLS} }
+\newcommand{\thet}{\boldsymbol{\theta}}
+\newcommand{\et}{\boldsymbol{\eta}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Sig}{\boldsymbol{\Sigma}}
+\newcommand{\ep}{\boldsymbol{\varepsilon}}
+\newcommand{\Omeg}{\boldsymbol{\Omega}}
+\newcommand{\Thet}{\boldsymbol{\Theta}}
+\newcommand{\bet}{\boldsymbol{\beta}}
+\newcommand{\rk}{rank}
+\newcommand{\tsum}{\sum}
+\newcommand{\tr}{tr}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\abs}[1]{\left\lvert#1\right\rvert}
+\newcommand{\ms}{\overset{ms}{\to}}
+\newcommand{\pto}{\overset{p}{\to}}
+\newcommand{\iid}{\overset{iid}{\sim}}
+\newcommand{\dto}{\overset{d}{\to}}
+\newcommand{\asim}{\overset{a}{\sim}}
+
+# The Classical Linear Model
+
+```{r}
+#| echo: false
+#| output: false
+library(tidyverse)
+library(mvtnorm)
+library(Matrix)
+library(ggtern)
+library(ggpubr)
+```
+
+Now that we're equipped with all the tools necessary to consider our first econometric model -- the classic linear model. 
+
+## Identification, Estimation, and Inference
+
+Before we cover our first, and arguably most important, model in econometrics, it's worth reiterating how the problems of identification, estimation, and inference are related. It's also important to consider whether these problems occur in the context of a model/population, or a sample drawn from the model/population. [These slides](https://scholar.harvard.edu/files/kasy/files/ia-causalityslides-iv.pdf) provide a nice diagram which provides some insight.  
+
+```{r}
+#| echo: false
+#| fig-align: center
+#| label: fig-plot51
+#| fig-asp: 0.5
+#| fig-width: 2
+#| fig-cap: "The relationship between models, parameters, and observed data."
+
+knitr::include_graphics("figures/identification.png")
+```
+
+When we posit a model $\mathcal P$ (which is just a collection of probability distributions), the first thing we need to do is parameterize our model. @angrist2008mostly refer to this as a "population first" approach in which we "define the objects [parameters] of interest before we can use data to study [estimate/make inferences] about them." We then must address the question of identification -- for a parameterization $\thet \mapsto P_\thet$, does $\thet$ uniquely determine $P_\thet$? If $\thet = \thet'$, then is it necessarily the case that $P_\thet = P_{\thet'}$? For this to be the case, we will usually need to amend our initial model by adding one or more assumptions. Once this is done, we can tackle the problem of estimation/inference given a sample drawn from the population knowing that once we've made a decision (whether that be an estimate or rejecting a null hypothesis) regarding the parameter space $\boldsymbol\Theta$, that it will be equivalent to a decision about the model $\mathcal P$ via identification. 
+
+Another way to think about identification is in terms of some "perfect" estimate of $\thet$. Imagine that you had an infinite amount of data such that it was guaranteed that $\hat{\thet} = \thet$. If $\thet$ is not identified, then our perfect estimate $\hat{\thet} = \thet$ could correspond to multiple $P_\thet \in \mathcal P$, so it is impossible to know the which model value $P_\thet$ generated the infinite amount of data which gave us our estimate. This speaks to how fundamental the problem of identification is. We usually like to focus on all the nice properties an estimator has, but even if that estimator checks all the boxes, it is meaningless if our parameters/model isn't identified. 
+
+The term "identification" can sometimes be the cause of confusion because it appears in a wide array of contexts, and definitions of identification sometimes only apply to a specific model.^[For example, identification is sometimes defined in the context of the rank of a particular matrix.] For an *excellent* survey of identification in econometrics see @lewbel2019identification.    
+
+## Conditional Expectation and Linear Projection
+
+We will begin with an example owing to @galton1886regression.
+
+:::{#exm-}
+Suppose we are interested in how the height of two parents is related to their child's height. Let $X$ be a random variable associated with the average height of two parents, and $Y$ be a random variable associated with the height of a child. Furthermore, assume the joint distribution of $(X,Y)$ is:
+\begin{align*}
+(X,Y) &\sim N(\boldsymbol \mu, \boldsymbol \Sigma),\\
+\boldsymbol \mu & = [68, 68]',\\
+\boldsymbol \Sigma & = \begin{bmatrix}8 & 4\\ 4 & 6\end{bmatrix}.
+\end{align*}
+As a consequence, $X \sim N(68, 8)$ and $Y ~ N(68,6)$ have the same marginal density of $N(68, 8)$. In other words, the average height of individuals is the same across generations. The variance of $X$ and $Y$ are given as $\sigma_X^2=\Sig_{11}$ and $\sigma_Y^2 = \Sig_{22}$.  
+
+```{r}
+#| code-fold: true
+#| label: fig-plot52
+#| fig-align: center
+#| fig-asp: 1
+#| fig-width: 8
+#| fig-cap: "The marginal desnity of childs' and parents' height along with their joint density"
+#| code-summary: "Show code which generates figure"
+mu <- c(68, 68)
+Sigma <- matrix(c(8, 4, 4, 6), ncol = 2)
+
+p1 <- tibble(x = c(seq(57, 80, length = 1000), seq(57, 80, length = 1000)),
+           key = c(rep("Parents", 1000), rep("Child", 1000))
+  ) %>% 
+  mutate(y = dnorm(x, 68, sqrt(8))) %>% 
+  ggplot(aes(x, y)) +
+  geom_line() +
+  facet_wrap(~key, scales = "free") +
+  theme_minimal() +
+  labs(x = "Height (in)",
+       y = "density")
+
+df <- expand_grid(
+  x = c(seq(57, 80, length = 1000), 60, 65, 70, 75), 
+  y = seq(57, 80, length = 1000)
+)
+df$p <- dmvnorm(df, mu, Sigma)
+p2 <- ggplot(df, aes(x, y, z = p)) +
+  geom_contour(bins = 20, color = "black") +
+  theme_minimal() +
+  labs(x = "Parents' (Average) Height (in)", y = "Child's Height (in)")
+
+ggarrange(p1, p2, ncol = 1)
+```
+
+If we want to predict a child's height using parents' height $X = x$, we can inspect the conditional expectation $\E{Y\mid X = x}$. This expectation is given as 
+
+\begin{align*}
+\E{Y\mid X = x} & = \int_{\mathcal Y} y\cdot f_{Y\mid x}(y\mid x)\ dy\\ & = \int_{\mathcal Y} y\cdot \frac{f_{Y,X}(y \mid x, \boldsymbol \mu, \boldsymbol \Sigma)}{f_{X}(x \mid \mu_1, \sigma_{X})}\ dy\\
+& = \int_{\mathcal Y}y\cdot \frac{\exp\left(-\frac{1}{2}([x,y]' - \boldsymbol \mu)'\boldsymbol\Sigma^{-1}([x,y]' - \boldsymbol \mu)\right)/\sqrt{(2\pi)^k\det(\boldsymbol\Sigma)}}{\exp[-(x-\mu_X)^2/2\sigma^2]/\sqrt{2\pi\sigma_X^2}}\ dF_Y\\
+&\vdots\\
+& = \mu_Y + \frac{\sigma_{Y}}{\sigma_{X}}\rho(x - \mu_X)
+\end{align*}
+If we substitute in our parameters, and the calculated correlation coefficient of 
+$$ \rho = \frac{\cov{X,Y}}{\sigma_{X}\sigma_{Y}} = \frac{1}{4\sqrt 3} \approx 0.577,$$
+we have $$ \E{Y\mid X = x} \approx 68 + \frac{\sqrt 6}{\sqrt 8}\cdot\frac{1}{4\sqrt 3}(x - 68) = 34 + \frac{1}{2}x.$$
+
+```{r}
+#| code-fold: true
+#| fig-align: center
+#| label: fig-plot53
+#| fig-asp: 1
+#| fig-width: 8
+#| fig-cap: "The density of a child's height conditioning on their parent's height"
+#| code-summary: "Show code which generates figure"
+p1 <- df %>% 
+  filter(x %in% c(60, 65, 70, 75) )%>% 
+  mutate(p_y = p/dnorm(x, 68, sqrt(8))) %>% 
+  ggplot(aes(y, p_y, color = as.factor(x))) + 
+  geom_line() +
+  theme_minimal() +
+  labs(color = "Parents's Height",
+       x = "Childs's Height",
+       y = "Conditional Density") +
+  theme(legend.position = "bottom")
+
+rho <- (Sigma[1,2])/(sqrt(Sigma[1,1]) * sqrt(Sigma[2,2]))
+s1 <- sqrt(Sigma[1,1])
+s2 <- sqrt(Sigma[2,2])
+df2 <- data.frame(x = seq(57, 80, length = 1000)) %>% 
+  mutate(E_y = mu[2] + rho*(s2/s1)*(x - mu[1]))
+
+
+p2 <- df2 %>% ggplot(aes(x,E_y)) + 
+  geom_line() +
+  theme_minimal() +
+  labs(x = "Parents' (Average) Height (in)",
+      y = "Conditional Expectation of Child's Height")
+
+ggarrange(p1, p2, ncol = 1)
+```
+
+The key observation is that the function $\E{Y \mid X = x}$ is linear in $x$! If we overlay the line associated with $\E{Y\mid X =x}$ on the joint density of $(X,Y)$ we end up with a figure emulating one in @galton1886regression.
+```{r}
+#| code-fold: true
+#| label: fig-plot54
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "The conditional expectation of a child's height given their parent's height in red, over the joint density of child and parent height. The red lines position in relation to the blue 45° line illustrates regression to the mean"
+#| code-summary: "Show code which generates figure"
+df <- expand_grid(
+  x = c(seq(57, 80, length = 1000), 60, 65, 70, 75), 
+  y = seq(57, 80, length = 1000)
+)
+df$p <- dmvnorm(df, mu, Sigma)
+
+ggplot(df, aes(x, y, z = p)) +
+  geom_hline(yintercept = 68, linetype = "dashed", size = 0.4) +
+  geom_vline(xintercept = 68, linetype = "dashed", size = 0.4) +
+  geom_contour(bins = 20, color = "black") +
+  theme_minimal() +
+  labs(x = "Parents' (Average) Height (in)", y = "Child's Height (in)") +
+  geom_abline(intercept = 34, slope = 1/2, color = "red") +
+  geom_abline(intercept = 0, slope = 1, color = "blue") +
+  annotate("text", label = "E[Y|X = x]",x = 75.5, y = 34 + 76/2 - 1, size = 4, colour = "red") +
+  annotate("text", label = "X = x",x = 75, y = 74, size = 5, colour = "blue")
+```
+On average, children with tall parents tend to be shorter than their parents. Conversely, children with short parents tend to be taller than their parents. In other words, as shown by the lines superimposed on $f_{X,Y}$, $\E{Y\mid X = x} < x$ when $x > \E{X}$ and $\E{Y\mid X = x} > x$ when $x < \E{X}$.
+:::
+
+This phenomenon is known as **_regression to the mean_**, and it lends its name to the practice of relating $Y$ to $X$. The ideas from @galton1886regression were extended by one of Galton's students in @pearson1903laws, who actually uses the term "regression line" in reference to the function $\E{Y\mid X}$.
+
+::: {.remark}
+It behooves one to acknowledge that Francis Galton's motivation for studying height among parents and children stemmed from his interest in genetics and Darwinism. He was an early proponent of eugenics, and even coined the term "eugenics". He referred to regression to the mean as "regression to mediocrity", and believed this should be avoided by selective reproduction. Many of Galton's beliefs are classic examples of scientific racism.
+:::
+
+Let's abstract from the example of height. Suppose we have $(Y, \mathbf X)\sim F_{Y,\X}$ for some **_dependent variable_** $Y$ (with sample space $\mathcal Y$) and a vector of **_independent variables/explanatory variables/covariates/regressors_** $\X$ (with sample sapce $\mathcal X$). If we want to explore the relationship between $Y$ and $\X$, one measure of interest is the conditional expectation of $Y$ given $\X$. If we know $\X$ takes on the value $\x$, then on average, what is the value of $Y$?
+$$ \E{Y\mid \X = \x} = \int_{\mathcal Y}y \ dF_{Y\mid \x} = \int_{\mathcal Y}y\cdot f_{Y\mid \x}(y\mid \x) \ dy = \int_{\mathcal Y}y\cdot\frac{f_{Y, \X}(y,\x)}{f_{\X}(\x)}\ dy$$ This conditional expectation maps values from the sample space of $\X$ to the sample space for $Y$. In this sense, $\E{Y\mid \X = \x}$ is a function mapping $\mathcal X \mapsto \mathcal Y$. $\E{Y\mid \X = \x}$ *is not* a function of $y$, as it is calculated via integrating over all values of $y\in\mathcal Y$. Following @angrist2008mostly and @hansen2022econometrics, we name this function.
+
+:::{#def-}
+If $(Y, \mathbf X)\sim F_{Y,\X}$, then the <span style="color:red">**_conditional expectation function (CEF)_**</span> $\hat Y:\mathcal X \to \mathcal Y$ is defined as 
+$$\hat Y(X) = \E{Y\mid \X}. $$
+The CEF is an expectation, so observations of $Y$ are bound to deviate from it. We will define this deviation as the <span style="color:red">**_CEF error_**</span> $\varepsilon_{c} = Y - \hat Y(X)$.
+:::
+
+In the height example, $\varepsilon_{c}$ captured how much a child's height differed from the trend given by $\E{Y\mid \X}$.
+
+:::{#prp-ceferr}
+
+## Properties of CEF Error
+
+The CEF error is:
+
+1) Mean independent of $\X$, $\E{\varepsilon_{c}\mid\X} = 0$;
+2) Uncorrelated with $\X$, $\E{\varepsilon_{c}\X} = \zer$;
+3) Uncorrelated with any function $h(\X)$, $\E{\varepsilon_{c} h(\X)} = 0$ 
+:::
+
+:::{.proof}
+\begin{align*}
+\E{\varepsilon_{c}\mid\X} &= \E{Y - \hat Y(X)\mid \X}\\
+& =  \E{Y - \E{Y\mid \X} \mid \X} \\
+& = \E{Y\mid \X} - \E{\E{Y\mid \X} \mid \X} & (\E{\cdot | \X}\text{ linear})\\
+& = \E{Y\mid \X} - \E{Y\mid \X} & (\text{Law of Iterated Expectations})\\
+& = 0.
+\end{align*}
+$\X$ and $\varepsilon_{c}$ being uncorrelated is a consequence of mean independence. For some $h(\X)$, we have 
+\begin{align*}
+\E{\varepsilon_{c} h(\X)} & = \E{\varepsilon_{c} h(\X) \E{\varepsilon_{c}\mid\X}} & (\text{Law of Iterated Expectations})\\
+& = \E{\varepsilon_{c} h(\X)\cdot 0} & (\E{\varepsilon_{c}\mid\X} = 0)\\
+& = \E{0}\\
+& = 0.
+\end{align*}
+<span style="color:white">space</span>
+:::
+
+We *are not* assuming that $\E{\varepsilon_{c}\mid\X} = 0$. This equality holds by the definition of the CEF. 
+
+So why restrict our attention to the CEF? Perhaps there are other functions $g:\mathcal X\to\mathcal Y$ which is better at predicted $Y$ than $\hat Y(\X)$. It turns out that $\hat Y(\X)$ is the function which minimizes the MSE which arises from predicted $Y$.
+
+:::{#prp-}
+
+## CEF Minimizes MSE
+
+For some arbitrary $g:\mathcal X\to\mathcal Y$,
+$$ \hat Y(\X) = \E{Y\mid \X} = \argmin_{g}\E{(Y-g(\X))^2}.$$
+:::
+
+:::{.proof}
+\begin{align*}
+\E{(Y-g(\X))^2} & = \E{(Y-g(\X) + 0)^2}\\
+& = \E{(Y-g(\X) + (\E{Y\mid \X} - \E{Y\mid \X}))^2} & (0 = \E{Y\mid \X} - \E{Y\mid \X})\\
+& = \E{(Y - \E{Y\mid \X}) + (\E{Y\mid \X} - g(\X)))^2}\\
+& = \E{(Y - \E{Y\mid \X})^2 + 2(Y - \E{Y\mid \X})(\E{Y\mid \X} - g(\X)) + (\E{Y\mid \X} - g(\X))^2}\\
+& = \E{(Y - \E{Y\mid \X})^2} + 2\E{(Y - \E{Y\mid \X})(\E{Y\mid \X} - g(\X)) } + \E{(\E{Y\mid \X} - h(\X))^2}\\
+& = E{(Y - \E{Y\mid \X})^2} + 2\E{\varepsilon_{c}(\E{Y\mid \X} - g(\X)) } + \E{(\E{Y\mid \X} - g(\X))^2} & (\varepsilon_{c} = Y - \E{Y\mid \X})
+\end{align*} 
+If we define $h(\X) = \E{Y\mid \X} - g(\X)$, we can use the fact that $\varepsilon_{c}$ is uncorrelated with any function of $\X$. 
+\begin{align*}
+\E{(Y-g(\X))^2} & = E{(Y - \E{Y\mid \X})^2} + 2\E{\varepsilon_{c} h(\X)} + \E{(\E{Y\mid \X} - g(\X))^2}\\
+\E{(Y-g(\X))^2} & = E{(Y - \E{Y\mid \X})^2} + 2\cdot 0 + \E{(\E{Y\mid \X} - g(\X))^2} & (\E{\varepsilon_{c} h(\X)} = 0)\\ 
+\E{(Y-g(\X))^2} & = E{(Y - \E{Y\mid \X})^2} + \E{(\E{Y\mid \X} - g(\X))^2}
+\end{align*} 
+Only the second term includes the variable we are minimizing over, so 
+$$ \argmin_{h}\E{(Y-g(\X))^2} =\argmin_{h}\left\{E{(Y - \E{Y\mid \X})^2} + \E{(\E{Y\mid \X} - g(\X))^2}\right\} = \argmin_h \E{(\E{Y\mid \X} - g(\X))^2},$$ where $\E{(\E{Y\mid \X} - g(\X))^2} \ge 0$ because we are squaring a quantity. If we take $g(\X) = \hat Y(X) = \E{Y\mid \X}$, we have 
+$$ \E{(\E{Y\mid \X} - g(\X))^2} = \E{(\E{Y\mid \X} - \E{Y\mid \X})^2} = \E{0}=0.$$ Therefore the CEF does minimize the MSE in question. 
+:::
+
+This results makes the CEF the optimal candidate for predicting $Y$ given $\X = \x$ in a decision theoretic sense (taking the loss function to be quadratic), but in practice we don't actually know the precise form of the CEF. When $(X,Y) \sim N(\boldsymbol \mu, \Sig)$, we saw the CEF is linear, but this needn't be the case.  
+
+:::{#exm-}
+Define the following density on the sample space $\mathcal X\times \mathcal Y = [0,2]\times[2,4]$: 
+
+$$f_{X,Y}(x,y)=\frac{1}{8}(6-x-y)$$
+The marginal density of $X$ is 
+$$ f_X(x) = \int_{\mathcal Y}f_{X,Y}(x,y)\ dy = \int_2^4\frac{1}{8}(6-x-y)\ dy = \frac{1}{8}(6-2x),$$ and the conditional density of $Y\mid X = x$ is 
+$$ f_{Y\mid x}(y\mid x) = \frac{f_{X,Y}(x,y)}{f_{X}(x)} = \frac{\frac{1}{8}(6-x-y)}{\frac{1}{8}(6-2x)} = \frac{6-x-y}{6-2x}$$ Using this to calculate the expectation $\E{Y \mid X = x}$ gives
+$$\E{Y \mid X = x} = \int_{\mathcal Y} y\cdot f_{Y\mid x}(y\mid x)\ dy= \int_2^4 y\frac{6-x-y}{6-2x}\ dy = \frac{26-9x}{9-3x}.$$
+
+```{r}
+#| code-fold: true
+#| fig-align: center
+#| label: fig-plot55
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "A nonlinear CEF function"
+#| code-summary: "Show code which generates figure"
+tibble(x = seq(0, 2, length = 1000)) %>% 
+  mutate(y = (-9*x + 26)/(-3*x + 9)) %>% 
+  ggplot(aes(x, y)) + 
+  geom_line() +
+  labs(x = "x", y = "Conditional Expectation of Y given x") +
+  theme_minimal()
+```
+:::
+
+In order to give the CEF some form, we will approximate it with a linear function (which may hold for certain $f_{\X,Y}$):
+$$\E{Y\mid \X } =  \X\bet.$$ Henceforth, we will assume that $\X$ includes a column of 1's such that $\X\bet$ includes an intercept term. We will take the coefficient $\bet$ to be that which gives the best linear prediction of $Y$ given $\X$.
+$$ \bet = \argmin_{\mathbf{b}}\E{(Y-\X\mathbf b)^2}$$
+The error associated with this projection is the <span style="color:red">**_linear projection error_**</span>,
+$\varepsilon_{\ell} =  Y-\X\mathbf b$. The linear projection error is not the same as the conditional expectation error. It is only the case that $\varepsilon_{\ell} = \varepsilon_c$ if the CEF is truly linear. 
+
+Taking the definition of $\bet$ to be a parameterization, we can define our first model. We'll follow the naming convention of @hansen2022econometrics.
+
+:::{#def-cefdef}
+The <span style="color:red">**_linear projection (CEF) model_**</span> is defined as $\mathcal P_\text{LP} = \{P_\bet \mid \bet \in \mathbb R^{k+1}\}$, where 
+\begin{align*}
+P_\bet &= \{F_{\X,Y} \mid \E{Y\mid \X}= \X\bet \},\\
+\bet &= \argmin_{\mathbf{b}}\E{(Y-\X\mathbf b)^2},\\
+\X & = (1, X_2, \ldots, X_K).
+\end{align*}
+:::
+
+This model is not regular, as each element $P_\bet$ is itself a collection of distributions. As the following example highlights, it won't be possible to identify the underlying $F_{\X,Y}$, only $\E{Y\mid \X}$. Consequently, each element of $\mathcal P_\text{LP}$ is a collection of distributions with a common $\E{Y\mid \X}$.
+
+:::{#exm-}
+
+## Exercise in Identification
+
+Suppose $(X,Y)\sim N(\boldsymbol \mu, \Sig)$. In this case, the CEF is actually linear and given as 
+$$\E{Y\mid X} = \mu_Y + \frac{\sigma_{Y}}{\sigma_{X}}\rho(x - \mu_X).$$ We can define *many* normal distributions with a common CEF. For example, if we have $\rho = \mu_x = \mu_y = \rho' = \mu_x' = \mu_y' = 1$, $\sigma_X = 1$, $\sigma_Y = 2$, $\sigma_X' = 2$, and $\sigma_Y' = 4$, then 
+$$\mu_Y + \frac{\sigma_{Y}}{\sigma_{X}}\rho(x - \mu_X) = \mu_Y' + \frac{\sigma_{Y}'}{\sigma_{X}'}\rho'(x - \mu_X') = \frac{1}{2} +x.$$ This means that $\bet = (1/2,1)$ for both distributions.
+This problem is reminiscent of systems of equations in that we have so many more variables than equations, that there are infinite possibilities (**_remember this_**). This is also just the tip of the iceberg when considering how many elements are included in $P_{(1/2,1)}$. It isn't just all the Gaussian distributions where the CEF is $\frac{1}{2} +x$. It isn't all the distributions with a linear CEF which is $\frac{1}{2} +x$. It is all the distributions for which the best linear approximation of the CEF is $\frac{1}{2} +x$ (which happens to include the previous groups). Is this an issue? Well not really. We aren't concerned with the joint distribution $F_{\X,Y}$, as the only thing with any bearing on prediction here is $\E{Y\mid \X}$ (we made no assumptions about $F_{\X,Y}$ when proving that the CEF minimizes MSE). In the event we did want to identify $F_{\X,Y}$, we would need to impose additional assumptions on $\mathcal P_\text{LP}$. Consider the following assumptions:
+
+1. $(X,Y)\sim N(\boldsymbol \mu, \Sig)$
+2. $\mu_X = 0$
+3. $\sigma_X = \sigma_Y = 1$
+
+In this case, $$\E{Y\mid X} = \mu_Y + \rho x = \mu_Y + \frac{\cov{X,Y}}{\underbrace{\sigma_X \sigma_Y}_{1\cdot 1}}x = \underbrace{\mu_Y}_{\beta_1} +\underbrace{\cov{X,Y}}_{\beta_2}x,$$
+ Assuming $(X,Y)\sim N(\boldsymbol \mu, \Sig)$, $\mu_X = 0$, and $\sigma_X = \sigma_Y = 1$, it must be the case that
+
+\begin{align*}
+(X,Y) &\sim N(\boldsymbol \mu, \boldsymbol \Sigma),\\
+\boldsymbol \mu & = [0, \beta_1]',\\
+\boldsymbol \Sigma & = \begin{bmatrix}1 & \beta_2\\ \beta_2 & 1\end{bmatrix}.
+\end{align*}
+:::
+
+Now we can turn to the question of identifying $\bet$.
+
+:::{#prp-}
+If $\E{\X\X'}$ is invertible, then the parameter $\bet$ is identified in the linear projection (CEF) model. 
+:::
+
+:::{.proof}
+We must show that $\bet = \bet'$, then is it necessarily the case that $P_\bet = P_{\bet'}$. By the definition of the linear projection (CEF) model, it suffices to show that $\argmin_{\mathbf{b}}\E{(Y-\X\mathbf b)^2}$ has a solution, and that the solution is unique. 
+\begin{align*}
+\bet &= \argmin_{\mathbf{b}}\E{(Y-\X\mathbf b)^2}\\
+& = \argmin_{\mathbf{b}}\E{Y^2 + 2\mathbf b(\X'Y) + (\X\mathbf b)'(\X\mathbf b)}\\
+& = \argmin_{\mathbf{b}} \left\{\E{Y^2} + 2\mathbf b\E{\X'Y} + 2\mathbf b'\E{\X'\X}\mathbf b)\right\}
+\end{align*}
+The first order condition associated with this problem is 
+$$ 2\E{\X'Y} + 2\E{\X'\X} \bet = \zer.$$ This is equivalent to 
+$$\E{\X'Y} = \E{\X'\X} \bet.$$ We now use the assumption that $\E{\X'\X}$ is invertible to solve for a unique solution for $\bet$:
+$$ \bet = \left(\E{\X'\X}\right)^{-1}\E{\X'Y}.$$
+Therefore, $\bet$ is identified.
+:::
+
+To illustrate how the assumption that $\E{\X'\X}$ is invertible leads to identification, consider what happens when it does not hold. In $\E{\X'\X}$ is not invertible, than $\X'\X$ does not have full rank
+and has infinite solutions. Suppose we have:
+\begin{align*}
+\E{\X'Y} & = \begin{bmatrix} 1 \\ 1 \end{bmatrix}.\\
+\E{\X'\X} & = \begin{bmatrix} 1 & 1\\ 0 & 0 \end{bmatrix}.
+\end{align*}
+In this case
+\begin{align*}
+&\E{\X'Y} = \E{\X'\X} \bet\\
+\implies &\begin{bmatrix} 1 & 1\\ 0 & 0 \end{bmatrix}\begin{bmatrix} \beta_1 \\ \beta_2 \end{bmatrix} = \begin{bmatrix} 1 \\ 1 \end{bmatrix}\\
+\implies & \beta_1 + \beta_2 = 1.
+\end{align*}
+This final equation has an infinite number of solutions. If two of those solutions happen to be $\bet$ and $\bet'$, then $P_{\bet,\Sig} = P_{\bet'}$ despite  $\bet\neq\bet'$.
+
+## Structural Models and *The* Linear Model
+
+The CEF approach to regression aims to describe a characteristic of the joint density $f_{Y,\X}$. It captures an association between variables, but not a causal link. Econometricians are often concerned with causal links to inform economic policy, something which differentiates econometrics from statistics. This is why the approach to linear regression seen in standard econometrics sources such as @greene2003econometric, @wooldridge2010econometric, @hayashi2011econometrics, @wooldridge2015introductory, and @stock2003introduction take a **_structural_** approach to linear regression. Before giving a heuristic definition of "structural", let's consider an example due to  @reiss2007structural and inspired @cobb1928theory.  
+
+:::{#exm-}
+Assume a firms output $Y$ is related to labor input $L$ and capital input $K$ according to $$Q = AL^{\beta}K^{\alpha}.$$ The total factor of productivity is $A$, while $L$ and $K$ are the elasticity of output with respect to labor and capital, respectively. The production function can be written as 
+$$ \log Q = \log A + \beta \log L + \alpha \log K.$$ Now consider the linear regression:
+$$ \log Q = \log A + \beta \log L + \alpha \log K + \varepsilon$$ where $\varepsilon$ is an error addressing the fact that the linear relationship may not hold perfectly. In this case are $(\log A, \alpha, \beta)$ associated with the best linear projection of $\log Q$ onto $\log L$ and $\alpha \log K$, or do they correspond to the factor of productivity, and elasticities of output? If the latter is the case, then what does $\varepsilon$ represent in the context of the deterministic theoretical relationship $Q = AL^{\beta}K^{\alpha}$? It will turn out that for the coefficients of the best linear projection to coincide with the economic interpretation from $Q = AL^{\beta}K^{\alpha}$, we will need to impose assumptions about $\varepsilon$, a step that is one of the defining features of econometrics. 
+:::
+
+The key difference between this example and the height example from @galton1886regression's is that we are now trying to root our linear regression in structure provided by economic theory/intuition, as to enable us to make economic conclusions. Philip Haile distinguishes these approaches in an excellent set of [slides](http://www.princeton.edu/~reddings/tradephd/Haile_theorymeas.pdf). He would classify @galton1886regression's work as descriptive as it "estimates relationships between observables". This is opposed to a structural approach which "estimates features of a data generating process (i.e, a model) that are (assumed to be) invariant to the policy changes or other counterfactuals of interest." This difference is also linked to the error in the linear regression, $\varepsilon$. As put by @reiss2007structural:
+
+>Where did the error term in the empirical model come from? The
+>answer to this question is critical because it affects whether...
+>the parameters of the Cobb–Douglas production function [are identified], as opposed to
+>the parameters of the best linear predictor of the logarithm of
+>output given the logarithms of the two inputs [being identified]. In other words, it is the combination of
+>an economic assumption (production is truly Cobb–Douglas) and statistical assumptions ($\varepsilon$ 
+>satisfies certain moment conditions) that distinguishes a structural model from
+>a descriptive one.
+
+In an effort to beat a dead horse, a final definition of a structural model is due to @goldberger1972structural, who simply puts "By structural equation models, I refer to stochastic models in which each equation represents a causal link, rather than a mere empirical association." None of this is to say that descriptive model is not useful. Just like descriptive statistics give insight into data, a descriptive model (such as the linear projection model) is an excellent way to investigate data, and findings may inform the development of a structural model.     
+
+Let's now reintroduce linear regression from a structural perspective. We will do so with no assumptions about our model, and amend our definition as we determine which assumptions are required for identification and desirable properties of estimators. The goal of this approach is to emphasize that the assumptions associated with an econometric model aren't set in stone from the onset. You begin with little to no assumptions, and then determine which assumptions are necessary as you analyze the model and accompanying estimators. 
+
+We have a vector of $K$ regressors $\X = [X_1,\ldots,X_K]$ (assuming $X_1 = 1$ to allow for an intercept), structural parameters $\bet = [\beta_1,\ldots,\beta_n]'$ , and some structural error term $\varepsilon$. The density underlying the model is the joint density between regressors and the error $f_{\X,\varepsilon}$. The independent variable $Y$ is given as
+$$ Y = \X\bet + \varepsilon.$$ The major difference between this and the linear projection model is the underlying density for the latter is $f_{\X,Y}$ where $\bet$ and $\varepsilon$ are defined using this density. Now we're determining $Y$ via some structural parameter $\bet$ and the density $f_{\X,\varepsilon}$. There are many situations in which the realizations of $\varepsilon$ may not be identically, or independently, distributed, so we need to consider the joint density of $\ep = (\varepsilon_1, \ldots, \varepsilon_n)$ where our sample is size $n$. This joint density is $f_{\ep}$. The underlying density from which we draw regressors and errors *is not* $f_{\X,\ep}$, as a realization from this distribution would be comprised of $K$ regressors and $n$ errors. What we need is the joint density of $\ep$ and $n$ observations of $\X$, so we need to consider the following random matrix:
+$$\Xm = \begin{bmatrix}\X_1 \\ \vdots \\ \X_i \\ \vdots\\ \X_n\end{bmatrix}$$ A sample of $n$ observations of $K$ regressors $\X$ and errors $\ep$ is a single realization drawn from the density $f_{\Xm,\ep}$.
+
+$$ \Y = \Xm\bet + \ep = \begin{bmatrix}  \X_1\bet + \varepsilon_1 \\ \vdots \\ \X_i\bet + \varepsilon_i \\ \vdots \\  \X_n\bet + \varepsilon_n  \end{bmatrix} = \begin{bmatrix}  \beta_0 + \beta_1X_{21}  + \cdots +\beta_KX_{K1}+ \varepsilon_1 \\ \vdots \\ \beta_0 + \beta_1X_{2i}  + \cdots +\beta_KX_{Ki}+ \varepsilon_i  \\ \vdots \\  \beta_0 + \beta_1X_{2n}  + \cdots +\beta_KX_{Kn}+ \varepsilon_n  \end{bmatrix}$$
+We could also write $\Xm$ as $K$ column vectors of length $n$, each corresponding to the $n$ observations of each regressor.
+$$\Xm = \begin{bmatrix}\X_1 & \cdots & \X_j & \cdots& \X_K\end{bmatrix}.$$ To distinguish between $\X_i$ (one observation of $K$ regressors) and $\X_j$ ($n$ observations of one regressor), we will use the indices $i$ and $j$, respectively.^[Later on we may index observations by different letters depending on context. For instance if our data is a time series we'll index observations with $t$.] We will assume that our data is the result of a random sample of observations of regressors $\X_i$:
+$$ f_{\Xm}=\textstyle\prod_{i=1}^n f_{\X_i}.$$ The random sample assumption is essential as it will allow us to apply the LLN and CLT.
+Finally, we introduce a parameter which dictates the variance of the error $\ep$. This will be the PSD matrix $\Sig = \var{\ep\mid\Xm}$. Now we can define the linear model in the absence of assumptions.
+
+:::{#def-}
+The <span style="color:red">**_linear model_**</span> is defined as $\mathcal P_\text{LM} = \{P_{\bet,\Sig} \mid \bet \in \mathbb R^{K},\ \Sig \in \mathbb R^{n\times n} \}$, where 
+\begin{align*}
+P_{\bet,\Sig} &= \{F_{\Xm,\ep} \mid \Y= \Xm\bet +\ep,\ \Sig  = \var{\ep\mid\Xm},\ f_{\Xm}=\textstyle\prod_{i=1}^n f_{\X_i} \},\\
+\Xm & = [\X_1, \cdots, \X_j, \cdots \X_K] = [\X_1, \cdots, \X_i, \cdots \X_n]',\\
+\Y & = [Y_1, \ldots, Y_n],\\
+\ep & = [\varepsilon_1, \ldots, \varepsilon_n]\\
+\end{align*}
+:::
+
+When discussing a model  $P_{\bet,\Sig}\in\mathcal P_\text{LM}$, **we are implicitly assuming that the specification of the model is correct, and regressors are IID**. If the model were not linear than $P_{\bet,\Sig}\notin\mathcal P_\text{LM}$, which is not our focus at the moment, but is a legitimate concern. 
+
+In the context of a structural linear model, $\ep$ is not simply an approximation error. In introduces a stochastic element to a deterministic economic model. @reiss2007structural enumerate four ways that this randomness can be introduced. We will explore these in the context of the Cobb-Douglas production model where $\log Q_i = \log A + \beta \log L_i + \alpha \log K_i + \varepsilon$ for an observation from firm $i$.
+
+1. We may be uncertain about the economic environment at hand.
+2. Agent uncertainty about the economic environment;
+3. Optimization errors on the part of economic agents;
+4. Measurement errors in observed variables.
+
+:::{#exm-car}
+Suppose an agent is deciding between purchasing two cars ($j=1,2$) has a linear utility function $u_{ij} = \X_{ij}\bet$. The vector $\x_{ij}$ are attributes of car $j$ (size, mpg, make, model, etc.). We do observe their choice of vehicle $y_i$, but cannot observe their utility from the respective vehicles. Assuming agents maximize their utility, then their choice can be defined as 
+$$y_i = \begin{cases}\text{car }1& u_{i1} \ge u_{i2}\\ \text{car }2& u_{i2} > u_{i1} \end{cases}.$$ 
+How would we incorporate $\varepsilon$ into our model? In the linear model the error directly affects the dependent variable, but in this case the (presumable) dependent variable $y_i$ is an indicator. It doesn't make sense to add a stochastic element to it, as we observe a customer's choice with no uncertainty.   
+
+1. People are inherently heterogeneous in the utility they receive from any product. One agent may live in a city with access to public transit and would not gain much utility from a car, while another agent may live in a rural area and rely on a car to commute to work and run errands. The error term $\varepsilon_i$ could correct for these differences. It also could be the case that the error is specific to a consumer *and* a particular vehicle $j$. Maybe consumer $i$'s is particularly loyal to the manufacturer of car $j$ and they receive more utility as a result. This could be captured with an error $\varepsilon_{ij}$.
+2. An agent may be not have the opportunity to test drive each car before purchasing, so their is some uncertainty as to how much utility they would receive from purchasing it. This uncertainty could be incorporated via $\varepsilon_{ij}$.
+3. An agent may not be perfectly rational and could make a mistake while attempting to maximize their utility. They could purchase car $j=2$ despite the fact that $u_{i1} \ge u_{i2}$. To correct for this miscalculation, we could include an error $\varepsilon_{ij}$ such that $u_{i1} + \varepsilon_{i1} \le u_{i2} + \varepsilon_{i2}$
+4. We may not be able to perfectly measure all the variables in the model. If one of the attributes in the vector $\x_{ij}$ is price, but we only observe MSRP, then we aren't accounting for the fact that some customers may have purchased their car for a lower price (it could be used, or on sale). This measurement error can be accounted for with $\varepsilon_{ij}$
+
+It's important to notice how the error term is indexed in each example. Sometimes the error arises because of the agent $i$ ($\varepsilon_i$), or the agent and the specific car ($\varepsilon_{ij}$). There could also be ways to incorporate an error that is specific to each car, but not agents ($\varepsilon_j$). Later on in Section \@ref(binary-choice) we will talk about how to estimate models like one.
+:::
+
+The precise interpretation of $\ep$ is key if we want to justify the statistical assumptions about $\ep$ which @reiss2007structural cite as a key player in identification. 
+
+::: {.remark}
+Another classical assumption of linear regression that we have explicitly violated is that $\Xm$ is a matrix of constants. In certain settings researchers are able to determine the values before collecting data. For instance, in a laboratory setting you may have enough control over the (observed/sampled) regressors  as to be able to record the value of $\Y$ at predetermined realizations of $\Xm$. This is rarely the case in social sciences, the realm in which econometrics exists. For this reason, we treat $\Xm$ as random, and the case of fixed regressors as a special case. In practice, this means we need to condition on $\Xm$ when considering expectations and variances of quantities related to $\Xm$.  
+:::
+
+Is it still the case that $\bet$ is identified when $\E{\X'\X}$ is invertible? It turns out that we will need an additional assumption that we got "for free" with the CEF model via Proposition \@ref(prp:ceferr), that being that $\ep$ and $\X$ are uncorrelated. 
+
+:::{#def-}
+The covariates $\X$ are <span style="color:red">**_weakly exogenous_**</span> if $\E{X_i\varepsilon_i} = 0$. In matrix form this is 
+$$\E{\X'\ep} = \zer.$$ Equivalently,^[Technically this equivalency only holds if $\beta_0\neq 0$.] $\X$ is weakly exogenous if:
+\begin{align*}
+\E{\ep} &= \zer \\
+\cov{\X,\varepsilon_i}&=0 & (i=1,\ldots,n).
+\end{align*}
+If this assumption fails, we say $\X$ is <span style="color:red">**_endogenous_**</span>. 
+:::
+
+You may hear this assumption associated with the word "orthogonal", or known as an **_orthogonality condition_**. This is the precise type of assumption that @reiss2007structural referred to when talking about the role $\varepsilon$ plays in structural models. If $\X_1$ is the column of 1s associated with the intercept $\beta_1$, then $\E{\X_1\ep} = 0$.
+
+:::{#exm-endogex}
+
+## Endogeneity
+
+A classic example in econometrics due to labor economists is estimating the impact that education has on earnings. An early paper to consider this was @griliches1972education, @card1995using is perhaps the most famous attempt at estimating this effect (@card1999causal and @card2001estimating  reviews similar studies and survey approaches to this problem). Economic intuition tells us that the more schooling someone receives, the higher their earnings/salary will be. Professions that are associated with high salaries often require (or are associated with) graduates degrees: doctors need an MD, lawyers need a JD, and business executives often have MBAs. On the opposite side of the spectrum, many white collar jobs require a college diploma, so only having a high school diploma limits a prospective employee's ability to qualify for certain jobs which traditionally have higher pay. This observation leads us to posit the deterministic relationship:
+$$\log(income_i) = \beta_1 + \beta_2\cdot educ_i,$$ where $income_i$ is an agent $i$'s annual income and $educ_i$ is years of post-secondary education (we will operate under the assumption that every agent has a high school diploma). There are, of course, other factors impacting earnings (work experience, profession, location of residence, etc.) that are readily observable, but for the purpose of the example we will ignore those. There are of course exceptions to this deterministic relationship. Bill Gates and Mark Zuckerberg both only have high school diplomas,^[Okay, this is admittedly a bit misleading because both dropped out of Harvard.] but have higher incomes than virtually everyone in the world. To account for this, we introduce the stochastic element $\varepsilon_i$ to our model.
+$$\log(income_i) = \beta_1 + \beta_2\cdot educ_i + \varepsilon_i$$
+In this case, $\varepsilon_i$ corresponds to all the other unobservable determinants of earnings. A major unobservable determinant is innate ability. Bill Gates and Mark Zuckerberg make a great deal of money because of their ambition, business acumen, and ability to innovate despite not having a college degree. It's not really possible to measure something abstract like someone's ambition, so the best we can do is incorporate it with $\varepsilon_i$. Is it the case that $\E{\Xm'\ep} = \zer$ in this case? Most likely not. In all likelihood $\E{educ_i\cdot\varepsilon_i}\neq 0$, because people who are ambitious and have an innate ability to innovate tend to pursue higher education to further their abilities. If this hypothesis is true, then $educ_i$ is endogenous. 
+:::
+
+We also can give a name to the assumption that $\E{\X'\X}$ is invertible. 
+
+:::{#def-}
+The covariates $\X$ exhibit  <span style="color:red">**_(perfect) multicollinearity_**</span> if $$\text{rank}\left(\E{\X'\X}\right) = K,$$ which is equivalent to $\E{\X'\X}$ failing to be invertible.
+:::
+
+In the event that $\E{\X'\X}$ is not invertible, then there exists some linear dependence between the set of covariates $(1,X_1,\ldots,X_k)$, i.e one regressor is a linear function of another. These two assumptions insure that $\bet$ is identified for $\mathcal P_\text{LM}$.
+
+:::{#thm-}
+
+## Identification of the Linear Model
+
+If $\X$ is weakly exogenous and does not exhibit multicollinearity, then $(\bet, \Sig)$ are identified for the linear model $\mathcal P_\text{LM},$ and $\beta$ given as 
+$$\bet = \left(\E{\X'\X}\right)^{-1}\E{\X'Y}.$$
+:::
+
+:::{.proof}
+Weak exogeneity gives  
+\begin{align*}
+&\E{\X'\ep} = \zer\\
+\implies & \E{\X'(Y-\X\bet)} = \zer & (\ep = (Y-\X\bet))\\
+\implies & \E{\X'Y}-\bet\E{\X'\X}= \zer\\
+\implies & \E{\X'Y} = \bet\E{\X'\X}.
+\end{align*}
+We have also assumed that $\X$ does not exhibit multicollinearity, so $\E{\X'\X}$ is invertible. This means $\E{\X'Y} = \bet\E{\X'\X}$ has a unique solution in the form of 
+$\bet = \left(\E{\X'\X}\right)^{-1}\E{\X'Y}.$ If $\bet$ is unique, then $\Sig$ is unique and written as 
+$$ \Sig = \var{\ep\mid\Xm } = \var{Y - \X\bet\mid \Xm} = \var{Y - \X\left[\left(\E{\X'\X}\right)^{-1}\E{\X'Y}\right]\mid \Xm }.$$ Therefore, if $(\bet,\Sig)\neq(\bet',\Sig')$, then $\X\bet + \ep \neq \X\bet' + \ep$ and $\Sig \neq \Sig$, so $P_{\bet,\Sig}\neq P_{\bet',\Sig'}$, meaning our parameters are identified.
+:::
+
+The parameter $\bet$ takes the same analytic form as that of the linear projection (CEF) model, but it's important to remember that they arise from different approaches. We arrived at this form using the relationship between $\X$ and $\ep$ in a structural model, not from defining $\bet$ to be the solution to an optimization problem.
+
+:::{#exm-}
+
+## Multicollinearity
+
+Suppose $Y = 1 + 5 X_1 + 2 X_2 + \varepsilon$ where $X_1 = 3X_2$ (suppressing the indices $i$ which are not relevant at the moment). This model corresponds to the parameters $\bet = (1,5,2)$ We can rewrite our model as 
+$$ Y = 1 + 5 X_1 + 2 X_2 + \varepsilon = 1 + 5(3X_2) + 2 X_2 + \varepsilon = 1 + 0X_1 + 17X_2 + \varepsilon,$$ so the model also corresponds to parameters $\bet'=(1,0,17)$, and our model is not identified. 
+:::
+
+:::{#exm-}
+
+## Non-Zero Mean Errors
+
+Suppose $Y = 1 + 5 X_1 + 2 X_2 + \varepsilon$ where $\E{\varepsilon} = 3$ and $\var{\varepsilon\mid \X} = \sigma^2$. In this case $\E{\X'\ep}\neq 0$, so we shouldn't expect that $\bet$ is identified. In particular, we won't be able to identify $\beta_0$. We can write $\varepsilon = 3 + \nu$ for $\var{\nu\mid \X} = \sigma^2$, giving 
+$$ Y = 1 + 5 X_1 + 2 X_2 + (3 + \nu) = Y = 4 + 5 X_1 + 2 X_2 + \nu.$$
+So the model can be written with parameters $([1,5,2]', \sigma^2)$ or with parameters $([4,5,2]', \sigma^2)$. Therefore the model, in particular $\beta_0$, is not identified. 
+:::
+
+We will consider what happens when $\E{\X'\ep}=0$, how this situation arises, and what can be done about it in Section \@ref(endogeniety-i-iv-and-2sls). For now, let's update our model with our identifying assumptions 
+
+:::{#def-}
+The **_(identified) linear model_** is defined as $\mathcal P_\text{LM} = \{P_{\bet,\Sig} \mid \bet \in \mathbb R^{K}, \Sig\in\mathbb R^n\times\mathbb R^n\}$,^[We are implicitly assuming $\beta_1\neq 0$, which eliminates the need to assume $\E{\varepsilon} = \zer$] where 
+\begin{align*}
+P_{\bet,\Sig} &= \{F_{\Xm,\ep} \mid \Y= \Xm\bet +\ep, \ \ \Sig  = \var{\ep\mid\Xm},\ \ f_{\Xm}=\textstyle\prod_{i=1}^n f_{\X_i}, \ \text{rank}\left(\E{\X'\X}\right) = K,\ \E{\X'\ep} = \zer\},\\
+\Xm & = [\X_1, \cdots, \X_j, \cdots \X_K] = [\X_1, \cdots, \X_i, \cdots \X_n]',\\
+\Y & = [Y_1, \ldots, Y_n].
+\end{align*}
+:::
+
+
+## Ordinary Least Squares 
+
+Now that we have identified our model, we can *finally* estimate $\bet$ using our favorite estimator -- ordinary least squares! There are a handful of ways to derive the ordinary least squares estimator, but for now we will focus on two constructions. 
+
+We want to estimate $\bet$ using observations of $(\Y, \Xm)$, which is the same as saying $n$ observations of $(Y, \X)$. By definition, we do not observe realizations of $\ep$. We know that $\bet =\left(\E{\X'\X}\right)^{-1}\E{\X'Y}$, so perhaps we can simply estimate $\bet$ using the sample analog of $\left(\E{\Xm'\Xm}\right)^{-1}\E{\Xm'\Y}$. This approach is sometimes referred to as the **_analogy principle_** (see @goldberger1991course), and will come up again. Denote the sample moments as $\widehat{\E{\X'\X}}$ and $\widehat{\E{\X'Y}}$. If we have a sample of size $n$, then 
+\begin{align*}
+\widehat{\E{\X'\X}} & = \frac{1}{n}\sum_{i=1}^n\X_i'\X\\
+\widehat{\E{\X'Y}} & = \frac{1}{n}\sum_{i=1}^n\X_iY_i
+\end{align*}
+Therefore, our estimator is 
+$$\hat {\bet}(\Xm, \Y) = \left(\frac{1}{n}\sum_{i=1}^n\X_i'\X_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\X_iY_i\right).$$ 
+
+We can also write this in the form of matrices. First we need to expand $\X'\X$:
+\begin{align*}
+\X'\X  &= \begin{bmatrix} \X_1 \\ \vdots \\ \X_K\end{bmatrix}\begin{bmatrix} \X_1 & \cdots & \X_K\end{bmatrix} = \begin{bmatrix}\X_1\cdot\X_1 & \X_1\cdot\X_2 & \cdots & \X_1\X_K\\ \vdots & \vdots & \ddots & \vdots\\ \X_K\cdot\X_1 & \X_K\cdot\X_2 & \cdots & \X_K\cdot \X_k\end{bmatrix} = \begin{bmatrix}\sum_{i=1}^n X_{1,i}^2 & \sum_{i=1}^n X_{1,i}X_{2,i} & \cdots & \sum_{i=1}^n X_{1,i}X_{K,i}\\ \vdots & \vdots & \ddots & \vdots\\ \sum_{i=1}^n X_{K,i}X_{1,i} & \sum_{i=1}^n X_{K,i}X_{2,i} & \cdots & \sum_{i=1}^n X_{K,i}^2\end{bmatrix}\\
+\end{align*}
+The expectation is taken element-wise where 
+
+$$ \E{\sum_{i=1}^n X_{j,i}X_{\ell,i}} = \sum_{i=1}^n \E{X_{j,i}X_{\ell,i}} = n \E{X_{j,i}X_{\ell,i}},$$ so applying this to each entry and factoring out the common scalar $n$ gives: 
+
+
+
+$$ \E{\X'\X} = n\begin{bmatrix}\E{X_1^2} & \E{X_1X_2} & \cdots & \E{X_1X_K}\\ \vdots & \vdots & \ddots & \vdots\\ \E{X_KX_1} & \E{X_KX_2} & \cdots & \E{X_K^2}\end{bmatrix}.$$
+
+The sample analog (as a function of random variables, *not* realizations) is 
+\begin{align*}
+\widehat{\E{\X'\X}} &= n\begin{bmatrix}n^{-1}\sum_{i=1}^n X_{1,i}^2 & n^{-1}\sum_{i=1}^n X_{1,i}X_{2,i} & \cdots & n^{-1}\sum_{i=1}^n X_{1,i}X_{K,i}\\ \vdots & \vdots & \ddots & \vdots\\ n^{-1}\sum_{i=1}^n X_{K,i}X_{1,i} & n^{-1}\sum_{i=1}^n X_{K,i}X_{2,i} & \cdots & n^{-1}\sum_{i=1}^n X_{K,i}^2\end{bmatrix}\\&=\begin{bmatrix}\sum_{i=1}^n X_{1,i}^2 & \sum_{i=1}^n X_{1,i}X_{2,i} & \cdots & \sum_{i=1}^n X_{1,i}X_{K,i}\\ \vdots & \vdots & \ddots & \vdots\\ \sum_{i=1}^n X_{K,i}X_{1,i} & \sum_{i=1}^n X_{K,i}X_{2,i} & \cdots & \sum_{i=1}^n X_{K,i}^2\end{bmatrix}\\
+& = \begin{bmatrix} \X_1 \\ \vdots \\ \X_K\end{bmatrix}\begin{bmatrix} \X_1 & \cdots & \X_K\end{bmatrix}\\
+ & = \Xm'\Xm
+\end{align*}
+We can perform the analogous inspection on $\E{\X'Y}$ and conclude that $\widehat{\E{\X'Y}} = \Xm\Y$. Therefore, in matrix form, our estimator is 
+$$\hat {\bet} =(\Xm'\Xm)^{-1}\Xm\Y$$ 
+
+:::{#exm-}
+
+## The Simple Linear Model
+
+In the event $K = 2$, we have $Y = \beta_1 + \beta_2 X + \varepsilon$ for a single non trivial regressor $X$. The random vector of regressors is $\X = [\mathbf 1, X]$. Let's calculate the population parameters $\bet$ in this setting.
+\begin{align*}
+\E{\X'\X} & = \begin{bmatrix}1 & \E{X}\\\E{X} & \E{X^2} \end{bmatrix}\\
+\E{\X'\X}^{-1} & =\frac{1}{\underbrace{\E{X^2} - \E{X}^2}_{\var{X}}} \begin{bmatrix}\E{X^2} & -\E{X}\\-\E{X} & 1 \end{bmatrix} = \begin{bmatrix}\E{X^2}/\var{X} & -\E{X}/\var{X}\\-\E{X}/\var{X} & 1/\var{X} \end{bmatrix}\\
+\E{\X'Y} & = \begin{bmatrix} \E{Y} \\ \E{XY} \end{bmatrix}\\
+\bet & = \E{\X'\X}^{-1}\E{\X'Y} = \frac{1}{\var{X}} \begin{bmatrix} \E{X^2}\E{Y} -\E{X}\E{XY} & -\E{X}\E{Y} + \E{XY} \end{bmatrix}\\
+\beta_2 &= \frac{\E{XY} -\E{X}\E{Y}}{\var{X}} \\ &= \frac{\cov{X,Y}}{\var{X}}\\
+\beta_1 & = \frac{\E{X^2}\E{Y} -\E{X}\E{XY} }{\var{X}} \\
+      & = \frac{(\E{X^2} - \E{X}^2 + \E{X}^2)\E{Y} -\E{X}\E{XY} }{\var{X}}\\
+       & = \frac{(\var{X}+ \E{X}^2)\E{Y} -\E{X}\E{XY} }{\var{X}}\\
+       & = \E{Y} - \E{X}\cdot \frac{\cov{X,Y}}{\var{X}}\\
+       & = \E{Y} - \beta_2\E{X}
+\end{align*}
+The estimator calculated using the analogous moments is the familiar OLS estimator for the simple linear model:
+\begin{align*}
+\hat\beta_2 & = \frac{\widehat{\text{Cov}}(X,Y) }{\widehat{\text{Var}}(X)} = \frac{(1/n)\sum_{i=1}^n(X_i - \bar X)(Y_i - \bar Y)}{(1/n)\sum_{i=1}^n(X_i - \bar X)^2} = \frac{\sum_{i=1}^n(X_i - \bar X)(Y_i - \bar Y)}{\sum_{i=1}^n(X_i - \bar X)^2}\\
+\hat\beta_1 & = \bar Y - \hat\beta_2 \bar X
+\end{align*}
+
+:::
+
+An alternate way of arriving at this estimator is possible by solving the least squares problem that we encountered with the linear projection model.
+
+\begin{align*}
+\hat{\bet} &= \argmin_{\mathbf b} \sum_{i=1}^n (Y_i - \X_i\mathbf b)^2\\
+  & = \argmin_{\mathbf b} \left\{(\Y - \Xm\mathbf b)'(\Y - \Xm\mathbf b)\right\} \\
+  & = \argmin_{\mathbf b} \left\{ \Y' \Y - 2\Y\Xm \mathbf b +\mathbf b' \Xm' \Xm \mathbf b \right\}
+\end{align*}
+The first order condition is 
+\begin{align*}
+&-2\Xm'\Y + 2\Xm'\Xm\hat{\bet} = \zer \\
+\implies &\hat{\bet} = (\Xm'\Xm)^{-1}(\Xm\Y)
+\end{align*}
+This is the same estimator we derived with the analogy principle. In order to reference estimates given by our estimator, we'll need to introduce notation for realizations of $(\Xm, \Y, \ep)$, which makes notation even more complicated. The following table presents how we will write realizations of random quantities, along with recapping the notation for $\mathcal P_{LM}$.
+
+| Random Quantity | Type     | Dimension    | Definition                      | Realization/Observation |
+|-----------------|----------|--------------|---------------------------------|-------------------------|
+| $\X$            | vector   | $1\times K$  | dependent variables             | $\x$                    |
+| $Y$             | variable | $1\times 1$  | independent variable            | $y$                     |
+| $\ep$           | vector   | $n\times 1$  | vector of errors                          | $\e$                    |
+| $\Y$            | vector   | $n\times 1$  | vector of independent variables | $\y$                    |
+| $\Xm$           | matrix   | $n\times K$  | matrix of dependent variables   | $\mathbf X$             |
+| $\X_i$          | vector   | $1\times K$  | $i$th row of $\Xm$              | $\x_i$                  |
+| $\X_j$          | vector   | $n \times 1$ | $j$th row of $\Xm$              | $\x_j$                  |
+
+This notation is by no means standard, an notation unfortunately varies widely across sources. The only piece of notation which conflicts is the random vector of regressors $\X$ and the realization of $\Xm = \X$. Whenever it is unclear which is being referenced, I will try to be specific.
+
+:::{#def-}
+The <span style="color:red">**_ordinary least squares (OLS) estimator_**</span> is defined as 
+\begin{align*}
+\hat{\bet}_\text{OLS}(\Xm,\Y) &= (\Xm'\Xm)^{-1}(\Xm\Y)
+= \left(\frac{1}{n}\sum_{i=1}^n\X_i'\X_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\X_iY_i\right)
+\end{align*} An realization of this estimator (an estimate) is 
+\begin{align*}
+\hat{\mathbf b}_\text{OLS} = \hat{\bet}_\text{OLS}(\X,\y) &= (\X'\X)^{-1}(\X\y)
+= \left(\frac{1}{n}\sum_{i=1}^n\x_i'\x_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\x_iy_i\right)
+\end{align*} 
+and will exist when the inverse $(\X'\X)^{-1}$ exists.
+:::
+
+
+:::{#exm-funref}
+We can easily write a function which calculates an OLS estimate given a random sample. 
+
+```{r}
+OLS <- function(y, X){
+  K <- ncol(X)
+  if(det(t(X) %*% X) == 0) {stop("rank(X'X) < K")}
+  
+  hat_beta <- solve(t(X) %*% X) %*% t(X) %*% y
+  rownames(hat_beta) <- paste("β", 1:K, " estimate", sep = "")
+  return(hat_beta)
+}
+```
+
+Let's randomly generate a sample to test our function. Suppose we have a sample of size $n=1000$ from a linear model where $X_1 \iid \text{Uni}(0,10)$, $\varepsilon \iid\text{Uni}(-5,5)$, $X_1 \perp \varepsilon$, and $Y = 2 + 4X_1 + \varepsilon$. Because $\varepsilon$ and $X$ are independent, we've specified their respective marginal densities instead of joint density. 
+
+```{r}
+beta <- c(2,4)
+n <- 25
+x1 <- runif(n, 0, 10)
+e <- runif(n, -5, 5)
+X <- cbind(1, x1)
+y <- X %*% beta + e
+```
+
+Before we estimate our model, we should think about whether our model satisfies the assumptions that $\E{\X'\X}$ is invertible and $\E{\X'\ep} = \zer$. The first assumption holds because we only have one non-trivial independent variable (the trivial one is constant 1 which gives the intercept), and it is not a constant (so it cannot be a linear function of the constant 1). We have $\E{\varepsilon} = 0$, so by independence we have 
+
+$$\E{\X'\ep} = \E{X_1\varepsilon} = \E{X_1}\E{\varepsilon} =\E{X_1}\cdot0 = 0$$
+We can actually use the LLN to consistently estimate $\E{\X'\X}$ and $\E{X_1'\varepsilon}$, and see if our estimates satisfy our assumptions. For a sufficiently large $n$, we should see that 
+\begin{align*}
+\text{rank}\left(\frac{1}{n}\sum_{i=1}^n \x_i'\x_i\right) &\approx K\\
+\left(\frac{1}{n}\sum_{i=1}^n x_{1i}'e_i\right) &\approx 0
+\end{align*}
+The sample size $n=25$ may be a bit too modest, so let's generate a new sample of size $n'=100,000$.
+
+```{r}
+n_prime <- 100000
+x1_prime <- runif(n_prime, 0, 10)
+e_prime <- runif(n_prime, -5, 5)
+X_prime <- cbind(rep(1, n_prime), x1_prime)
+
+# Sample rank of X'X
+rankMatrix((t(X_prime) %*% X_prime)/n_prime)[1]
+
+# Sample mean of X'ε
+mean(x1_prime*e_prime)
+```
+
+It appears our assumptions are met, so we can go ahead with estimation. It is important to recognize that in practice we don't observe the realizations $\ep$, so calculating the sample analog of $\E{\X'\ep}$ is not possible with real data, but it is a good gut check when conducting simulations.
+
+```{r}
+beta_hat <- OLS(y,X)
+beta_hat
+```
+
+```{r}
+#| code-fold: true
+#| fig-align: center
+#| label: fig-plot56
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "Our observed data (in black) is drawn from the unobserved population model (blue). We use this data to estimate the model, and the line associated with this estimate is shown in red."
+#| code-summary: "Show code which generates figure"
+tibble(x = X[,2], 
+       y = y
+) %>% 
+  ggplot(aes(x,y)) +
+  geom_point(aes(color = "(Observed) Sample")) +
+  geom_abline(aes(intercept = beta[1], slope = beta[2], color = "(Unobserved) Population Model")) +
+  geom_abline(aes(intercept = beta_hat[1], slope = beta_hat[2], color = "Estimated Model")) +
+  theme_minimal() +
+  labs(colour="") +
+  scale_colour_manual(values=c("black", "blue", "red")) +
+  theme(legend.position = "bottom") 
+```
+
+:::
+
+:::{#exm-}
+
+## Linear Projection Model, OLS
+
+OLS can be used in the context of $\mathcal P_\text{LM}$ to estimate the best linear projection between two random variables $(Y,\X)$. OLS was the method used by @pearson1903laws to estimate the relationship between height and genetics. We can replicate this work with an data set based on the original data collected by @pearson1903laws.
+
+```{r}
+#| warning: false
+height_df <- read_csv("data/height_data.csv")
+X <- as.matrix(height_df$Father)
+y <- height_df$Son
+OLS(y,X)
+```
+
+
+:::
+
+:::{#exm-}
+
+## OLS Estimate Does not Exist
+
+It is possible that $\E{\X'\X}$ is invertible while realized value $\Xm'\Xm = \X'\X$ is not invertible. For example, if our model is $Y = \beta_1 X_1 + \epsilon$ where $X \sim \text{Binom}(4, 0.5)$,^[If $X\sim \text{Binom}(n, p)$, then $\E{X} = np(1-p) + (np)^2$] we have $$\E{\X'\X} = \E{X_1^2} = 5.$$ If we observe an independent sample of size $n=2$ generated from this model, we may observe something like $\x_1 = [2,2]$. In this case 
+$$\x'\x = \begin{bmatrix} 4 &4 \\ 4 & 4\end{bmatrix},$$ which is certainly not invertible. Furthermore, the probability we draw this sample is 
+$$\Pr(\x = [2,2]) = [\Pr(X = 2)]^2 = (0.375)^2 = 0.140625,$$ so the chances this happen are not trivial. However, $n$ is usually much greater than $2$, and as $n\to\infty$ the probability that $\X'\X$ is not invertible will go to zero. This is a direct consequence of the LLN: 
+
+$$\X'\X = \left(\frac{1}{n}\sum_{i=1}^n\x_i'\x_i\right) \pto \E{\X'\X} $$
+
+:::
+
+::: {.remark}
+Whether it is easier to write our terms related to $\OLS$ in terms of matrices or sums of vectors will depend on the result we are building to or trying to prove. This can be a bit confusing, so here is a list of various equalities (many of which imply others), that we will use:
+\begin{align*}
+\Xm'\Xm & = \sum_{i=1}^n \X_i'\X_i\\
+\Xm'\Y & = \sum_{i=1}^n \X_i'Y_i\\
+\Xm'\ep & = \sum_{i=1}^n \X_i'\varepsilon_i\\
+\ep'\ep & = \sum_{i=1}^n \varepsilon_i^2
+\end{align*}
+An important result which follows from the first equality is $\E{\Xm'\Xm} = n \E{\X'\X}$ in the event that $\X_i$ are independent. 
+:::
+
+## Properties of OLS
+
+As likely anticipated, the OLS estimator has a number of desirable properties under certain assumptions, some of which we will make in addition to weak exogeneity and lack of multicollinearity. The first property we establish is consistency.
+
+:::{#prp-}
+
+## Consistency
+
+Suppose $P_{\bet,\Sig} \in \mathcal P_\text{LM}$ where $\text{rank}\left(\E{\X'\X}\right) = K$ and $\E{\X'\ep} = \zer$, then $\hat{\bet}_\text{OLS} \pto \bet$.
+:::
+
+:::{.proof}
+We have $\bet = \left(\E{\X'\X}\right)^{-1}\E{\X'Y}$, where $\bet$ is guaranteed to exist and be unique using our assumptions. As $n\to\infty$, $\X'\X$ will be invertible with probability one, so $\hat{\bet}_\text{OLS}$ will exist (with probability one). We can write our estimator as 
+\begin{align*}
+\hat{\bet}_\text{OLS} &= \left(\frac{1}{n}\sum_{i=1}^n\X_i'\X_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\X_i'Y_i\right)\\
+&= \left(\frac{1}{n}\sum_{i=1}^n\X_i'\X_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\X_i'(\X_i\bet + \varepsilon_i)\right) & (Y_i = \X_i\bet + \varepsilon_i)\\
+& = \left(\frac{1}{n}\sum_{i=1}^n\X_i'\X_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\X_i'\X_i\bet\right) + \left(\frac{1}{n}\sum_{i=1}^n\X_i'\X_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\X_i'\varepsilon_i\right)\\
+& = \bet\underbrace{\left(\frac{1}{n}\sum_{i=1}^n\X_i'\X_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\X_i'\X_i\right)}_{\mathbf I} + \left(\frac{1}{n}\sum_{i=1}^n\X_i'\X_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\X_i'\varepsilon_i\right)\\
+& = \bet + \left(\frac{1}{n}\sum_{i=1}^n\X_i'\X_i\right)^{-1}\left(\frac{1}{n}\sum_{i=1}^n\X_i'\varepsilon_i\right)
+\end{align*}
+We can apply the LLN along with the continuous mapping theorem (applied to the inverse term) and Slutky's theorem (applied to the product of convergent sequences) to conclude,
+$$ \hat{\bet}_\text{OLS} =  \bet + \underbrace{\left(\frac{1}{n}\sum_{i=1}^n\X_i'\X_i\right)^{-1}}_{\pto \E{\X'\X}}\underbrace{\left(\frac{1}{n}\sum_{i=1}^n\X_i'\varepsilon_i\right)}_{\pto \E{\X'\ep}} \pto \bet + \E{\X'\X}^{-1}\underbrace{\E{\X'\ep}}_\zer = \bet.$$
+Therefore $\hat{\bet}_\text{OLS} \pto \bet$, where the limit $\bet$ is unique by identification.
+:::
+
+:::{#exm-}
+Return to the model $X_1 \iid \text{Uni}(0,10)$, $\varepsilon \iid\text{Uni}(-5,5)$, $X_1 \perp \varepsilon$ (implying $\E{\X'\ep} = \zer$), and $Y = 2 + 4X_1 + \varepsilon$. If we estimate this model for samples of increasing size, we should see that our estimates converge to the true values. 
+
+```{r}
+beta <- c(2,4)
+
+beta_hat1 <- vector("numeric", 9999)
+beta_hat2 <- vector("numeric", 9999)
+for(n in 2:10000){
+  x1 <- runif(n, 0, 10)
+  e <- runif(n, -5, 5)
+  X <- cbind(1, x1)
+  y <- X %*% beta + e
+  beta_hat <- OLS(y,X)
+  beta_hat1[n-1] <- beta_hat[1]
+  beta_hat2[n-1] <- beta_hat[2]
+}
+```
+
+It does appear that as $n\to\infty$ we have $\hat{\beta}_\text{1,OLS} \pto 2$ and $\hat{\beta}_\text{2,OLS} \pto 4$
+
+```{r}
+#| code-fold: true
+#| fig-align: center
+#| label: fig-plot57
+#| fig-asp: 0.7
+#| warning: false
+#| fig-width: 8
+#| fig-cap: "As the sample size increases, our estimates approach their true values."
+#| code-summary: "Show code which generates figure"
+tibble(
+  x = rep(2:10000, 2), 
+  y = c(beta_hat1, beta_hat2), 
+  group = c(rep("Estimated β1", 9999), rep("Estimated β2", 9999))
+) %>% 
+  ggplot(aes(x,y)) +
+  geom_line(size = 0.2) +
+  labs(x ="Sample Size, n", y = "Estimated Value") +
+  facet_wrap(~group) +
+  ylim(0,5) +
+  theme_minimal()
+```
+:::
+
+Now let's consider whether if (and under what conditions) $\hat{\bet}_\text{OLS}$ unbiased. 
+
+\begin{align*}
+\E{\hat{\bet}_\text{OLS}} & = \E{\E{\hat{\bet}_\text{OLS}}\mid \Xm } & (\text{iterated expectations})\\
+& = \E{\E{(\Xm'\Xm)^{-1}\Xm'\Y}\mid \Xm }\\
+& = \E{\E{(\Xm'\Xm)^{-1}\Xm'(\Xm\bet + \ep)}\mid \Xm} & (\Y & = \Xm\bet + \ep)\\
+& = \E{\E{((\Xm'\Xm)^{-1}\Xm'\Xm)\bet + (\Xm'\Xm)^{-1}\Xm'\ep)}\mid \Xm}\\
+& = \E{\E{\bet}\mid \Xm} +\E{(\Xm'\Xm)^{-1}\Xm'\E{\ep\mid \Xm}}\\
+& = \bet +  \E{(\Xm'\Xm)^{-1}\Xm'\E{\ep\mid \Xm}} & (\bet\text{ is a constant})\\
+& \neq \bet
+\end{align*}
+Under our current assumption, OLS is has a bias of $\E{(\Xm'\Xm)^{-1}\X'\E{\ep\mid \Xm}}$. While we are operating under the assumption that $\E{ \X'\ep} = \zer$, this does not imply that $\ep\perp\Xm$ (which would mean $\E{\ep\mid \Xm} = \E{\ep}=\zer$) For this to happen, we need to impose our third assumption on the linear model. 
+
+:::{#def-}
+The random regressors $\X$ are <span style="color:red">**_exogenous_**</span> if  
+\begin{align*}
+\E{\varepsilon_i\mid \X} & = 0 &(i=1,\ldots,n)
+\end{align*}
+which is written compactly as $\E{\ep\mid \Xm} = \zer$.
+:::
+
+By properties of independence and conditional expectation, exogeneity implies weak exogeneity, hence its name alluding to it being a stronger assumption. Technically speaking, we aren't adding a third assumption, as much as we are strengthening one of our current assumptions.
+
+:::{#prp-}
+
+## OLS is Unbiased
+
+Suppose $P_{\bet,\Sig} \in \mathcal P_\text{LM}$ where $\text{rank}\left(\E{\X'\X}\right) = K$ and $\E{\ep\mid \Xm} = \zer$, then $\OLS$ is an unbiased estimator for $\bet$.
+:::
+
+:::{.proof}
+$$\E{\hat{\bet}_\text{OLS}} = \bet +  \E{(\Xm'\Xm)^{-1}\Xm'\E{\ep\mid \Xm}} =\bet +  \E{(\Xm'\Xm)^{-1}\Xm'\zer} = \bet $$
+Therefore, $\hat{\bet}_\text{OLS}$ is an unbiased estimator for $\bet$.
+:::
+
+:::{#def-}
+The  <span style="color:red">**_(unbiased) linear model_**</span> is defined as $\mathcal P_\text{LM} = \{P_{\bet,\Sig} \mid \bet \in \mathbb R^{K}, \Sig\in\mathbb R^n\times\mathbb R^n\}$, where 
+\begin{align*}
+P_{\bet, \Sig} &= \{F_{\Xm,\ep} \mid \Y= \Xm\bet +\ep, \ \ \Sig  = \var{\ep\mid\Xm},\ f_{\Xm}=\textstyle\prod_{i=1}^n f_{\X_i}, \ \text{rank}\left(\E{\X'\X}\right) = K,\ \E{\ep \mid \Xm} = \zer\},\\
+\Xm & = [\X_1, \cdots, \X_j, \cdots \X_K] = [\X_1, \cdots, \X_i, \cdots \X_n]',\\
+\Y & = [Y_1, \ldots, Y_n].
+\end{align*}
+:::
+
+:::{#exm-}
+If we go back to our simulated estimates where $X_1 \iid \text{Uni}(0,10)$, $\varepsilon \iid\text{Uni}(-5,5)$, $X_1 \perp \varepsilon$, and $Y = 2 + 4X_1 + \varepsilon$, we should see that the sample mean of our simulated estimates are approximately equal to the true values $\bet = (2,4)$
+```{r}
+colMeans(cbind(beta_hat1, beta_hat2))
+```
+:::
+
+The assumption of this stronger form of exogeneity also gives several nice properties beyond unbiasedness. 
+
+:::{#prp-}
+
+## Consequences of Exogeneity
+
+Suppose $P_{\bet,\Sig} \in \mathcal P_\text{LM}$ where $\text{rank}\left(\E{\X'\X}\right) = K$, $\E{\ep\mid \Xm} = \zer$, and $\Sig = \var{\ep\mid \Xm}$. Then 
+
+1. $\E{\Y\mid \Xm} = \Xm\bet$;
+2. $\E{\ep} = \zer$ (even if $\beta_1 = 0$)
+3. $\Sig = \E{\ep\ep'\mid \Xm} = \var{\ep}$
+
+:::
+
+:::{.proof}
+<span style="color:white">space</span> 
+
+1. $\E{\Y\mid \Xm} = \E{\Xm\bet + \ep \mid \Xm} = \E{\Xm\bet \mid \Xm} + \E{\ep\mid \Xm}= \Xm\bet + \zer = \Xm\bet$
+2. $\E{\ep} = \E{\E{\ep\mid \Xm}} = \E{\zer} = \zer$
+3. The first portion is a consequence of the definition of variance. $$\Sig = \var{\ep\mid \Xm} = \E{[\ep - \E{\ep \mid \Xm}][\ep - \E{\ep \mid \Xm}]'\mid \Xm} = \E{[\ep - \zer][\ep - \zer]'\mid \Xm} = \E{\ep\ep'\mid \Xm}$$ The second portion follows from the [law of total variance](https://en.wikipedia.org/wiki/Law_of_total_variance).
+$$ \var{\ep} = \E{\var{\ep \mid \Xm}} + \var{\E{\ep\mid \Xm}} = \E{\Sig} + \var{0} = \Sig$$
+
+<span style="color:white">space</span> 
+:::
+
+Finally let's consider the variance of our OLS estimator. Due to the stochastic nature of $\Xm$, our interest is actually in the conditional variance of $\hat{\bet}_\text{OLS}$ given $\Xm$. Until now, we haven't paid much attention to the parameter $\Sig$, but it will come into play here.
+
+\begin{align*}
+\var{\hat{\bet}_\text{OLS}\mid \Xm} & = \E{ \left(\hat{\bet}_\text{OLS} - \E{ \hat{\bet}_\text{OLS} }\right) \left(\hat{\bet}_\text{OLS} - \E{\hat{\bet}_\text{OLS}}\right)'\mid \Xm}\\
+& = \E{ \left(\hat{\bet}_\text{OLS} - \bet\right) \left(\hat{\bet}_\text{OLS} - \bet\right)'\mid \Xm} & (\hat{\bet}_\text{OLS} \text{ unbiased})\\
+& = \E{ \left[(\bet + (\Xm'\Xm)^{-1}\Xm'\ep) - \bet\right] \left[(\bet + (\Xm'\Xm)^{-1}\Xm'\ep) - \bet\right]'\mid \Xm} & (\hat{\bet}_\text{OLS} = \bet + (\Xm'\Xm)^{-1}\Xm\ep)\\
+& = \E{ \left[(\Xm'\Xm)^{-1}\Xm'\ep\right] \left[(\Xm'\Xm)^{-1}\Xm'\ep\right]'\mid \Xm}\\
+& = \E{ (\Xm'\Xm)^{-1}\Xm'\ep\ep'\Xm (\Xm'\Xm)^{-1}\mid \Xm}\\
+& =  (\Xm'\Xm)^{-1}\Xm'\E{\ep\ep'\mid \Xm}\Xm (\Xm'\Xm)^{-1}\\
+& =  (\Xm'\Xm)^{-1}\Xm'\Sig\Xm (\Xm'\Xm)^{-1} & (\Sig = \E{\ep\ep'\mid \Xm})
+\end{align*}
+
+:::{#prp-}
+
+## OLS Variance I
+
+Suppose $P_{\bet,\Sig} \in \mathcal P_\text{LM}$ where $\text{rank}\left(\E{\X'\X}\right) = K$, $\E{\ep\mid \Xm} = \zer$, and $\Sig = \var{\ep\mid \Xm}$. Then 
+$$ \var{\hat{\bet}_\text{OLS}\mid \Xm} = (\Xm'\Xm)^{-1}\Xm'\Sig\Xm (\Xm'\Xm)^{-1}$$
+:::
+
+
+
+:::{.example}
+Suppose the our model is given as 
+\begin{align*}
+Y & = 2 + 4X_1 + \varepsilon\\
+X_i &\iid \text{Uni}(0,10)\\
+\ep &\sim N(\zer, \Sig)\\
+\Sig_{ii} & = \begin{cases}1 & i \text{ even}\\ 2 & i \text{ odd}\end{cases}\\
+\Sig_{i\ell} & = \abs{i-\ell}^{-1}
+\end{align*}
+Let's perform a simulation to verify the formula for $\var{\hat{\bet}_\text{OLS}\mid \Xm}$ The variance of the error is defined such that if our observation has an even index, $\var{\varepsilon_i} = 1$, otherwise $\var{\varepsilon_i} = 2$. Errors are also correlated across observations. We have $\cov{\varepsilon_i,\varepsilon_\ell} = \abs{i-\ell}^{-1}$. The closer two observations are index-wise, the stronger their correlation. We will simulate estimates for sample sizes of $n=100$.
+
+```{r}
+n <- 100
+Sigma <- matrix(NA, nrow = n, ncol = n)
+for (i in 1:n) {
+  for (l in 1:n) {
+    #if i == l we have a diagonal entry 
+    if(i == l){
+      #assign variance 1 or 2 based on modular arithmetic 
+      Sigma[i,l] <- (2^((i %% 2) == 1))*(1^((i %% 2) == 0))
+    } else {
+      #otherwise asign covariance to be inverse of distance between entries
+      Sigma[i,l] <- 1/abs(i-l)
+    }
+  }
+}
+print(Sigma[1:7,1:7])
+```
+
+We are calculating the variance *conditional on $\Xm$*, so this means we will use the same realization $\Xm = \X$ for each simulation. Before we simulate things, let's draw our fixed realization of $\X$ and calculate the true variance of our OLS estimator using the formula $(\X'\X)^{-1}\X\Sig\X' (\X'\X)^{-1}$ where $\X$ is our fixed regressors.
+
+```{r}
+x1 <- runif(n, 0, 10)
+X <- cbind(1, x1)
+beta <- c(2,4)
+
+# Actual variance
+solve(t(X) %*% X) %*% t(X) %*% Sigma %*% X %*% solve(t(X) %*% X)
+```
+
+Now let's simulate 1000 estimates, where we only draw new realizations $\mathbf e$ for each simulation and leave $\X$ fixed.
+
+```{r}
+N_sim <- 1000
+store <- matrix(NA, ncol = 2, nrow = N_sim)
+for (k in 1:N_sim) {
+  e <- t(rmvnorm(1, rep(0, n), Sigma))
+  y <- X %*% beta + e
+  store[k,] <- OLS(y,X)
+}
+
+# Variance across simulations
+cov(store)
+```
+
+Our simulated variance is quite close to the true conditional variance! 
+:::
+
+We can simplify the formulas for the OLS estimator's variance greatly if we impose one final assumption on our model.^[A weaker version of these assumptions are provided in chapter 4 of @wooldridge2010econometric.] 
+
+:::{#def-}
+We the errors of a model are <span style="color:red">**_homoskedastic_**</span> if
+\begin{align*}
+\var{\varepsilon_i \mid \X} &= \sigma^2 & (i=1,\ldots,n)
+\end{align*}
+(where $\X$ is the random vector of regressors), otherwise they are <span style="color:red">**_heteroskedastic_**</span>. If $$\cov{\varepsilon_i,\varepsilon_\ell} = 0$$ for all $i,\ell = 1,\ldots,n$ where $i\neq \ell$ we say errors are <span style="color:red">**_nonautocorrelated_**</span>, otherwise they are <span style="color:red">**_autocorrelated/serially correlated_**</span>. If errors are both homoskedastic and nonautocorrelated, then we have <span style="color:red">**_spherical errors_**</span> and can write
+$$\E{\ep'\ep\mid \Xm} = \var{\ep\mid \Xm} = \sigma^2\mathbf I.$$
+:::
+
+With the addition of this assumption, we have the classical linear model that you are likely familiar with. 
+
+:::{#def-}
+The <span style="color:red">**_(Gauss-Markov/classical) linear model_**</span> is defined as $\mathcal P_\text{LM} = \{P_{\bet,\sigma^2} \mid \bet \in \mathbb R^{K}, \sigma^2\in\mathbb R\}$, where 
+\begin{align*}
+P_{\bet,\sigma^2} &= \{F_{\Xm,\ep} \mid \Y= \Xm\bet +\ep, \ \E{\ep'\ep\mid \X}=\sigma^2\mathbf I, \ f_{\Xm}=\textstyle\prod_{i=1}^n f_{\X_i}, \ \text{rank}\left(\E{\X'\X}\right) = K,\ \E{\ep \mid \Xm} = \zer\},\\
+\Xm & = [\X_1, \cdots, \X_j, \cdots \X_K] = [\X_1, \cdots, \X_i, \cdots \X_n]',\\
+\Y & = [Y_1, \ldots, Y_n].
+\end{align*}
+:::
+
+When people talk about "the linear (regression) model", this is usually the model they are discussing. The collective assumptions are sometimes known as the "Gauss-Markov assumptions", as they are the sufficient conditions for the Gauss-Markov theorem (which will be presented shortly) to hold.  
+
+:::{#cor-}
+
+## OLS Variance II
+
+Suppose $P_{\bet,\sigma^2} \in \mathcal P_\text{LM}$ where $\text{rank}\left(\E{\X'\X}\right) = K$, $\E{\ep\mid \Xm} = \zer$, and $\E{\ep\ep'\mid\Xm} = \sigma^2\mathbf I$. Then 
+\begin{align*}
+\var{\hat{\bet}_\text{OLS}\mid \X} &= \sigma^2(\Xm'\Xm)^{-1} = \sigma^2 \left(\sum_{i=1}^n\X_i'\X\right)^{-1}
+\end{align*}
+:::
+
+:::{.proof}
+$(\Xm'\Xm)^{-1}\Xm'\E{\ep\ep'\mid \Xm}\Xm (\Xm'\Xm)^{-1} = (\Xm'\Xm)^{-1}\Xm\sigma^2\mathbf I\Xm (\Xm'\Xm)^{-1} = \sigma^2\underbrace{[(\Xm'\Xm)^{-1}(\Xm'\Xm)]}_{\mathbf I}(\Xm'\Xm)^{-1} = \sigma^2(\Xm'\Xm)^{-1}$
+:::
+
+:::{#exm-csvarols}
+
+## Comparative Statics and Variance
+
+Suppose the linear model satisfies the Gauss-Markov assumptions and $K = 2$. This simple setting allows us to gain a great deal of insight into the variance of the OLS estimator. In this case $\X$ has two columns: a column one 1s, and $\x$. 
+\begin{align*}
+\Xm & = [\mathbf 1, \X_1]\\
+\Xm'\Xm & = \begin{bmatrix}n & \sum_{i=1}^nX_i\\ \sum_{i=1}^nX_i &  \sum_{i=1}^nX_i^2 \end{bmatrix}\\
+\sigma^2(\Xm'\Xm)^{-1} &= \frac{\sigma^2}{n\sum_{i=1}^n X_i^2 - \left(\sum_{i=1}^n X_i\right)^2} \begin{bmatrix} \sum_{i=1}^n X_i^2  & -\sum_{i=1}^n X_i \\  -\sum_{i=1}^n X_i & n \end{bmatrix} \\
+\\ & = \frac{\sigma^2}{n[n(\bar{X})^2] - (n\bar{X^2})} \begin{bmatrix} \sum_{i=1}^n X_i^2  & -\sum_{i=1}^n X_i \\  -\sum_{i=1}^n X_i & n \end{bmatrix}\\
+ & = \frac{\sigma^2}{n^2(\bar{X}^2 - \bar{X^2})} \begin{bmatrix} \sum_{i=1}^n X_i^2  & -\sum_{i=1}^n X_i \\  -\sum_{i=1}^n X_i & n \end{bmatrix}\\
+ & = \frac{\sigma^2}{(n^2 - n)\widehat{\text{Var}}(X)} \begin{bmatrix} \sum_{i=1}^n X_i^2  & -\sum_{i=1}^n X_i \\  -\sum_{i=1}^n X_i & n \end{bmatrix}\\  & = \begin{bmatrix} \frac{\sigma^2\sum_{i=1}^n X_i^2}{(n^2 - n)\widehat{\text{Var}}(X)}  & -\frac{\sigma^2\sum_{i=1}^n X_i}{(n^2 - n)\widehat{\text{Var}}(X)} \\  -\frac{\sigma^2\sum_{i=1}^n X_i}{(n^2 - n)\widehat{\text{Var}}(X)} & \frac{\sigma^2n}{(n^2 - n)\widehat{\text{Var}}(X)} \end{bmatrix}\\
+\var{\hat{\beta}_{1,OLS}\mid \Xm} & = \frac{\sigma^2\sum_{i=1}^n X_i^2}{(n^2 - n)\widehat{\text{Var}}(X)}\\
+\var{\hat{\beta}_{2,OLS}\mid \Xm} & =\frac{\sigma^2n}{(n^2 - n)\widehat{\text{Var}}(X)}
+\end{align*}
+What happens to these variances as we change the variance of the error $\sigma^2$, and the values of $x_i$ change? Instead of finding the signs of various taking partial derivatives, let's graph some examples. First let's see what happens when we hold $\X$ constant but increase $\sigma^2$.
+
+```{r}
+#| code-fold: true
+#| fig-align: center
+#| label: fig-plot58
+#| warning: false
+#| message: false
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "The larger the variance of the error term, the larger the standard errors associated with our OLS estimates."
+#| code-summary: "Show code which generates figure"
+df1 <- data.frame(x = -4:5, e = rnorm(10, 0, 1)) %>% 
+  mutate(y = 2*x + e, group = "Low σ^2") 
+
+df2 <- data.frame(x = -4:5, e = rnorm(10, 0, 5)) %>% 
+  mutate(y = 2*x + e, group = "High σ^2") 
+
+bind_rows(df1, df2) %>% 
+  ggplot(aes(x,y)) +
+  geom_smooth(method = "lm", col = "blue", size = 0.5) +
+  geom_point() +
+  geom_vline(xintercept = 0, color = "red", linetype = "dashed") +
+  facet_wrap(~group) +
+  theme_minimal()
+```
+
+Each graph contains the estimates linear model, with variance illustrated by the gray envelope around the lines. The width of this envelope at the red line $x=0$ corresponds to the variance $\hat{\beta}_{1,OLS}$, while the degree to which the width of the envelope varies along the $x$-axis corresponds to the variance of $\hat{\beta}_{1,OLS}$. We can see that the variance of both estimators decreases when $\sigma^2$ decreases. As the uncertainty about the stochastic element of the model $\varepsilon_i$ decreases, we become more confident in our estimates. Now consider what happens when we change the variance of $x$. 
+
+```{r}
+#| code-fold: true
+#| fig-align: center
+#| label: fig-plot59
+#| warning: false
+#| message: false
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "The variance of the OLS estimator decreases as the variance of independent variables increases"
+#| code-summary: "Show code which generates figure"
+df1 <- tibble(
+  x = runif(10, 4,6), 
+  e = rnorm(10, 0, 1)
+  ) %>% 
+  mutate(
+    y = 2*x + e,
+    group = "Low Variance of X"
+  ) 
+
+df2 <- tibble(
+  x = runif(10, -5,15),
+  e = rnorm(10, 0, 1)
+  ) %>% 
+  mutate(
+    y = 2*x + e, 
+    group = "High Variance of X"
+  ) 
+
+bind_rows(df1, df2) %>% 
+  ggplot(aes(x,y)) +
+  geom_smooth(method = "lm", col = "blue", size = 0.5, fullrange=TRUE) +
+  geom_point() +
+  facet_wrap(~group) +
+  geom_vline(xintercept = 0, color = "red", linetype = "dashed") +
+  theme_minimal()
+```
+
+The more variance we have in our regressors, the less variance our estimator exhibits. Essentially, the variance in observations provides more information about the relationship between the dependent and independent variables, so we get better estimates. Finally consider how the variance changes as the location of our data change relative to the y-axis
+
+```{r}
+#| code-fold: true
+#| fig-align: center
+#| label: fig-plot510
+#| warning: false
+#| message: false
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "The proximity of the regressors to origin affects the variance of the intercept estimator"
+#| code-summary: "Show code which generates figure"
+df1 <- tibble(
+  x = runif(10, -1,1), 
+  e = rnorm(10, 0, 1)
+  ) %>% 
+  mutate(
+    y = 2*x + e, 
+    group = "X Near Origin"
+  ) 
+
+df2 <- data.frame(
+  x = runif(10, 10,12), 
+  e = rnorm(10, 0, 1)
+  ) %>% 
+  mutate(
+    y = 2*x + e, 
+    group = "X Far from Origin"
+  ) 
+
+bind_rows(df1, df2) %>% 
+  ggplot(aes(x,y)) +
+  geom_smooth(method = "lm", col = "blue", size = 0.5, fullrange=TRUE) +
+  geom_point() +
+  geom_vline(xintercept = 0, color = "red", linetype = "dashed") +
+  facet_wrap(~group) +
+  theme_minimal()
+```
+
+The closer our observations are to the y-axis the better out estimates of the intercept are.
+:::
+
+If we forget the intercept term for a moment, then we can think $\E{\X'\X}$ roughly as the amount of variance in our 
+regressors. The variance in regressors amounts to information about $\bet$. The more variance/information we have about $\X$, the better our estimates will be. 
+
+## Gauss-Markov Theorem 
+
+How do we know that there aren't any other estimators that may be better than OLS? Recall from Section \@ref(finite-sample-properties-of-estimators) we discussed the concept of a MVUE -- an unbiased estimator which is more efficient (has lower variance) than all other unbiased estimators. Finding a MVUE is difficult without additional assumptions about the unbiased estimators. With one such assumption, we do have that OLS is a MVUE among all unbiased estimators satisfying this assumption. This result is known as the Gauss-Markov theorem, and tells us that the OLS estimator has the minimum variance among all linear unbiased estimators. For the remainder of our discussion of the Gauss-Markov theorem, we will assume that our linear model satisfies: $\text{rank}\left(\E{\X'\X}\right) = K$ , $\E{\ep\mid\Xm}=\zer$,and $\E{\ep\ep'\mid\Xm} = \sigma^2\mathbf I$.^[Remember that we have implicitly assumed that the true model is linear.] 
+
+In the context of the linear model, a linear estimator $\hat{\bet}$ will take the form $\hat{\bet} = \mathbf C\Y +\D$ for some matrix $\mathbf C$ (which may be a function of $\Xm$). In the case of $\hat{\bet}_\text{OLS}$, $\mathbf C = (\Xm'\Xm)^{-1}\Xm'$. We will denote a general linear unbiased estimator for $\bet$ as $\tilde{\bet}$. For now, let's condition on the random matrix $\Xm$. To restrict our attention to unbiased linear estimators, $\tilde{\bet}$ must satisfy:
+\begin{align*}
+&\E{\tilde{\bet} \mid \Xm} = \bet\\
+\implies & \E{\mathbf C\Y \mid \Xm} = \bet \\
+\implies & \E{\mathbf C\Xm\bet + \mathbf C\ep\mid \Xm} = \bet & (\Y= \Xm\bet + \ep)\\
+\implies & \mathbf C\Xm\underbrace{\E{\bet \mid \Xm}}_{\bet} + \mathbf C\underbrace{\E{\ep\mid \Xm}}_{\zer} = \bet \\
+\implies &  \mathbf C\Xm\bet = \bet\\
+\implies & \mathbf C\Xm = \mathbf I
+\end{align*}
+The variance of $\tilde{\bet}$ can be calculated using the same exact steps we took to calculate the variance of $\hat{\bet}_\text{OLS}$: 
+\begin{align*}
+\var{\tilde{\bet}\mid \Xm} & = \E{ \left(\tilde{\bet} - \E{ \tilde{\bet} }\right) \left(\tilde{\bet} - \E{\tilde{\bet}}\right)'\mid \Xm}\\
+& = \E{ \left(\tilde{\bet} - \bet\right) \left(\tilde{\bet} - \bet\right)'\mid \Xm} & (\tilde{\bet} \text{ unbiased})\\
+& = \E{ \left[(\mathbf C\Xm\bet + \mathbf C\ep) - \bet\right] \left[(\mathbf C\Xm\bet + \mathbf C\ep) - \bet\right]'\mid \Xm} & (\tilde{\bet} = \mathbf C\Xm\bet + \mathbf C\ep)\\
+& = \E{ \left[(\bet + \mathbf C\ep) - \bet\right] \left[(\bet + \mathbf C\ep) - \bet\right]'\mid \Xm}  & (\C\X = \mathbf I)\\
+& = \E{ \left[\mathbf C\ep\right] \left[\mathbf C\ep\right]'\mid \Xm} \\
+& = \E{\mathbf C\ep\ep'\mathbf C'\mid \Xm}\\
+& = \mathbf C\E{\ep\ep'\mid \Xm}\mathbf C'\\
+&  = \sigma^2\mathbf C\mathbf C' & (\E{\ep\ep'} = \sigma^2\mathbf I)
+\end{align*}
+
+Our goal is to show that:
+$$\OLS = \argmin_{\tilde{\bet}} \var{\tilde{\bet} \mid \Xm}.$$
+Write $\C = (\Xm'\Xm)^{-1}\Xm + \D$ for some non-zero matrix $\D$. The requirement that $\C\Xm = \mathbf I$ implies that:
+$$ [(\Xm'\Xm)^{-1}\Xm + \D]\Xm = \mathbf I \implies\underbrace{(\Xm'\Xm)^{-1}\Xm'\Xm}_{\mathbf I} + \D\X = \mathbf I \implies \D\Xm = \zer $$
+Note that 
+$$ \tilde{\bet} = \C\Y = [(\Xm'\Xm)^{-1}\Xm + \D]\y = (\Xm'\Xm)^{-1}\Xm\Y + \D\y = \OLS + \D\Y,$$ so $\tilde{\bet} = \OLS$ when $\D = \zer$.  Our optimization problem becomes 
+\begin{align*}
+\argmin_{\D} \var{\tilde{\bet} \mid \Xm} & = \argmin_{\D} \sigma^2\mathbf C\mathbf C'\\
+& =  \argmin_{\D} \sigma^2[(\Xm'\Xm)^{-1}\Xm + \D][(\Xm'\Xm)^{-1}\Xm + \D]'\\
+& =  \argmin_{\D} \sigma^2[(\Xm'\Xm)^{-1}\Xm + \D][\Xm'(\Xm'\Xm)^{-1} + \D']\\
+& = \argmin_{\D} \sigma^2[\underbrace{(\Xm'\Xm)^{-1}\Xm\Xm'}_{\mathbf I}(\Xm'\Xm)^{-1} + (\Xm'\Xm)^{-1}\Xm'\D' + \underbrace{\D\Xm}_\zer(\Xm'\Xm)^{-1} + \D\D']\\
+& = \argmin_{\D} \sigma^2[(\Xm'\Xm)^{-1} + (\Xm'\Xm)^{-1}\underbrace{(\Xm\D)}_\zer' +  \D\D'] & (\Xm'\D' = (\X\D)')\\
+& = \sigma^2(\Xm'\Xm)^{-1} + \sigma\D\D'.
+\end{align*}
+This variance is minimized when $\D = \zer$,^[I'm skirting around proving the fact that the matrix $\D$ cannot be negative definite as it isn't especially informative.] so $\OLS$ is the most efficient unbiased linear estimator for any fixed $\Xm =\X$. This holds for all realizations $\Xm=\X$, so it will hold unconditionally as well. 
+
+:::{#thm-}
+
+## Gauss-Markov Theorem
+
+Suppose $P_{\bet,\sigma^2} \in \mathcal P_\text{LM}$ where $\text{rank}\left(\E{\X'\X}\right) = K$, $\E{\ep\mid \Xm} = \zer$, and $\E{\ep\ep'\mid\Xm} = \sigma^2\mathbf I$. Then $\OLS$ is the <span style="color:red">**_best linear unbiased estimator (BLUE)/minimum variance linear unbiased estimator (MVLUE)_**</span>.
+:::
+
+The Gauss-Markov theorem is one of the major justifications for estimating linear models with $\OLS$. With estimation thoroughly treated, we can now consider making inferences about $(\bet,\sigma^2)$ for $P_{\bet,\sigma^2}\in\mathcal P_\text{LM}$.
+
+
+## Asymptotic Distribution of the OLS Estimator
+
+We know that our estimator is consistent and the BLUE, but how does its distribution behave? It turns out that $\OLS$ is root-n CAN under weaker assumptions than those required for the Gauss-Markov theorem. Before showing this in earnest, let's look at a special case of the linear model.
+
+:::{#exm-}
+
+## Gaussian Linear Model
+
+Suppose $P_\text{LM}$ satisfies the Gauss-Markov assumptions, *in addition* to the assumption that $\ep\mid\Xm \sim N(\zer,\sigma^2\mathbf I)$ (which is equivalent to $\varepsilon_i\iid N(0,\sigma^2)$ because we have assumed spherical errors). This model is sometimes referred to as the **_Gaussian linear model_**. A common way of writing this model is $\Y\mid\Xm \sim N(\Xm\bet,\sigma^2\mathbf I)$, which emphasizes the fact that $\E{\Y\mid\Xm} = \Xm\bet$.  It's quite easy to derive the distribution of $\OLS$ for this model. We won't even need to approximate the distribution via asymptotics! Using the properties of the multivariate distribution, we have:
+\begin{align*}
+&\OLS - \bet = [\bet + (\Xm'\Xm)^{-1}\Xm\ep] - \bet\\
+\implies & \OLS - \bet = (\Xm'\Xm)^{-1}\Xm\ep\\
+\implies & \OLS - \bet \sim N(\zer, (\Xm'\Xm)^{-1}\Xm\sigma^2\mathbf I[(\Xm'\Xm)^{-1}\Xm]' ) & (\mathbf A \ep \sim N(\zer, \mathbf A \sigma^2 \mathbf I \mathbf A'))\\
+\implies & \OLS \sim N(\bet , \sigma^2\underbrace{(\Xm'\Xm)^{-1}\Xm\Xm'}_{\mathbf I}(\Xm'\Xm)^{-1})\\
+\implies & \OLS \mid \Xm\sim N(\bet , \sigma^2(\Xm'\Xm)^{-1})
+\end{align*}
+
+To verify this, we can simulate 50,000 estimates for the model Gaussian linear model where $\beta = [2,4]'$, and $\sigma^2 = 1$. We'll pick a modest sample size of $n=5$ to emphasize that this is the precise distribution of $\OLS$, not just the asymptotic distribution. Because this distribution is conditional on $\Xm$, we'll fix the realization $\Xm=\X$ over the simulations.
+
+```{r}
+n <- 5
+sigma <- 1
+x1 <- runif(n, 0, 10)
+X <- cbind(1, x1)
+beta <- c(2,4)
+
+N_sim <- 50000
+store <- matrix(NA, ncol = 2, nrow = N_sim)
+for (k in 1:N_sim) {
+  e <- e <- rnorm(n, 0, 1)
+  y <- X %*% beta + e
+  store[k,] <- OLS(y,X)
+}
+```
+
+
+```{r}
+#| code-fold: true
+#| fig-align: center
+#| warning: false
+#| label: fig-plot511
+#| message: false
+#| fig-asp: 1
+#| fig-width: 11
+#| fig-cap: "The simulated marginal density of our estimators and their simulated joint density (along with the true underlying distributions shown in red)"
+#| code-summary: "Show code which generates figure"
+df1 <- tibble(
+  x = c(store[,1], store[,2]),
+  group = c(rep("β1 Estimate", 50000), rep("β2 Estimate", 50000))
+  )
+
+df2 <- tibble(
+  x = c(seq(min(store[,1]), max(store[,1]), length = 1000), seq(min(store[,2]) ,max(store[,2]), length = 1000)),
+  group = c(rep("β1 Estimate", 1000), rep("β2 Estimate", 1000))
+  ) %>% 
+  mutate(y = ifelse(group == "β1 Estimate", dnorm(x, beta[1], sqrt(solve(t(X)%*%X)[1,1])), dnorm(x, beta[2], sqrt(solve(t(X)%*%X)[2,2]))))
+
+p1 <- ggplot() +
+  geom_histogram(data = df1, aes(x, y = ..density..), color = "black", fill = "white", bins = 50) +
+  geom_line(data = df2, aes(x,y), color = "red") + 
+  facet_wrap(~group, scales = "free") +
+  theme_minimal()
+  
+
+df1 <- expand_grid(x = seq(min(store[,1]) ,max(store[,1]), length = 1000),
+                  y = seq(min(store[,2]) ,max(store[,2]), length = 1000),
+                  )
+df1$p <- dmvnorm(df1, beta, solve(t(X)%*%X))
+df2 <- tibble(
+  x = store[,1], 
+  y = store[,2]
+)
+
+p2 <- ggplot() +
+  geom_point(data = df2, aes(x,y), size = 0.001)+
+  geom_contour(data = df1, aes(x,y, z= p), bins = 14, color = "red", size = 1) +
+  theme_minimal() +
+  xlab("β1 Estimate") +
+  ylab("β2 Estimate") + 
+  xlim(0,4) +
+  ylim(3.6,4.4)
+
+ggarrange(p1, p2, ncol = 1)
+```
+
+:::
+
+If we abandon the assumption that $\ep\mid\X\sim N(\zer,\sigma^2\mathbf I)$ we are back to the standard (Gauss-Markov) linear model. All the assumptions about or model take the form of moment conditions, and not specific distributions, so we will not be able to calculate the exact distribution of $\OLS$ in general. Fortunately we can use our asymptotic toolkit to find the limiting distribution of $\OLS$.
+
+The overwhelming majority of the time, estimators will be root-n consistent, so the best starting point of finding the asymptotic distribution of an estimator is by first calculating $\sqrt{n}(\hat{\thet} - \thet)$. In the case of the OLS estimator:
+\begin{align*}
+\sqrt{n}(\OLS - \bet) & = n^{1/2}[\bet + (\Xm'\Xm)^{-1}\Xm\ep] - \bet\\
+& = \sqrt{n}(\Xm'\Xm)^{-1}\Xm\ep \\ 
+& = \sqrt{n}\left(\frac{\Xm'\Xm}{n}\right)^{-1}\left(\frac{\Xm'\ep}{n}\right)\\
+& = \left(\frac{\Xm'\Xm}{n}\right)^{-1}\left(\frac{\Xm'\ep}{\sqrt{n}}\right)\\
+& = \left(\frac{1}{n}\sum_{i=1}^n\X_i'\X_i\right)^{-1}\left(\frac{1}{\sqrt n}\sum_{i=1}^n\X_i'\varepsilon_i\right)
+\end{align*}
+Whether you want to show the result using the matrix form of $\OLS$ or the form which is sums of vector is a matter of preference. Regardless, the first term will converge to its population counterpart $\E{\X'\X}$. The second term is a bit more interesting. We have 
+$$\left(\frac{1}{\sqrt n}\sum_{i=1}^n\X_i'\varepsilon_i\right) = \sqrt n \left(\frac{1}{ n}\sum_{i=1}^n\X_i'\varepsilon_i - \zer\right) =  \sqrt n \left(\frac{1}{ n}\sum_{i=1}^n\X_i'\varepsilon_i - \E{\X_i'\varepsilon_i}\right),$$ but this is the precise expression which the CLT applies to, so we have:
+\begin{align*}
+\left(\frac{1}{\sqrt n}\sum_{i=1}^n\X_i'\varepsilon_i\right) &\dto N(\E{\X_i'\varepsilon_i}, \var{\textstyle \sum_{i=1}^n\X_i'\varepsilon_i}/n)\\
+& \dto N(\zer, \textstyle \sum_{i=1}^n\sigma^2\E{\X'\X}/n)\\
+& \dto N(\zer, \sigma^2\E{\X'\X})
+\end{align*}
+because $\X_i'\varepsilon_i$ is an iid sample. Using this fact along with Slutsky's theorem and the LLN gives us the distribution of $\OLS$.
+\begin{align*}
+\sqrt{n}(\OLS - \bet) & =\underbrace{\left(\frac{1}{n}\sum_{i=1}^n\X_i'\X_i\right)^{-1}}_{\pto\E{\X'\X}^{-1}}\underbrace{\left(\frac{1}{\sqrt n}\sum_{i=1}^n\X_i'\varepsilon_i\right)}_{\dto N(\zer, \sigma^2\E{\X'\X})}\\
+& \dto \E{\X'\X}^{-1}N(\zer, \sigma^2\E{\X'\X})\\
+& = N(\zer, \E{\X'\X}^{-1}\sigma^2\E{\X'\X}[\E{\X'\X}^{-1}]')\\
+& = N(\zer, \E{\X'\X}^{-1}\sigma^2\E{\X'\X}\E{\X'\X}^{-1})\\
+& = N(\zer, \sigma^2\E{\X'\X}^{-1})
+\end{align*}
+
+If we express the variance in terms of the random matrix $\Xm$ instead of the random vector of covariates using the equality $\E{\X'\X} = \E{\Xm'\Xm}/n$, we have 
+
+$$\sqrt{n}(\OLS - \bet) \dto N(\zer, \sigma^2(\E{\Xm'\Xm}/n)^{-1})= N(\zer, \sigma^2n\E{\Xm'\Xm}^{-1}) $$
+
+:::{.theorem name="Asymptotic Distribution of OLS" #asymols}
+Suppose $P_{\bet,\sigma^2}\in \mathcal P_\text{LM}$ where $\E{\X'\ep} = \zer$, $\text{rank}\left(\E{\X'\X}\right) = K$, $\E{\ep\ep'} = \sigma^2\mathbf I$. Then
+$$ \OLS \asim N\left(\bet,\sigma^2\E{\Xm'\Xm}^{-1}\right) = N\left(\bet, \frac{\sigma^2}{n}\E{\X'\X}^{-1}\right). $$
+:::
+
+We have stated the asymptotic distribution without conditioning on $\Xm$, so $\avar{\OLS}$ will be in terms of the expectation of $\Xm$ opposed to some fixed $\Xm$. We only appealed to the assumption $\E{\ep\ep'} = \sigma^2\mathbf I$ to simplify the asymptotic variance, so in the event $\E{\ep\ep'} \neq \sigma^2\mathbf I$, our estimator will still be root-n CAN, albeit with a different asymptotic variance (we will show this in Section \@ref(generalized-least-squares)). Depending on the level of technical rigor the assumptions which give this result may differ. I followed the derivation provided by  @wooldridge2010econometric, but others will delineate regularity conditions on $\Xm$ so it is "well-behaved", or impose assumptions about the behavior of errors as a martingale. These assumptions tend to be rather weak and will hold in many practical applications. We also could extend this result to data which are not independent using the Lindeberg-Feller CLT.     
+
+:::{#exm-}
+Consider the case where $\beta = 2$, $\varepsilon_i \iid \text{Uni}(-1,1)$, $X \sim \text{Uni}(-5,5)$, $\varepsilon\perp X$, and $Y= 2X + \varepsilon$. By properties of the uniform distribution, 
+\begin{align*}
+\sigma^2 &= \frac{1}{3},\\
+\E{X^2} & = \frac{25}{3}.
+\end{align*}
+If simulate realizations of $\hat\beta$ for a sufficiently large $n$, we should expect it to approximately follow a normal distribution with mean $2$ and variance:
+$$\frac{\sigma^2}{n}\E{\X'\X}^{-1} =  \frac{1/3}{n} \E{X^2}^{-1} = \frac{1}{3n}(25/3)^{-1} = \frac{1}{25n}.$$
+Let's perform 10,000 simulations for sample sizes $n\in\{3,5,8,10\}$.
+
+```{r}
+beta <- 2
+N_sim <- 10000
+store <- data.frame(estimate = NA, n = NA)
+for (n in c(3,5,8,10)) {
+  for (k in 1:N_sim) {
+    e <- runif(n,-1,1)
+    X <- matrix(runif(n, -5, 5), ncol = 1) 
+    y <- X * beta + e
+    store <- rbind(store, c(OLS(y,X),n))
+  }
+}
+
+```
+
+As $n$ increases we should see the bias of our estimator shrink, and the simulated variance approach $1/25n$. 
+
+```{r}
+#| echo: false
+store %>% 
+  filter(!is.na(n)) %>% 
+  group_by(n) %>% 
+  summarize(
+    Bias = mean(estimate) - 2,
+    `Simulated Variance` = var(estimate)
+  ) %>% 
+  mutate(`Limiting Variance` = 1/(25*n)) %>% 
+  knitr::kable()
+```
+
+More importantly (because we knew how to calculate the bias and asymptotic variance of $\OLS$ prior to deriving its limiting distribution), if we use our estimates to make a Q-Q plot, we see that as $n$ increases our estimates fit a normal distribution increasingly well. 
+
+```{r}
+#| code-fold: true
+#| fig-align: center
+#| warning: false
+#| message: false
+#| fig-asp: 1
+#| fig-width: 11
+#| fig-cap: ""
+#| code-summary: "Show code which generates figure"
+store %>% 
+  filter(!is.na(n)) %>% 
+  ggplot(aes(sample = estimate)) +
+  facet_wrap(~n) +
+  stat_qq_line(color = "red") +
+  stat_qq(size = 0.2) +
+  theme_minimal() +
+  ylim(0,3)
+```
+
+Even for modest sample sizes such as $n=10$, it's clear that our estimates are approximately normally distributed. 
+:::
+
+## Estimating $\avar{\OLS}$
+
+We've spent so much time considering the estimation of $\bet$, and completely ignored the other parameter of our model -- $\Sig$. In the case of the Gauss-Markov assumptions, $\Sigma = \sigma^2\mathbf I$, so estimating $\Sig$ simplifies to estimating $\sigma^2$. 
+
+A natural suggestion for the estimator would be  
+$$\frac{1}{n-1}\sum_{i=1}^n(e_i - \underbrace{\E{e_i}}_0)^2 =   \frac{1}{n-1}\sum_{i=1}^ne_i^2 =\e'\e$$ for realizations $\e$ of the random variable $\ep$. This was our approach to calculating the standard error associated with the mean when we didn't know the population variance, but it is a nonstarter in this case because we don't observe $\ep$. So right from the start, we need to think of a way to estimate $\e$. The immediate candidate are the observed errors associated with the estimator $\OLS$. This estimator for $\e$ can be defined as 
+
+\begin{align*}
+\hat{\e} & = \Y - \Xm\OLS,\\
+& = \Y - \Xm(\Xm'\Xm)^{-1}\X'\Y,\\
+& = (\mathbf I - \Xm(\Xm'\Xm)^{-1}\Xm')\Y.
+\end{align*}
+
+:::{#def-}
+The <span style="color:red">**_(least squares) residuals_**</span> associated with the estimator $\OLS$ are defined as 
+$$ \hat{\e}(\Y,\Xm) = \Y - \Xm\OLS = \mathbb M\Y,$$ where $\mathbb M = \mathbf I - \Xm(\Xm'\Xm)^{-1}\Xm'$. 
+The estimated residuals associated with observations $(\y, \X)$ is 
+$$ \hat{\e}(\y,\X) =\y - \X\hat{\mathbf{b}}_\text{OLS}= \mathbf M\y.$$
+:::
+
+To estimate $\var{\ep\mid \Xm} = \E{\ep\ep'\mid \Xm}$, let's appeal to the analogy principle and inspect its sample counterpart, only do so using the residuals $\hat{\e}$. To do this, we'll need a few quick results, the proofs of which are applications of linear algebra and can be found in @greene2003econometric.
+
+:::{#lem-}
+
+## Properties of Residuals
+
+Let the estimator $\hat{\e}$ be the least squared residuals. Then:
+
+1. $\mathbb M$ is symmetric ($\mathbb M'=\mathbb M$) and idempotent ($\mathbb M^2=\mathbb M$). Together these imply that $\mathbb M'\mathbb M= \mathbb M$.
+2. $\text{tr}(\ep'\mathbb M\ep) =\text{tr}(\mathbb M\ep'\ep)$ where $\text{tr}(\mathbf A)= \sum_{i=1}^n \text{diag}(\mathbf A)$
+:::
+
+The matrix $\mathbb M$ satisfies $\mathbb M\Xm =\zer$: 
+$$\mathbb M\Xm =(\mathbf I - \Xm(\Xm'\Xm)^{-1}\Xm')\Xm =\Xm -  \Xm\underbrace{(\Xm'\Xm)^{-1}\Xm'\Xm}_{\mathbf I} = \zer .$$
+
+The sample analog of $\ep'\ep$, using residuals as estimates for $\e$, is: 
+
+\begin{align*}
+\hat{\e}'\hat{\e} &= \Y\mathbb M'\mathbb M\Y \\ 
+& = [\Xm\OLS + \ep]\mathbb M[\Xm\OLS + \ep] & (\Y = \Xm\OLS + \ep,\ \mathbb M'\mathbb M =\mathbb M)\\
+& = \ep' \mathbb M\ep & (\mathbb M\Xm =\zer)\\
+\end{align*}
+
+The expectation of this estimator is
+\begin{align*}
+\E{\hat{\e}'\hat{\e}} &= \E{\E{\hat{\e}'\hat{\e} \mid \Xm}} \\ 
+& = \E{\E{\ep' \mathbb M\ep \mid \Xm}}\\
+& = \E{\E{\text{tr}(\ep' \mathbb M\ep) \mid \Xm}} & (\ep' \mathbb M\ep\text{ is a scalar})\\
+& = \E{\E{\text{tr}( \mathbb M\ep'\ep) \mid \Xm}} & (\text{tr}(\ep'\mathbb M\ep) =\text{tr}(\mathbb M\ep'\ep))\\
+& = \E{\mathbb M(\text{tr}\E{\ep'\ep \mid \Xm})} & (\mathbb M\text{ is a function of }\Xm)\\
+& = \text{tr}(\mathbb M \sigma^2 \mathbf I) \\
+& = \sigma^2 \text{tr}(\mathbb M) \\ 
+& = \sigma^2 \text{tr}(\mathbf I - \Xm(\Xm'\Xm)^{-1}\Xm')\\
+& = \sigma^2 \text{tr}(\mathbf I) - \text{tr}((\Xm'\Xm)^{-1}\Xm\Xm')\\
+& = \sigma^2(n-K)
+\end{align*}
+
+Much like the estimator $n^{-1}\sum_{i=1}^n(X_i - \bar X)^2$ for some $\var{X}$, our estimator for the variance of our residuals is biased. If we correct for this bias, we have 
+$$ S^2 = \frac{\hat{\e}'\hat{\e}}{n-K}.$$ This correction follows from the same intuition behind Bessel's correction. Bessel's correction accounted for the estimation of population variance have two steps: first we estimate $\bar X$ because we do not know $\mu = \E{X}$, and then we use this intermediate estimate to calculate the sample variance. We're doing precisely the same thing when estimating the variance of our errors. It requires an intermediate step where we estimate $\OLS$, and then we use our estimated value to calculate $\hat{\e}'\hat{\e}/(n-K)$. The estimator $\OLS$ is a $K-$vector, so we need to correct for each dimension. 
+
+:::{#prp-olsvar}
+
+## Estimation of OLS Variance
+
+Define the estimator $$S^2 =  \frac{\hat{\e}'\hat{\e}}{n-K}$$ in the context of the classic linear model. Then:
+
+1. $S^2$ is an unbiased for $\var{\ep\mid\X} = \sigma^2$.
+2. $S^2$ is a consistent estimator $\var{\ep\mid\X} = \sigma^2$.
+3. The estimator $\widehat{\text{Avar}}(\OLS) = S^2(\Xm'\Xm)^{-1}$ is a consistent estimator for 
+${\text{Avar}}(\OLS) = \sigma^2\E{\Xm'\Xm}^{-1}$
+:::
+
+
+:::{.proof}
+<span style="color:white">space</span>
+
+1. This follows from our derivation of the estimator: $$\E{S^2} = \E{\hat{\e}'\hat{\e}}/(n-K) = [\sigma^2/(n-K)]/(n-K) = \sigma^2.$$
+2. We have:
+\begin{align*}
+S^2 & = \E{\hat{\e}'\hat{\e}}/(n-K)\\
+& = \frac{1}{n-K}\E{\ep'\mathbb M\ep}\\
+& = \frac{1}{n-k}[\ep'(\mathbf I - \Xm(\Xm'\Xm)^{-1}\Xm')\ep]\\
+& = \frac{1}{n-k}[\ep'\ep - \ep' \Xm(\Xm'\Xm)^{-1}\Xm'\ep]\\
+& = \frac{n}{n-k}\left[\frac{\ep'\ep}{n} - \frac{\ep' \Xm}{n}\frac{(\Xm'\Xm)^{-1}}{n}\frac{\Xm'\ep}{n}\right]\\
+& = \underbrace{\frac{n}{n-k}}_{\to 1}\Bigg[\underbrace{\frac{1}{n}\sum_{i=1}^n \varepsilon_i^2}_{\pto \sigma^2} - \underbrace{\left(\frac{1}{n}\sum_{i=1}^n\varepsilon_i\X_i\right)}_{\pto \zer}\underbrace{\left(\frac{1}{n}\sum_{i=1}^n\X_i'\X_i\right)^{-1}}_{\pto \E{\X'\X}^{-1}}\underbrace{\left(\frac{1}{n}\sum_{i=1}^n\X_i'\varepsilon_i\right)}_{\pto \zer} \Bigg] & (\text{LLN})\\
+& \pto 1(\sigma^2 - \zer\E{\X'\X}^{-1}\zer) & (\text{Slutsky's theorem})\\
+& = \sigma^2
+\end{align*}
+
+3. We can now use the fact that $S^2\pto \sigma^2$ along with Slutsky's theorem:
+
+$$ \widehat{\text{Avar}}(\OLS) = \underbrace{S^2}_{\pto \sigma^2}[\underbrace{(\Xm'\Xm)}_{\pto n\E{\X'\X}}]^{-1} \pto \sigma^2[n\E{\X'\X}]^{-1}=\frac{\sigma^2}{n}\E{\X'\X}^{-1}={\text{Avar}}(\OLS). $$
+:::
+
+## Basic Model Selection and Inference
+
+We've been operating under the assumption that we know the true model $\mathcal P_\text{LM}$, but in reality knowing this is impossible. In fact, a common aphorism in statistics is that "all models are wrong", because the world is too complex to systematically describe any phenomenon. This is especially true of the social sciences. Fortunately, the full aphorism is "all models are wrong...but some are useful." Even if models are approximations of reality, they offer insights into the world. So how do we pick the right one?
+
+In the context of $\mathcal P_\text{LM}$, this question amounts to considering the random vector of regressors $\X$. Even if our model is founded in rigorous economic theory, it still may be unclear which independent variables are pertinent. In Example \@ref(exm:car), we considered a model where an agent $i$ got utility $u_{ij}$ from purchasing a car $j$, assuming that their utility function took the form $u_{ij}=\X_{ij}\bet + \varepsilon_i$ for a vector of vehicle and consumer attributes $\X_{ij}$ where $\varepsilon_i$ corresponds to heterogeneity. It is up to us to determine which variables to include in $\X_{ij}$. Attributes likes vehicle price, consumer location, whether a car is new or used, and model year of the car likely affect a consumers utility. But what about things like car color, technical specifications like a vehicles torque? There is no cut and dry answer to this, hence the black hole that is literature regrading model select. For now, we will take a basic approach to model selection rooted in methods introduced in \@ref(hypothesis-testing).
+
+Consider two models $\mathcal P_\text{LM}$ and $\mathcal P_\text{LM}'$:
+
+\begin{align*}
+\mathcal P_\text{LM}&: Y = \beta_0 + \beta_1 X_1 + \varepsilon\\
+\mathcal P_\text{LM}'&: Y = \beta_0 + \beta_1 X_1 + \beta_2 X_2 + \varepsilon
+\end{align*} 
+
+These models are referred to as **_nested models_**, because the parameter space corresponding to $\mathcal P_\text{LM}$ is a subset of the parameter space corresponding to $\mathcal P_\text{LM}'$. If we are tasked with choosing between these two models, we can estimate $\mathcal P_\text{LM}'$ and test the hypothesis $H_0:\beta_2 = 0$. If we find sufficient evidence to reject this null hypothesis, than $\beta_2$ is likely nontrivial and should be included in the model, prompting us to favor $\mathcal P_\text{LM}'$. 
+
+In general, suppose you want to test $H_0:\beta_j = \beta_{0}$. We established that $\OLS$ is root-n CAN so we can use the $t-$test discussed in @sec-tsting to test this hypothesis. The statistic would be 
+$$ t = \frac{\hat\beta_{\text{OLS},j} - \beta_0}{\widehat{\text{se}}(\hat\beta_{\text{OLS},j})}.$$ This statistic relies on a consistent estimator $\widehat{\text{se}}(\hat\beta_{\text{OLS},j})$, but this is given immediately by our consistent estimator $\widehat{\text{Avar}}(\OLS) = S^2(\Xm'\Xm)^{-1}$. 
+
+$$\widehat{\text{se}}(\OLS) = \left[\text{diag}(S^2(\Xm'\Xm)^{-1})\right]^{1/2}.$$ In the context of model selection, our default hypothesis is $H_0:\beta_j = \beta_0$ -- is the addition of $\beta_j$ in our specification nontrivial? This is why if you run a regression using almost any statistical software, it will automatically report the results associated with the hypotheses $H_0:\beta_j = 0$ for each separate $\beta_j$.   
+
+
+
+
+:::{#exm-}
+
+## Coding Exercise
+
+Now that we know how to estimate and draw inferences about $\bet$, let's return to our ```OLS()``` function which we first defined in Example \@ref(exm:funref). Along with calculating $\OLS$, let's calculate $\widehat{\text{se}}(\OLS)$, the $t$-statistic associated with testing $K$ null hypotheses $\beta_j = 0$ (separately) at a significance level of $\alpha = 0.05$, a 95% confidence interval for $\bet$, and the associated $p-$value.
+
+```{r}
+OLS <- function(y, X){
+  #determine dimensions, confirm estimate exists, perform OLS
+  n <- length(y)
+  K <- ncol(X)
+  if(det(t(X) %*% X) == 0) {stop("rank(X'X) < K")}
+  hat_beta <- solve(t(X) %*% X) %*% t(X) %*% y
+  
+  #use OLS estimates to calculate residuals and estimate SEs
+  res <- (y-X %*% hat_beta)
+  S2 <- ((t(res) %*% res)/(n - K)) %>% as.numeric() 
+  var_hat <- (S2) * solve( t(X) %*% X )
+  se_hat <- sqrt(diag(var_hat))
+  
+  #t-stat, confidence intervals, p values
+  t <- hat_beta/se_hat
+  lower_CI <- hat_beta - qnorm(0.975)*se_hat
+  upper_CI <- hat_beta + qnorm(0.975)*se_hat
+  p_val <- 2*(1 - pt(t, n-K))
+  
+  #combine everything into one table to return
+  output <- cbind(hat_beta, se_hat, t, lower_CI, upper_CI, p_val)
+  rownames(output) <- paste("β", 1:K, sep = "")
+  colnames(output) <- c("Estimate", "Std.Error", "t-Stat", "Lower 95% CI", "Upper 95% CI", "p-Value")
+  return(output)
+}
+```
+
+We'll estimate the model given by $\bet = [2,5,4,3,6]'$, $\X \sim N(\zer, \mathbf I)$, $n = 15$, and $\varepsilon\iid \text{Uni}(-1,1)$. Before we use our ```OLS()``` function, let's see what R's base function ```lm()``` (which stands for "linear model") give us.
+
+```{r}
+beta <- c(2,5,4,3,6)
+n <- 15
+X <- rmvnorm(n, mean = rep(0,4), diag(1,4))
+X <- cbind(1, X)
+e <- runif(n,-1,1)
+y <- X %*% beta + e
+
+#base R function, -1 to omit intercept which we added a column for
+knitr::kable(summary(lm(y ~ X - 1))$coefficients)
+```
+
+Now for our function.
+
+```{r}
+knitr::kable(OLS(y,X))
+```
+
+The outputs are identical, so our function works perfectly!
+:::
+
+If we want to test hypotheses jointly, we need to use the Wald test instead of the $t$-test. For some hypothesis $H_0:\mathbf h(\bet) = \zer$ given by $\mathbf h:\mathbb R^K\to\mathbb R^q$, our statistic is 
+$$W = \mathbf h(\OLS)'  \left[\frac{\partial \mathbf h}{\partial\bet}(\OLS) \widehat{\text{Avar}}(\OLS)\frac{\partial \mathbf h}{\partial\bet}(\OLS)'\right]^{-1}\mathbf h(\OLS),$$ where $W \asim \chi_q^2$ under $H_0$. 
+
+
+:::{#exm-ftest}
+
+## F-Test
+
+Consider the Gaussian linear model where all Gauss-Markov assumptions are met and $\ep \sim N(\zer, \sigma^2\mathbf I)$, along with the linear hypothesis that $\mathbf H\bet = \bet_0$ for a $q\times K$ matrix $\mathbf H$. In this case the Wald statistic is \begin{align*}
+W & = [\mathbf H\OLS - \bet_0]'\left[\var{\mathbf H\OLS\mid \X}\right]^{-1}[\mathbf H\OLS - \bet_0]\\
+  & = [\mathbf H\OLS - \bet_0]'[\mathbf H\var{\OLS\mid \Xm}\mathbf H']^{-1}[\mathbf H\OLS - \bet_0]\\
+  & = [\mathbf H\OLS - \bet_0]'[\sigma^2\mathbf H(\Xm'\Xm)^{-1}\mathbf H']^{-1}[\mathbf H\OLS - \bet_0] & \left(\var{\OLS\mid \Xm} = \sigma^2 (\Xm'\Xm)^{-1}\right)\\
+  & = \frac{[\mathbf H\OLS - \bet_0]'[\mathbf H(\Xm'\Xm)^{-1}\mathbf H']^{-1}[\mathbf H\OLS - \bet_0]}{\sigma^2}
+\end{align*}
+We don't know $\sigma^2$ so we cannot use this test statistic. Instead we define a new statistic $F$ which uses the estimator $S^2$. 
+\begin{align*}
+F & = \frac{W}{q}\frac{\sigma^2}{S^2}\\
+  & = \frac{[\mathbf H\OLS - \bet_0]'[\mathbf H(\Xm'\Xm)^{-1}\mathbf H']^{-1}[\mathbf H\OLS - \bet_0]}{\sigma^2}\cdot \frac{1}{q}\cdot \frac{\sigma^2}{S^2} \cdot \frac{n-K}{n-K}\\
+  & = \frac{[\mathbf H\OLS - \bet_0]'[\sigma^2\mathbf H(\Xm'\Xm)^{-1}\mathbf H']^{-1}[\mathbf H\OLS - \bet_0]/q}{[(n-K)S^2/\sigma^2]/(n-K)}
+\end{align*}
+
+Under the assumptions that $\ep$ is normally distributed, it can be shown that the denominator is distributed according to $\frac{1}{n-K}\chi_{n-K}^2$. This along with the numerator being distributed according the $\frac{1}{q}\chi_q^2$ means $F \sim F_{q,n-K}$. If we simplify the statistic $F$ we have 
+$$ F = \frac{[\mathbf H\OLS - \bet_0]'[S^2\mathbf H(\Xm'\Xm)^{-1}\mathbf H']^{-1}[\mathbf H\OLS - \bet_0]}{q} \sim F_{q,n-K},$$ and can test $\mathbf H\bet = \bet_0$ with the **_$F-$test_**.
+:::
+
+The $F-$test is just a special case of the Wald test where we can derive an exact distribution of our test statistic. Most statistical softwares will present the $F-$stat associated with $H_0:\bet = \zer$ when you run a linear regression. This test corresponds to the hypothesis that our specification is completely wrong and none of the independent variables appear (jointly) relevant. Unfortunately, this test is not as robust as the Wald test, as it requires normal errors. 
+
+The next example is due to @greene2003econometric and shows how a Wald test can be used in the context of model selection.
+
+:::{#exm-}
+
+## Investement Model
+
+Let $I_t$ denote the investment in a fixed economy at time $t$. One linear model for investment specifies:
+$$ \log I_t = \beta_1 + \beta_2 i_t + \beta_3 \Delta p_t + \beta_4\log Y_t + \beta_5t + \varepsilon_t$$ where $i_t$ is the nominal interest rate, $\Delta p_t$ is the inflation rate, and $Y_t$ is real output. We've also included a time trend $t$ as an independent variable. Instead of the nominal interest rate, agents may care about the real (adjusted for inflation) interest rate $i_t - \Delta p_t$. So perhaps investment is only affected by inflation insofar that inflation determines the real interest rate.^[It could be the case that investment is a function of real interest rates along with inflation if inflation has affects outside of that on the real interest rate.] If this is the case our model is 
+$$ \log I_t = \beta_1 + \beta_2 (i_t - \Delta p_t) + \beta_4\log Y_t + \beta_5t + \varepsilon_t.$$ We can test if this second specification is favorable by estimating the first model, and then testing the hypothesis $H_0 : \beta_2 + \beta_3 = 0$. Let's perform a simulation where the null hypothesis is true, and perform to corresponding Wald test. For the sake of ease, we will assume everything is uniformly distributed instead of simulating values such that they are realistic in the economic context of the model. 
+
+```{r}
+n <- 1000
+beta <- c(1,0.5,-0.5, 2, 0.1)
+K <- 5 
+  
+i <- runif(n, 0, 10)
+del_p <- runif(n, 0, 10)
+y <- runif(n, 0, 10)
+t <- 1:1000
+e <- runif(n,-1, 1)
+
+X <- cbind(1, i, del_p, log(y), t)
+I <- X %*% beta + e
+
+hat_beta <- OLS(I,X)[,1]
+res <- (y-X %*% hat_beta)
+S2 <- ((t(res) %*% res)/(n - K)) %>% as.numeric() 
+var_hat <- (S2) * solve( t(X) %*% X )
+
+H <- matrix(c(0,1,1,0,0), nrow = 1)
+alpha <- 0.95
+W <- t(H %*% hat_beta) %*% solve(H %*% var_hat %*% t(H)) %*% (H %*% hat_beta)
+C <- qchisq(0.95, 1)
+print(c(W, C))
+```
+The value of the Wald test stat is not even close to exceeding the critical value, so we fail to reject the null hypothesis and conclude that $\beta_2 + \beta_3 = 0$.
+
+:::
+
+## Partial/Marginal Effects, Linear Projection Revisited
+
+When interpreting the parameters $\bet$ in $\mathcal P_\text{LM}$, it's very common to think in terms of derivatives. We will define these derivatives according to @wooldridge2010econometric.
+
+:::{#def-}
+Suppose $Y$ and $\X = (X_1,\ldots, X_K)$ are a random variable and vector, respectively. The <span style="color:red">**_partial/marginal effect_**</span> of $X_j$ on $\E{Y\mid\X}$ (sometimes called the partial effect of $X_j$ on $Y$), is $$ \frac{\partial \E{Y\mid\X}}{\partial X_j}.$$ In the event that $X_j$ is discrete, partial effects are given as the difference between $\E{Y\mid\X}$ evaluated at two discrete values of $X_j$.
+:::
+
+If we have a linear model $Y = \X\bet + \ep$, we're almost conditioned to conclude the marginal effect of $X_j$ on $\E{Y\mid\X}$ is $\beta_j$, but in general this is not true. 
+
+:::{#exm-}
+This example is due to this [post](https://stats.stackexchange.com/questions/190703/non-linear-endogeneity/190800#190800). Suppose $Y=X\beta + \varepsilon$ where $X\sim N(0,1)$ and $\varepsilon = X^2 - 1$. To insure that $\beta$ is identified, we need to verify that $\E{\varepsilon} = 0$ (we do not have an intercept) and $\E{X\varepsilon} =0$ (the multicollinearity assumption is trivially met). Note that $X^2\sim \chi_1^2$, so $\E{X^2} = 1$. We also have $\E{X^3} = 0$, as the normal distribution is not skewed (skewness being defined as the third moment centered about the mean).  
+\begin{align*}
+\E{\varepsilon}&= \E{X^2 - 1}= \E{X^2} - 1 = 1 - 1 = 0\\
+\E{X\varepsilon}&= \E{X^3 - X} = \E{X^3} - \E{X} = 0 - 0 = 0
+\end{align*}
+Our model is identified. Furthermore $\OLS$ will present consistent estimates of $\beta$. For the sake of illustration, let $\bet = 2$.
+
+```{r}
+beta <- 2 
+N_sim <- 10000
+
+estimates <- vector("numeric", N_sim-1)
+for (n in 2:N_sim) {
+  X <- as.matrix(rnorm(n, 0, 1))
+  e <- X^2 - 1
+  y <- beta*X + e
+  estimates[n-1] <- OLS(y,X)[1]
+}
+```
+
+```{r}
+#| code-fold: true
+#| fig-align: center
+#| warning: false
+#| message: false
+#| fig-asp: 1
+#| fig-width: 11
+#| fig-cap: ""
+#| code-summary: "Show code which generates figure"
+tibble(
+  x = 2:N_sim, 
+  y = estimates
+) %>% 
+  ggplot(aes(x,y)) +
+  geom_line(size = 0.2) +
+  theme_minimal() +
+  labs(x = "sample size",
+       y = "OLS estimate")
+```
+
+We have estimated $\beta = 2$ consistently, but this is not the partial effect! We have 
+
+$$\frac{\partial \E{Y\mid X}}{\partial X}= \frac{\partial}{\partial X}\E{X\beta + \varepsilon \mid X} = \frac{\partial}{\partial X}\E{X\beta + X^2 -1\mid X} = \frac{\partial}{\partial X}[X\beta + X^2 - 1] = \beta + 2X \neq \beta.$$ This follows from the fact that $X$ is only weakly exogenous, so $\E{\varepsilon\mid X}\neq 0$. 
+:::
+
+ In general, we can still have $\E{X_i\varepsilon_i} = 0$ for all $i$ where $\varepsilon = g(\X)$ for some nonlinear function $g$, because  weak exogeneity only insures that our error and regressors are uncorrelated (i.e they have no linear relationship). What we need is exogeneity so we can conclude $$\E{Y \mid \X} = \E{\X\bet \mid \X} + \underbrace{\E{\varepsilon \mid \X}}_{\zer} = \X\bet,$$ so $$\frac{\partial \E{Y\mid \X}}{\partial X_j} = \beta_j.$$ **_At the heart of this issue is the relationship between the linear projection model and the (structural) linear model_**.  Early on we emphasized that there was a difference between what we called the linear projection model and the linear model. The prior is concerned with the statistical association of $Y$ and $\X$ and describes a feature of their joint density. Proposition \@ref(prp:ceferr) established that by definition the error in this model, $\varepsilon_c$, satisfied $\E{\varepsilon_c\mid\X} = \zer$. In the case of the linear model, $\varepsilon$ has a structural interpretation and may not satisfy this property, *but if it does* the linear projection model and the linear model will coincide in the sense that $\bet$ is interpreted as a marginal effect. Some treatments of OLS, such as @cameron2005microeconometrics, actually restrict their attention to the identification of the linear model such that $\bet$ is associated with a marginal effect, requiring  exogeneity instead of weak exogeneity for identification. 
+
+:::{#prp-}
+
+## Identification of Marginal Effects
+
+Suppose $\Y = \Xm\bet + \ep$ is a linear model. If $\E{\ep \mid \X} = \zer$ and $\text{rank}\left(\E{\X'\X}\right) = K$, then 
+$$\frac{\partial \E{Y\mid \X}}{\partial \X} = \bet,$$ where $\bet$ is identified.
+:::
+
+:::{.proof}
+In this case, $\bet$ is identified as $\E{\ep \mid \X} = \zer$ implies $\E{\X'\ep} = \zer$, and we are given $\text{rank}\left(\E{\X'\X}\right) = K$.
+:::
+
+More generally, if $\mathbf f(\X) = [f_1(\X), \ldots, f_K(\X)]$ are a series of continuous functions of regressors, and $Y = \mathbf f(\X)\beta + \varepsilon$, then
+$$ \frac{\partial \E{Y\mid \X}}{\partial X_j} = \frac{\partial \mathbf f}{\partial X_j}\bet = \sum_{\ell =1}^K\frac{\partial f_\ell}{\partial X_j} \bet.$$ For example, if $Y = \beta_1 + \beta_2\log X_1 + \beta_3 \exp[ X_1X_2] + \varepsilon$ where $\E{\varepsilon \mid X_1}=0$, then 
+$$ \frac{\partial \E{Y\mid X_1}}{\partial X_1} = \frac{\beta_1}{X_1} + \beta_3X_2\exp[X_1X_2].$$
+
+@reiss2007structural provide a more nuanced discussion of $\frac{\partial \E{Y\mid X}}{\partial X}$ in the context of structural models, and how it relates the the linear projection model we discussed at the opening. 
+
+## Frisch–Waugh–Lovell Theorem
+
+Even if our model contains multiple regressors concatenated in the vector $\X$, we may be especially interested in a subset of regressors. For instance, in Example @exm-car we may be especially interested in the price of cars if we are a manufacturer, as estimating consumers' sensitivity to price changes could give us valuable insights into maximizing our profit. In situations like this, is it possible to "ignore" the independent variables of secondary importance? The answer, as provided by @frisch1933partial @lovell1963seasonal, is "kind of", and deals with the algebra of OLS. 
+
+Suppose $\Xm_1$ and $\Xm_2$ are two random matrices of observations where $\Xm= [\Xm_1,\Xm_2]$. If $\bet =[\bet_1,\bet_2]'$, then 
+$$ \Y = \Xm\bet + \ep = \Xm_1\bet_1 + \Xm_2\bet_2 + \ep. $$ The first order condition associated with the least squares problem is now 
+$$ \begin{bmatrix}\Xm_1'\Xm_1 & \Xm_1'\Xm_2\\\Xm_2'\Xm_1 & \Xm_2'\Xm_2\end{bmatrix} \begin{bmatrix} \hat{\bet}_{\text{OLS},1} \\ \hat{\bet}_{\text{OLS},2} \end{bmatrix} =  \begin{bmatrix} \Xm_1'\Y \\ \Xm_2'\Y \end{bmatrix}$$ 
+If we expand this, we have 
+\begin{align*}
+\Xm_1'\Xm_1\hat{\bet}_{\text{OLS},1} + \Xm_1'\Xm_2\hat{\bet}_{\text{OLS},2} = \Xm_1'\Y,\\
+\Xm_2'\Xm_1\hat{\bet}_{\text{OLS},1} + \Xm_2'\Xm_2\hat{\bet}_{\text{OLS},2} = \Xm_2'\Y.
+\end{align*}
+If we solve the first equation for $\hat{\bet}_{\text{OLS},1}$, we have 
+$$\hat{\bet}_{\text{OLS},1} = (\Xm_1'\Xm_1)^{-1}\Xm_1'(\Y -\Xm_2\hat{\bet}_{\text{OLS},2}).$$ If we insert this into the second equation in our system, we have 
+\begin{align*}
+&\Xm_2'\Xm_1[(\Xm_1'\Xm_1)^{-1}\Xm_1'(\Y -\Xm_2\hat{\bet}_{\text{OLS},2})] + \Xm_2'\Xm_2\hat{\bet}_{\text{OLS},2} = \Xm_2'\Y\\
+\implies &  \Xm_2'\Xm_1(\Xm_1'\Xm_1)^{-1}\Xm_1'\Y -\Xm_2'\Xm_1(\Xm_1'\Xm_1)^{-1}\Xm_1'\Xm_2\hat{\bet}_{\text{OLS},2} + \Xm_2'\Xm_2\hat{\bet}_{\text{OLS},2} = \Xm_2'\Y\\
+\implies &  \hat{\bet}_{\text{OLS},2}[\Xm_2'\Xm_2 - \Xm_2'\Xm_1(\Xm_1'\Xm_1)^{-1}\Xm_1'\Xm_2]= \Xm_2'\Y - \Xm_2'\Xm_1(\Xm_1'\Xm_1)^{-1}\Xm_1'\Y\\
+\implies & \hat{\bet}_{\text{OLS},2}[\Xm_2'(\mathbf I - \Xm_1(\Xm_1'\Xm_1)^{-1}\Xm_1')\Xm_2] = [\Xm_2'(\mathbf I - \Xm_1(\Xm_1'\Xm_1)^{-1}\Xm_1')\Y]\\
+\implies & \hat{\bet}_{\text{OLS},2} = [\Xm_2'(\mathbf I - \Xm_1(\Xm_1'\Xm_1)^{-1}\Xm_1')\Xm_2]^{-1}[\Xm_2'(\mathbf I - \Xm_1(\Xm_1'\Xm_1)^{-1}\Xm_1')\Y]
+\end{align*}
+Recalling that we defined a matrix $\mathbb M =\mathbf I - \Xm(\Xm'\Xm)^{-1}\Xm'$ such that $\hat{\e} = \mathbb M\Y$ where $\mathbb M = \mathbb M'$ and $\mathbb M^2 = \mathbb M$, we have \begin{align*}
+\hat{\bet}_{\text{OLS},2} &= [\Xm_2'\mathbb M_1\Xm_2]^{-1}[\Xm_2'\mathbb M_1\Y]\\
+& = [\Xm_2'\mathbb M_1'\mathbb M_1\Xm_2]^{-1}[\Xm_2'\mathbb M_1\Y]\\
+& = [\mathbb X_2^{*\prime} \mathbb X_2^{*}]^{-1}[\Xm_2'\Y^*] & (\mathbb X_2^{*} = \mathbb M_1\Xm_2,\ \Y^* =\mathbb M_1\Y)
+\end{align*}
+The estimator $\hat{\bet}_{\text{OLS},2}$ follows from regressing $\mathbb M_1\Xm_2$  on $\mathbb M_1\Y$, which correspond to the residuals $\Xm_2 - \Xm_1\hat{\boldsymbol\gamma}_\text{OLS}$ and $\mathbf Y - \Xm\hat{\bet}_{\text{OLS},1}$.
+
+
+:::{#thm-}
+
+## Frisch–Waugh–Lovell Theorem
+
+For the linear model, $\Y = \Xm\bet + \ep = \Xm_1\bet_1 + \Xm_2\bet_2 + \ep$, 
+$$\hat{\bet}_{\text{OLS},2} = [\mathbb X_2^{*\prime} \mathbb X_2^{*}]^{-1}[\Xm_2'\Y^*],$$ where $\mathbb X_2^{*\prime}$ and $\Y^*$ are the residual vectors from least squares regression of $\Xm_2$ and $\Y$ on $\Xm_1$, respectively. 
+:::
+
+One of the useful applications of this theorem deals with visualization. 
+
+:::{#exm-}
+Suppose $Y = 1 + 4 X_1 + 2 X_2 + 8 X_3 + 3X_4 + \varepsilon$. Let's estimate this model for simulated data. 
+
+```{r}
+beta <- c(1,4,2,8,3)
+n <- 100
+X <- rmvnorm(n, mean = rep(0,4), diag(1,4))
+X <- cbind(1, X)
+e <- runif(n,-1,1)
+y <- X %*% beta + e
+
+OLS(y,X)
+```
+If we're interested in the $\hat\beta_{\text{OLS},2}$, we may want to visualize it. Unfortunately, our parameter space is a subset of $\mathbb R^5$, so it isn't feasible to plot the hyperplane correspond to our estimated model over our sample. Fortunately, we can use the Frisch–Waugh–Lovell Theorem.
+
+```{r}
+X1 <- X[,-2]
+X2 <- X[,2]
+y_res <- y - X1 %*% OLS(y, X1)[,1]
+X2_res <- X2 - X1 %*% OLS(X2, X1)[,1]
+OLS(y_res, X2_res)
+```
+
+We end up with the same estimate $\hat\beta_{\text{OLS},2}$, and can visualize it by plotting the dependent and independent variables in this alternate regression.
+
+```{r}
+#| code-fold: true
+#| fig-align: center
+#| warning: false
+#| message: false
+#| fig-asp: 1
+#| fig-width: 11
+#| fig-cap: ""
+#| code-summary: "Show code which generates figure"
+tibble(
+  x = X2_res, 
+  y = y_res
+) %>% 
+  ggplot(aes(x,y)) +
+  geom_point() +
+  theme_minimal() +
+  geom_smooth(method = "lm", col = "blue", size = 0.5, se = FALSE) +
+  labs(x = "x2 Residuals", y = "y Residuals") 
+```
+
+While our estimate is the same, the standard error associated with the estimate is not quite the same. For the first regression, we had $K = 5$ regressors, whereas the second had $K = 1$. This affects how $\widehat{\text{se}}(\OLS)$ is calculated, as the numerator of $S^2$ which ensures it is unbiased is $n - K$. We have $\widehat{\text{se}}(\OLS)\propto \sqrt{n-K}$, so if we scale the standard error in the second regression by $\sqrt{(n - 1)/(n - 5)}$.
+
+```{r}
+incorrect_se <- OLS(y_res, X2_res)[2]
+incorrect_se * sqrt((n-1)/(n-5))
+```
+
+Despite being well known, the relationship between the standard errors of each regression seem to have gone unformalized until @ding2021frisch.
+
+:::
+
+## Recap 
+
+The linear model, along with the array of assumptions and what they yield, can be quite a bit to take in. The following table shows the cumulative properties given by the addition of each assumption.
+
+|  $\text{rank}\left(\E{\X'\X}\right) = K$, $\E{\X'\ep} = \zer$|$\E{\ep\mid \Xm}= \zer$|$\E{\ep\ep'\mid \Xm}= \sigma^2\mathbf I$|$\ep\sim N(\zer,\sigma^2\mathbf I)$|
+|-----------------------|-----------------------|-----------------------|------------|
+| $(\bet,\Sig)$ identified |$(\bet,\Sig)$ identified  |$(\bet,\sigma^2)$ identified | $(\bet,\sigma^2)$ identified |
+| $\OLS\pto\bet$            | $\OLS\pto\bet$              | $\OLS\pto\bet$              | $\OLS\pto\bet$   |
+| $\OLS$ Asymptotically Normal | $\OLS$ Asymptotically Normal | $\OLS$ Asymptotically Normal | $\OLS$ Normal     |
+|                       |  $\OLS$ Unbiased              |  $\OLS$ Unbiased              |  $\OLS$ Unbiased   |
+| | $\frac{\partial \E{Y\mid \X}}{\partial \X} = \bet$ |  $\frac{\partial \E{Y\mid \X}}{\partial \X} = \bet$ |  $\frac{\partial \E{Y\mid \X}}{\partial \X} = \bet$      |
+|                       |                       |  $\OLS$ BLUE                  |  $\OLS$ BLUE       |
+
+We also have maintained two implicit assumptions throughout: IID regressors, and the model is correctly specified.
+
+
+## Example/Replication {#rep1}
+
+Chapter 4 of @greene2003econometric provides a useful exercise in the form of replication @christensen1976economies who estimate the economies of scale in US electrical power generation.
+
+In response to rising electrical rates in the United States during the mid-20th century, @christensen1976economies consider whether vertically integrated electrical providers (who generate, transmit, and distribute electricity) should be disintegrated. If these firms could only generate electricity as a result of regulation, then these firms would have to compete to sell generated electricity to separate intermediary firms which would transmit and distribute it to consumers. This competition has the potential to lower prices. At the same time, perhaps the vertical integration of firms cuts costs, which may actually lead to better prices for consumers. To determine if this is the case, we can consider the economies of scale of firms. 
+
+Economies of scale refers to the phenomenon where the more quantity of a good a firm produces, the lower the costs associated with that production. A firms cost, $C$, will be a function of output $Q$, and prices of inputs $P_1,\ldots,P_k$ used in production. We will specify our cost function as:
+\begin{align*}
+\log C &= \alpha + \beta\log Q + \gamma[(\log Q)^2/2] + \sum_{i=1}^k\delta_i\log P_i & (\textstyle\sum_{i=1}^k\delta_i = 1)
+\end{align*}
+
+The functional form may look a bit arbitrary, but it's consistent with a handful of appealing properties we expect a cost function to exhibit, the most important of which being a U-shape in quantity corresponding to decreasing costs as quantity increases up to a point (economies of scale), followed by increasing costs. @christensen1973transcendental provide all the details about this functional form. This point is given as the minimum of $C$, which will coincide with the minimum of $\log C$ because $\log$ is a monotonic function. The first order condition for this minimization is 
+\begin{align*}
+&\frac{\partial \log C}{\partial \log Q}  = 1, \\
+ \implies & \beta + \gamma \log Q^* = 1,\\
+ \implies & Q^* = \exp\left(\frac{1-\beta}{\gamma}\right),
+\end{align*}
+where the derivative is set to $1$ instead of $0$ because $\log(0) = 1$. If we are able to estimate $(\beta,\gamma)$ we can calculate $Q^*$. If we observe $Q_i > Q^*$, for many firms $i,$ then the same output $Q$ could be produced at a lower cost if the market was comprised of a larger number of firms producing a smaller output. 
+
+The data from @christensen1976economies is available [here](https://pages.stern.nyu.edu/~wgreene/Text/Edition7/TableF4-4.txt).^[I did do some cleaning of the raw data beforehand.]
+
+```{r}
+#| message: false
+CG_1976 <- read_csv("data/christensen_greene_1976.csv")
+```
+
+The first few rows of the data give us an idea of what type of information we have.
+
+```{r}
+#| echo: false
+knitr::kable(head(CG_1976))
+```
+
+We observe the unit prices of three inputs: capital, labor, and fuel. Taking these into account, the cost function becomes 
+$$\log C = \alpha + \beta\log Q + \frac{1}{2}\gamma[(\log Q)^2/2] + \delta_k \log P_k + \delta_l \log P_l + \delta_f \log P_f,$$ where $\delta_k + \delta_l + \delta_f = 1$. We can rewrite out model to implicitly satisfy the constraint if we write $\delta_f = 1 -\delta_l - \delta_f$: 
+
+\begin{align*}
+&\log C = \alpha + \beta\log Q + \gamma[(\log Q)^2/2] + \delta_k \log P_k + \delta_l \log P_l + (1 -\delta_l - \delta_f) \log P_f\\
+\implies & \log C - \log P_f= \alpha + \beta\log Q + \gamma[(\log Q)^2/2] + \delta_k( \log P_k - \log P_f) + \delta_l (\log P_l-\log P_f) \\
+\implies & \log(C/P_f) = \alpha + \beta\log Q +\gamma[(\log Q)^2/2] + \delta_k \log (P_k/P_f) + \delta_l \log (P_l/P_f)
+\end{align*}
+
+This model cannot account for all the possible factors which influence a firm's costs, so we will introduce the element $\varepsilon$ to account for unobserved factors which influence cost, and assume that all our regressors are exogenous.^[Is this reasonable? Could it be the case that $P_k$, $P_l$, and/or $P_f$ are correlated with other input prices that we don't observe? How does the context of electrical power production impact this assumption?] This gives us our estimable model.
+$$ \log(C/P_f) = \alpha + \beta\log Q +\gamma[(\log Q)^2/2] + \delta_k \log (P_k/P_f) + \delta_l \log (P_l/P_f) + \varepsilon$$
+```{r}
+CG_1976 <- CG_1976 %>% 
+  mutate(
+    C = log(cost/fuel),
+    Q = log(output),
+    Q2 = Q^2/2,
+    P_kf = log(capital/fuel),
+    P_lf = log(labor/fuel)
+    )
+
+model <- lm(C ~ Q + Q2 + P_kf + P_lf, data = CG_1976)
+summary(model)
+```
+
+We can use our estimates $\hat \beta$ and $\hat \gamma$ to calculate $\hat Q^*$.
+
+```{r}
+beta_hat <- model$coefficients[2]
+gamma_hat <- model$coefficients[3]
+Q_hat <- exp((1-beta_hat)/gamma_hat)
+Q_hat
+```
+
+The straightforward way of determining if costs are higher than they need to be as a result of vertical integration is by counting the number of firms for which $Q > \hat Q^*$. This doesn't account for the degree to which firms are exceeding the efficient scale. To do this, let's consider the total output produced by firms which are exceeding the efficient scale, opposed to those which are not. 
+
+```{r}
+CG_1976 %>% 
+  mutate(inefficient = (output > Q_hat)) %>% 
+  group_by(inefficient) %>% 
+  summarize(
+    n_firms = n(),
+    total_output = sum(output)
+  ) %>% 
+  mutate(prop_output = total_output/sum(total_output)) %>% 
+  knitr::kable()
+```
+
+57% of output is attributed to the 25 firms producing over the efficient scale. This seems to indicate that the market is too vertically integrated.
+
+## Further Reading
+
+**Conditional Expectation and Linear Projection**: Chapter 2 of @wooldridge2010econometric, Chapter 2 of @hansen2022econometrics, Chapter 3 of @angrist2008mostly
+
+**Structural Modeling**: Chapter 1 of @greene2003econometric , @reiss2007structural, @goldberger1972structural, portions of Chapter 2 of @cameron2005microeconometrics 
+
+**OLS**: Chapter 4 of @wooldridge2010econometric, Chapters 3-5 of @greene2003econometric,  portions of Chapter 1-2 of @hayashi2011econometrics
+
+**Model selection**: @phillips1996econometric @hansen2005challenges @leamer1978specification @hendry2000econometrics @davidson1981several @hendry1995dynamic
+
+## Math Appendix: Projection {#sec-proj}
+
+Linear projection can be generalized far beyond the setting of a random vector $(Y,\X)$. I'll *quickly* define projection in the general setting of Hilbert spaces. For details, see @rudin, @royden1988real, or @folland1999real.
+
+A normed vector space $V$ defined over a field $F$ is, as the name implies, a vector space equipped with a norm $\norm{\cdot}:V\mapsto [0,\infty)$ satisfying:
+
+1. $\norm{v} = 0 \iff v = 0$;
+2. $\norm{av} = \abs{a}\norm{v}$;
+3. $\norm{w + v} \le \norm{w} + \norm{v}$;
+
+for all vectors $v,w\in V$ and scalars $a\in F$. The norm tells us how "far" a vector $v\in V$ is from the zero element ("origin") $0\in V$. Any normed vector space is also a metric space if we define a metric as $d(v,w)=\norm{v-w}$. With this metric comes the familiar definitions of convergence. If $V$ is a complete metric space (all Cauchy sequences converge in $V$), then we say $V$ is a Banach space. 
+
+A Hilbert space is a complete vector space $H$ (defined over a field of scalars $F$) equipped with an inner product $\langle\cdot,\cdot\rangle: H\times H\to F$ which satisfies:
+
+1. $\langle x,y \rangle = \langle y,x \rangle$;
+2. $\langle cx,y \rangle = c\langle y,x \rangle$
+3. $\langle x+z,y \rangle = \langle x,z \rangle + \langle y,z \rangle$;
+4. $\langle x,x \rangle > 0 \iff x\neq 0$;
+
+for all $x,y\in H$ and $c\in F$. All Hilbert spaces are normed vector spaces, as $\norm{x} = \sqrt{\langle x,x \rangle}$ satisfies all the properties of a norm. This makes a Hilbert space a Banach space, as we've assumed $H$ is complete. The development of Hilbert spaces was motivated by Euclidean space, as the vector space $\mathbb R^k$ (over the field of scalars $\mathbb R$) is a Hilbert space:
+\begin{align*}
+\langle \x,\y \rangle &= \x\cdot\y = \sum_{i=1}^k x_iy_i,\\
+\norm{\x} &= \left(\sum_{i=1}^k x_i^2\right)^{1/2},\\
+d(\x,\y) &= \left(\sum_{i=1}^k(y_i - x_i)^2\right)^{1/2}.
+\end{align*}
+
+Another useful Hilbert space is a special case of a normed vector space known as an $L^p$ space. For a measure space $(X,\mathcal N, \mu)$, define $L^p$ to be the set of all measurable (real) functions $f:X\to\mathbb R$. The norm for this space is 
+$$ \norm{f}_p = \left(\int\abs{f}^p\ d\mu\right)^{1/p}.$$ In general $L^p$ spaces are not Hilbert spaces, but if $p=2$, then they are. In this case the inner product is 
+
+$$\langle f,g \rangle = \int\abs{f}\abs{g}\ d\mu.$$
+In the event that the measure space is $(\mathbb Z^+, \mathbb Z^+, \mu)$ where $\mu$ is the counting measure, then a measurable function $f:\mathbb Z^+\to\mathbb R$ is a sequence of numbers real $\{x_1,x_2,\ldots\}$. In this case we denote the $L^p$ space as $\ell^p$ and have 
+$$ \norm{f}_p = \left(\int\abs{f}^p\ d\mu\right)^{1/p} = \left(\sum_{i=1}^\infty |x_i|^p\right)^{1/2}.$$ If we $\{x_1,x_2,\ldots,x_k, 0,0,0,\ldots \}\in\ell ^k$, we could also consider this an element of $\mathbb R^k$ because the trailing zeros. In this sense, Euclidean space is an $L^p$ space:
+$$\norm{\x}_2 = \left(\sum_{i=1}^k x_i^2\right)^{1/2}.$$
+
+Two elements of a Hilbert space are orthogonal if $\langle x,y \rangle = 0$. If $S\subset H$ is a subspace of a Hilbert space $H$, there exists a unique element $\hat y\in S$ such that 
+\begin{align*}
+\norm{x - \hat y} &= \inf_{y\in S}\norm{x - y},\\
+\langle x-\hat y,z \rangle &= 0 & (\forall z\in S).
+\end{align*}
+ We refer to $\hat y$ as the projection of $x$ onto $S$.
+
+For a probability space $(\Omega, \mathcal F, P)$. If we define a $L^2$ space as all the random variables (measurable functions) with squared values that are integrable, then 
+$$ \langle X,Y \rangle = \int\ xy\ dP = \E{XY}.$$
+This is why we refer to random variables as orthogonal when $\E{XY} = 0$! In the event we have a random vector $\Z = (Y,\X)$, the projection of $Y$ onto $\X$ happens to be $\E{Y\mid \X}$.
+

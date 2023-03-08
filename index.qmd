@@ -1,0 +1,363 @@
+\DeclareMathOperator{\plim}{plim}
+\DeclareMathOperator{\argmin}{argmin}
+\DeclareMathOperator{\argmax}{argmax}
+\newcommand{\var}[1]{\text{Var}\left(#1\right)}
+\newcommand{\avar}[1]{\text{Avar}\left(#1\right)}
+\newcommand{\E}[1]{\text{E}\left[#1\right]}
+\newcommand{\cov}[1]{\text{Cov}\left(#1\right)}
+\newcommand{\mse}[1]{\text{MSE}\left(#1\right)}
+\newcommand{\se}[1]{\text{se}\left(#1\right)}
+\newcommand{\limfunc}{lim} 
+\newcommand{\X}{\mathbf{X}}
+\newcommand{\Xm}{\mathbb{X}}
+\newcommand{\EER}{\bar{\thet}_\text{EE}}
+\newcommand{\NLS}{\hat{\bet}_\text{NLLS}}
+\newcommand{\z}{\mathbf{z}}
+\newcommand{\rr}{\mathbf{r}}
+\newcommand{\C}{\mathbf{C}}
+\newcommand{\Pe}{\mathbf{P}}
+\newcommand{\y}{\mathbf{y}}
+\newcommand{\Y}{\mathbf{Y}}
+\newcommand{\uu}{\mathbf{u}}
+\newcommand{\e}{\mathbf{e}}
+\newcommand{\D}{\mathbf{D}}
+\newcommand{\x}{\mathbf{x}}
+\newcommand{\xm}{\mathbb{x}}
+\newcommand{\Zm}{\mathbb{Z}}
+\newcommand{\Wm}{\mathbb{W}}
+\newcommand{\Hm}{\mathbb{H}}
+\newcommand{\W}{\mathbf{W}}
+\newcommand{\Z}{\mathbf{Z}}
+\newcommand{\Hess}{\mathbf{H}(\mathbf{\Z\mid\thet})}
+\newcommand{\Score}{\mathbf{S}(\mathbf{\Z\mid\thet})}
+\newcommand{\A}{\mathbf{A}}
+\newcommand{\h}{\mathbf{h}}
+\newcommand{\Q}{\mathbf{Q}}
+\newcommand{\F}{\mathbf{F}}
+\newcommand{\G}{\mathbf{G}}
+\newcommand{\I}{\mathbf{I}}
+\renewcommand{\D}{\mathbf{D}}
+\renewcommand{\C}{\mathbf{C}}
+\newcommand{\zer}{\mathbf{0}}
+\newcommand{\OLS}{\hat{\boldsymbol\beta}_\text{OLS} }
+\newcommand{\OLSOV}{\hat{\boldsymbol\beta}_\text{OLS,OV} }
+\newcommand{\OLSME}{\hat{\boldsymbol\beta}_\text{OLS,ME} }
+\newcommand{\EE}{\hat{\boldsymbol\theta}_\text{EX} }
+\newcommand{\ME}{\hat{\boldsymbol\theta}_\text{M} }
+\newcommand{\MDE}{\hat{\boldsymbol\theta}_\text{MDE} }
+\newcommand{\IV}{\hat{\boldsymbol\beta}_\text{IV} }
+\newcommand{\TSLS}{\hat{\boldsymbol\beta}_\text{2SLS} }
+\newcommand{\thet}{\boldsymbol{\theta}}
+\newcommand{\et}{\boldsymbol{\eta}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Sig}{\boldsymbol{\Sigma}}
+\newcommand{\ep}{\boldsymbol{\varepsilon}}
+\newcommand{\Omeg}{\boldsymbol{\Omega}}
+\newcommand{\Thet}{\boldsymbol{\Theta}}
+\newcommand{\bet}{\boldsymbol{\beta}}
+\newcommand{\rk}{rank}
+\newcommand{\tsum}{\sum}
+\newcommand{\tr}{tr}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\abs}[1]{\left\lvert#1\right\rvert}
+\newcommand{\ms}{\overset{ms}{\to}}
+\newcommand{\pto}{\overset{p}{\to}}
+\newcommand{\iid}{\overset{iid}{\sim}}
+\newcommand{\dto}{\overset{d}{\to}}
+\newcommand{\asim}{\overset{a}{\sim}}
+
+# Preliminaries {.unnumbered}
+
+-   Multivariable Calculus
+    -   partial derivatives, the gradient, Jacobian matrix, Hessian matrix
+    -   optimization
+-   Linear Algebra
+    -   matrices and vectors
+    -   linear transformations
+    -   projections
+    -   PSD matrices
+-   Probability
+    -   random variables
+    -   distribution and density of RVs
+    -   expectation and variance 
+    -   moments 
+    -   common distributions
+        -   normal distribution
+        -   "friends" of the normal distribution: chi-squared, student's
+            t, F distribution
+-   Mathematical Statistics
+    -   Estimation
+    -   Hypothesis testing
+-   Basic [Real Analysis](https://github.com/noahjussila/analysis_notes/blob/master/Analysis%20Notes.pdf)
+    -   infimum and supremum 
+    -   metric spaces 
+    -   compact sets in $\mathbb R$
+    -   mean value theorem
+    -   convergence of sequences
+    -   pointwise versus uniform convergence
+    -   Taylor series
+-   Basic Numerical Optimization 
+    -   "numerical" vs. "analytic"
+
+## Probablitiy Theory
+
+We'll briefly go over the basics of probability theory, _none of which is strictly required_. A rigorous treatment can be found in @durrett2019probability or @billingsley2008probability. For an even more general discussion, see @folland1999real, @royden1988real, and/or @rudin. If you have zero interest in the formal math behind probability (who would blame you?) then skip to the end of this section where all the math is reduced to two notational conventions. 
+
+A probability space is a triple $(\mathcal X, \mathcal F, P)$ comprised of:
+
+1. A **_sample space_** $\mathcal X$
+2. A collection of events $\mathcal F$ which is a subset of the power set of events $2^{\mathcal X}$. This collection of sets satisfies the following properties: $\mathcal X\subset F$, $A^c\in F$ if $A\in F$, and $\cup_{i=1}^n A_i \subset F$ if $A_i\subset \mathcal F$ for all $i$. Such a collection of sets is known as a **_sigma-algebra_**.^[We cannot define probability over the entire power set $2^{\mathcal X}$, or else we run into some technical problems.]
+3. A **_probability measure_** $P:\mathcal F\to [0,1]$ satisfying: $P(\mathcal X) = 1$, $P(\emptyset) = 0$, $P(A) \le P(B)$ for $A\subset B\in \mathcal F$, and $P\left(\cup_{i=1}^n A_i\right) = \sum_{i=1}^n P(A_i)$. 
+
+A probability space is a special case of a measure space $(X, \mathcal N,\mu)$. This is just any set $X$, an associated sigma-algebra $\mathcal N\subseteq 2^X$, and some measure $\mu$ which assigns values to sets in $\mathcal N\subseteq$. The most important such space is used to measure subsets of the real line (and more generally euclidean spaces). If we want to measure subsets of $\mathbb R$, we define the associated sigma-algebra as the collection of all open intervals, denoted $\mathcal B(\mathbb R) = \{(a,b)\subset \mathbb R\mid a,b\in\mathbb R\}$.^[Anytime a set is endowed with a topology (some notion of open sets), we can define a sigma-algebra as the collection of open subsets. This is known as the Borel sigma-algebra] The measure of some interval $I = (a,b)\subset \mathbb R$ is defined as $$m(I)=b -a,$$ which is fairly reasonable. This measure is known as the **_Lebesgue measure_**. Another nice example of a measure space is $(X, 2^{X}, \mu)$ where $$\mu(A) = \begin{cases}|A|& A\text{ finite}\\ \infty& A\text{ infinite}\end{cases}.$$ This measure simply assigns each set its cardinality, and is known as the **_counting measure_**.  
+
+Given a probability space $(\mathcal X, \mathcal F, P)$, we can define a **_random variable_** $X:\mathcal X\to\mathbb R$ to be a function such that the preimage of every set in $\mathcal B(\mathbb R)$ is in $\mathcal F$.^[More generally, such functions are called measurable.] 
+$$ X^{-1}(I) \in \mathcal F \ \ \ \forall I\in\mathcal B(\mathbb R)$$ In other words, if we can measure $I$ using the Lebesgue measure $\mu$, we are able to measure $X^{-1}(I)$ using the probability measure $P$. This allows us to define a probability measure $P(X^{-1}(I))$ on $\mathcal B(\mathbb R)$ which gives us the probability that $X$ is in the set $I\subset \mathcal B(\mathbb R)$. This probability measure is the **_distribution_** of $X$. If $I = (-\infty,x)$ for $x\in\mathcal X$, then the distribution takes the form $P(X^{-1}(I)) = P(X \in (-\infty,x)) = P(X\le x)$. We usually work with the distribution in this form and call it the  **_distribution function_** $F_X(x) = P(X\le x)$.
+
+The chief motivation for defining measure spaces and measurable functions is a general theory of integration. The Riemann integral is achieved by taking the limit of a process which partitions the area under a function into rectangles. The width of these rectangles is the length of their base, which can be thought of as the measure of an interval. When performing Riemann integration, if $I=(a,b)$ is the base of a rectangle, we take the width to be $m(I)=b -a$. That is, we use the Lebesgue measure. This is why you will sometimes see integrals written as 
+$$ \int f(x)\ dx = \int f(x) \ dm.$$ Writing the integral this way emphasize that we are integrating with respect to some measure (notion of length/volume), but it is more than just a notational difference. It is the result of defining integration in an entirely different way giving the **_Lebesgue integral (with respect to $m$)_**. In practice this won't matter a whole lot, because if we can calculate the Riemann integral of a function than we can calculate the Lebesgue integral, and both integrals are equal.^[The converse is not true, which is why the Lebesgue integral is of more theoretical interest. It turns out there are *many* functions which are not Riemann integrable but are Lebesgue integrable.] What's important is that the idea of integration with respect to a measure can be generalized to any measure space $(X, \mathcal N,\mu)$. In general, the **_Lebesgue integral_** of $f$ over $A\in \mathcal N$ is written as $$\int_A f \ d\mu.$$ The rigorous definition of this integral, and how it is calculated using that definition, aren't essential at the moment. That being said, one useful property to know is that if we integrate the constant $1$ on $A$ with respect to a measure $\mu$, we get $\mu(A)$. 
+$$\int_A 1\ d\mu = \int_A d\mu =\mu(A)$$ This should seem familiar from calculus. If we have a set $I=(a,b)$, then $$\int_a^b 1\ dx = b - a$$ using Riemann integration. Lebesgue integration gives 
+$$ \int_I 1\ dm = m(I) = b-a.$$ Interestingly, if we look at counting measure on the set of real numbers (our measure space is $(\mathbb R, 2^{\mathbb R}, \mu)$), and some set $A = \{a_1,\ldots, a_n\}\in 2^{\mathbb R}$ 
+$$ \int_Af\ d\mu = \int_A 1\ d\mu = \mu(A) = |A| = \sum_{i=1}^n 1=\sum_{i=1}^n f(a_i).$$ In general, integration with respect to the counting measure is a simple summation. This illustrates one nice consequence of the generality that Lebesgue integration provides -- summation is a special case of integration.^[But is this really new? The Riemann integral is just the limit of a sum.] 
+
+What happens if we apply Lebesgue integration to the distribution of a random variable $X$ defined on the sample space $\mathcal X$? Well if we integrate $1$ with respect to some real interval $I=(a,b)\subset \mathbb R$, then 
+$$ \int _I 1\ dP = P(I) = F(b) - F(a).$$ If we instead integrate over all $x\in\mathcal X$, we can think of the integral over the measure $P$ as a weighted sum of all $x$, where weights are given by $P$. This is just the **_expected value_** of $X$. $$\E{X} = \int_{\mathcal X}x \ dP = \int_{\mathcal X}x\ dF_X$$ But how do we calculate this expectation? Even though this is a measure space over real numbers, we really don't know how to calculate integrals with respect to any measure besides Lebesgue measure. In the event that the distribution $F$ satisfies certain standard conditions, we can find some function $f_X$ such that 
+$$ \E{X} = \int_{\mathcal X}x\ dF_X = \int_{\mathcal X} xf_X(x)\ d\mu = \int_{\mathcal X} x f_X(x)\ dx.$$ This function is called the **_density function_** $f(x)$ of $X$, and is actually given as $$f_X = \frac{dF_X}{dx}.$$ In a sense, the density function is a "conversion rate" between the measure $P$ and the measure $\mu$.^[In general, this type of construction is called the **_Radon–Nikodym derivative_**, and its existence is outlined by the **_Radon–Nikodym theorem_**.] 
+
+But what about "discrete" random variables? The expectation of a discrete random variable is not an integral...or is it? Just like how the integral with respect to the counting measure reduces to a sum, if our sample space $\mathcal X$ is countably infinite such that a random variable $X:\mathcal X \to \mathbb R$ takes on one of a discrete number of values, then 
+$$ \E{X} = \int_{\mathcal X} x\ dF_X = \sum_{\mathcal x\in \mathcal X}x f(x).$$
+
+If you couldn't care less about measure theory,^[It won't save your life in emergency situations.] then all this boils down to two facts:
+
+1. All results will be stated in terms of continuous random variables. If you want to show them for discrete random variables, just replace integrals with sums.
+2. Sometimes we will write expectation as $\int x\ dF_X$, which is the same as $$\int xf(x)\ dx.$$
+
+
+ 
+
+## Random Matrices and Vectors
+
+
+::: {#def-} 
+A $m$ by $n$ <span style="color:red">**_random matrix_**</span> $\mathbb{X}$ is a matrix whose entries
+are $m\times n$ random variables $X_{i,j}$, where
+$\mathbb{X}_{i,j} = X_{i,j}$.
+\begin{align*}
+\mathbb{X}= \begin{bmatrix}
+X_{11}&\cdots& X_{1n}\\\vdots&\ddots&\vdots\\X_{m1}&\cdots& X_{mn}
+\end{bmatrix}.
+\end{align*}
+In the event that either $m=1$ or $n=1$ we have a
+<span style="color:red">**_random vector_**</span> $\mathbf{X}$. 
+
+:::
+
+We will often want to write a random matrix $\Xm$ as a collection of random vector $\X$. Whether
+these be column vectors or row vectors depends on the context. If $\X$ is an $m\times n$ random matrix
+where columns are indexed by $i$ and rows by $j$, we will take $\X_j$ to be a column vector and $\X_i$ to be a row vector.
+\begin{align*}
+\Xm &= \begin{bmatrix}\X_1 & \cdots & \X_i &\cdots & \X_n\end{bmatrix}\\
+\Xm &= \begin{bmatrix}\X_1 \\ \vdots \\ \X_j \\ \vdots \\ \X_m\end{bmatrix}
+\end{align*}
+
+::: {#def-} 
+The <span style="color:red">**_expectation_**</span> of a random matrix $\mathbb{X}$ is defined as
+
+\begin{align*}
+\E{\Xm} = \begin{bmatrix}
+\text{E}[X_{11}]&\cdots& \text{E}[X_{1n}]\\\vdots&\ddots&\vdots\\\text{E}[X_{m1}]&\cdots& \text{E}[X_{mn}]
+\end{bmatrix}.
+\end{align*}
+
+:::
+
+
+::: {#prp-}
+
+## Properties of Expectation
+Suppose $\mathbb{X}$ and $\mathbb Y$ are $m\times n$ random matrices,
+$\mathbf A$ is a $\ell\times m$ matrix, $\mathbf B$ is a $n\times k$
+matrix, and $c$ is a scalar. Then:
+
+1.  $\text{E}\left[\mathbb{X}'\right]= \text{E}\left[\mathbb{X}\right]'$
+2.  $\text{E}\left[c\mathbb{X}\right]=c\text{E}\left[\mathbb{X}\right]$
+3.  $\text{E}\left[\mathbf A \mathbb{X}\mathbf B\right] = \mathbf A \text{E}\left[\mathbb{X}\right] \mathbf B$
+4.  $\text{E}\left[\mathbb{X}+ \mathbb Y\right] = \text{E}\left[\mathbb{X}\right] +\text{E}\left[\mathbb Y\right]$
+:::
+
+::: {#def-} 
+The <span style="color:red">**_variance/covariance matrix_**</span> of a random column vector
+$\mathbf{X}= [X_1, \ldots, X_n]'$ is defined as
+$$ \text{Var}\left(\mathbf{X}\right) = \text{E}\left[(\mathbf{X}- \text{E}\left[\mathbf{X}\right])(\mathbf{X}- \text{E}\left[\mathbf{X}\right])'\right]. $$
+:::
+
+The definition of $\text{Var}\left(\mathbf{X}\right)$ can be rewritten
+in a much more approachable form:
+
+\begin{align*}
+\text{Var}\left(\mathbf{X}\right) &= \text{E}\left[(\mathbf{X}- \text{E}\left[\mathbf{X}\right])(\mathbf{X}- \text{E}\left[\mathbf{X}\right])'\right]\\\\
+  & = \text{E}\begin{bmatrix}
+(X_1 - \text{E}\left[X_1\right])(X_1 - \text{E}\left[X_1\right])&\cdots& (X_1 - \text{E}\left[X_1\right])(X_n - \text{E}\left[X_n\right])\\\vdots&\ddots&\vdots\\(X_n - \text{E}\left[X_n\right])(X_1 - \text{E}\left[X_1\right])&\cdots& (X_n - \text{E}\left[X_n\right])(X_n - \text{E}\left[X_n\right])\end{bmatrix}\\\\
+  & = \begin{bmatrix}
+\text{E}\left[(X_1 - \text{E}\left[X_1\right])^2\right]&\cdots& \text{E}\left[(X_1 - \text{E}\left[X_1\right])(X_n - \text{E}\left[X_n\right])\right]\\\vdots&\ddots&\vdots\\\text{E}\left[(X_n - \text{E}\left[X_n\right])(X_1 - \text{E}\left[X_1\right])\right]&\cdots& \text{E}{(X_n - \text{E}\left[X_n\right])^2}
+\end{bmatrix}\\\\& = \begin{bmatrix}
+\text{Var}\left(X_1\right)&\cdots& \text{Cov}\left(X_1, X_n\right)\\\vdots&\ddots&\vdots\\\text{Cov}\left(X_n, X_1\right)&\cdots& \text{Var}\left(X_n\right)
+\end{bmatrix}
+\end{align*}
+
+The diagonal entries capture the dispersion of each random variable
+$X_i$ while the off diagonal entries correspond to the joint dispersion
+of all possible pairs $(X_i,X_j)$.
+
+::: {#def-} 
+The <span style="color:red">**_covariance matrix_**</span> of random column vectors
+$\mathbf{X}= [X_1, \ldots, X_n]'$ and $\mathbf{Y}= [Y_1, \ldots, Y_n]'$\
+$$ \text{Cov}\left(\mathbf{X},\mathbf{Y}\right) = \text{E}\left[(\mathbf{X}- \text{E}\left[\mathbf{X}\right])(\mathbf{Y}- \text{E}\left[\mathbf{Y}\right])'\right]. $$
+:::
+
+Alternatively, we can write the covariance matrix between two random
+vectors as:
+
+\begin{align*}
+\text{Cov}\left(\mathbf{X},\mathbf{Y}\right)=\begin{bmatrix}
+\text{Cov}\left(X_1, Y_1\right)&\cdots& \text{Cov}\left(X_1, Y_n\right)\\\vdots&\ddots&\vdots\\\text{Cov}\left(X_n, Y_1\right)&\cdots& \text{Cov}\left(X_n,Y_n\right)
+\end{bmatrix} 
+\end{align*}
+
+::: {#prp-}
+
+## Properties of Variance/Covariance
+
+Suppose $\mathbf{X}_1$ and $\mathbf{X}_2$ are random column vectors of length $n$, $\mathbf A$ and $\mathbf B$ are matrices with $n$ columns, and $\mathbf c$ and $\mathbf d$ are column vectors of length $n$. Then:
+
+1.  $\text{Var}\left(\mathbf A\mathbf{X}+\mathbf c\right)= \mathbf A \text{Var}\left(\mathbf{X}\right) \mathbf A'$
+2.  $\text{Cov}\left(\mathbf A\mathbf{X}+\mathbf b, \mathbf B\mathbf{y}+\mathbf c\right) = \mathbf A \text{Cov}\left(\mathbf{X},\mathbf{Y}\right)\mathbf B'$
+
+:::
+
+The first part of this proposition is a generalization of the familiar result that
+$\text{Var}\left(aX + b\right)= a^2\text{Var}\left(x\right)$.
+
+## Multivariate Normal Distribution
+
+Recall that if $X\sim N(\mu,\sigma^2)$, then any linear function of $X$
+is also normally distributed. To be precise, if $Y=aX +b$, then
+$Y\sim N(a\mu +b,a^2 \sigma^2)$. This useful properties generalizes to
+random vectors.
+
+::: {#prp-}
+Suppose $\mathbf{X}\sim N(\boldsymbol \mu, \boldsymbol{\Sigma})$. Then
+$$ \mathbf A \mathbf{X}+ \mathbf b \sim N(\mathbf A\boldsymbol\mu +\mathbf b, \mathbf A\boldsymbol{\Sigma}\mathbf A')$$
+where $\mathbf A$ and $\mathbf b$ are a matrix and vector with
+compatible dimensions.
+:::
+
+## Conditional Expectation and Independence
+
+As put by @wooldridge2010econometric:
+
+> A substantial portion of research in econometric methodology can be
+> interpreted as finding ways to estimate conditional expectations in
+> the numerous settings that arise in economic applications.
+
+For this reason, properties related to conditional expectation will
+prove useful time and time again. The first of these is the law of
+iterated expectation.
+
+::: theorem
+Suppose $X$ and $Y$ are random variables, then
+$$\text{E}\left[\text{E}\left[X\mid Y\right]\right]= \text{E}\left[X\right]$$
+:::
+
+Conditional expectation is related to the idea of independence. As one
+may remember from a probability course, if $X$ and $Y$ are independent
+random variables, then
+$\text{E}\left[X\mid Y\right]= \text{E}\left[\mathbf{X}\right]$. But is the converse
+true? As it turns out, the converse does not hold, so we have multiple
+notions of "independence".
+
+::: {#def-} 
+Suppose $X$ and $Y$ are random variables with densities $f_X(x)$ and
+$f_Y(y)$, respectively, and a joint density of $f_{X,Y}(x,y)$. $X$ and
+$Y$ are <span style="color:red">**_independent_**</span>, written as $X\perp Y$, if
+$$f_{X,Y}(x,y)=f_X(x)f_Y(y).$$
+:::
+
+::: {#def-} 
+Suppose $X$ and $Y$ are random variables. $X$ and $Y$ are <span style="color:red">**_mean
+independent_**</span> if $$\text{E}\left[X\mid Y\right]= \text{E}\left[X\right].$$
+:::
+
+::: {#def-} 
+Suppose $X$ and $Y$ are random variables. $X$ and $Y$ are
+<span style="color:red">**_uncorrelated_**</span> if
+$$\text{E}\left[XY\right]= \text{E}\left[Y\right]\text{E}\left[X\right],$$ which is equivalent to $\text{Cov}\left(X,Y\right) = 0$.
+:::
+
+Our final result in this brief section of review related these three
+definitions.
+
+:::{#thm-}
+Suppose $X$ and $Y$ are random variables. If $X \perp Y$, then $X$ and $Y$ are mean independent. In turn, if $X$ and $Y$ are mean independent, then $X$ and $Y$ are uncorrelated.
+:::
+
+:::{.proof}
+
+If $X \perp Y$, then \begin{align*}
+\text{E}\left[X\mid Y\right] & = \int x f_{X\mid Y}(s\mid t)\ dx \\
+              & = \int x \frac{f_{X,Y}(x,y)}{f_{Y}(y)}\ dx & (\text{def. of conditional probability}) \\
+              & = \int x \frac{f_X(x)f_Y(y)}{f_{Y}(y)}\ dx & (X \perp Y) \\
+              & = \int x f_X(x)\ dx \\
+              & = \text{E}\left[X\right].
+\end{align*} In turn, if $X$ and $Y$ are mean independent, then
+\begin{align*}
+\text{E}\left[XY\right] & = \text{E}\left[\text{E}\left[XY\mid Y\right]\right] & (\text{Law of Iterated Expectations})\\
+       & = \text{E}\left[YE\left[X\mid Y\right]\right] & (Y\text{ is constant}) \\
+       & = \text{E}\left[YE\left[X\right]\right] & (\text{mean independence}) \\
+       & = \text{E}\left[Y\right]\text{E}\left[X\right] & (\text{E}\left[X\right]\text{ is a constant})
+\end{align*}
+
+:::
+
+## Existence of Expectation
+
+It's possible that the expectation of a random variable does not exist. It may be the case that 
+$$ \int_{\mathcal X}x\ dF_X \not< \infty,$$ in which case we cannot assign an expected value to $X$. While this is theoretically interesting, the applications where we need to be careful assuming $\E{X}$ exists are few and far between. **_We will always assume the expectation, and relevant higher moments, of random variables exist_**. This is done for expositional ease, and to emphasize other assumptions that tend to be much more important.  
+
+## Code
+
+The majority of examples and simulations will be done in R, mostly because I like R, writing code in RStudio, and the ```tidyverse```. That being said, once we get to topics in machine learning, I'll switch over to Python. Python's ```scikit-learn``` is much more comprehensive than its counterparts in R, and it seems that most machine learning tutorials use Python. I suspect this is because machine learning is applied very often in "industry" where code needs to be production ready and implementable by engineers, something Python affords that R does not. Machine learning tools like TensorFlow and Keras are also built with Python in mind. Eventually I may include a section on scientific computing and optimization, in which case I may use Julia. For *excellent* examples of economic modelling in Julia (and Python), see [QuantEcon](https://quantecon.org/). 
+
+Two other softwares/languages that are popular in (academic) economics are Stata and MATLAB. These tools share in one major drawback -- they are not open source. While not as flexible as R or Python, Stata is particularly well-suited for basic econometrics. For example, I find it much easier to work with panel data and basic time series in Stata than in R. A great overview of econometric theory using Stata is provided by @cameron2010microeconometrics (which is a less technical companion to @cameron2005microeconometrics).
+
+## Organization 
+
+The organization of sections roughly follows a handful of econometrics courses I took while at Boston College. 
+
+### Part I - Statistics  {-}
+
+We'll start with a review of mathematical statistics presented at the level of @lehmann2006theory of @lehmann2005testing.^[These are the two standard references used for a PhD-level statistical theory course.] While the concepts will likely be familiar, they may seem a bit more technical when defined in the context of statistical decision theory. The focus is entirely on frequentist statistics, as Bayesian statistics will be covered later on.
+
+2. **Finite Sample Properties of Estimators**: We consider the problem of estimation, and give formal definitions and related notation to nebulous concepts such as: models, parametrizations, identification, statistics, parametric, semi-parametric, non-parametric, and estimators. Then we consider how to assess estimators for a fixed sample size. 
+3. **Asymptotic Properties of Estimators**: In most cases, we won't be able to determine finite sample properties of estimators, so we consider the situation where $n\to \infty$. Familiar results like the central limit theorem (CLT) and law of large numbers (LLN) will be discussed, but we'll also introduce a handful of essential results (the continuous mapping theorem, Slutsky's theorem, the delta method) that will enable us to use the CLT and LLN to determine the asymptotic behavior of almost every estimator we will consider.   
+4. **Hypothesis Testing**: The problem of estimation is only one part of statistics. The other is inference. We give an overview of inference and hypothesis testing using the Neyman-Pearson framework, and then consider how inference in relation to asymptotics. Two large sample tests (the Wald test and $t-$test) are covered. 
+5. **Exponential Families**: A quick treatment of a special type of probability distribution is given. Familiarity with these distributions is not necessary as far as econometrics is concerned, but a cursory understanding will make it possible to illuminate some cool connections between statistics and econometrics. In particular, we'll see exponential families come up when considering maximum likelihood estimation (MLE), generalized linear models (GLMs), and Bayesian estimation. 
+
+### Part II - Linear Models  {-}
+
+The foundation of econometrics is *the* linear model. In this section, we build the classical linear model from scratch adding assumptions as needed until arriving at the Gauss-Markov theorem. Then we "take the model apart" by dropping assumptions, and determine how to suitably estimate the subsequent linear models.
+
+6. **Classical Regression Model**: This section is a lengthy treatment of the classic linear model and estimation via ordinary least squares (OLS)
+7. **Endogeneity I**
+8. **Endogeneity II**
+9. **Generalized Least Squares**
+
+### Part III - Estimation Framework  {-}
+
+11. **Extremum Estimators** 
+12. **The Generalized Method of Moments** 
+13. **Maximum Likelihood Estimation**
+
+
+
+
