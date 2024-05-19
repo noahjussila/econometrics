@@ -300,33 +300,46 @@ where simulations are indexed by $k$.
 x_bar <- function(x){
   sum(x)/length(x)
 }
+
 theta_biased <- function(x){
   sum((x - x_bar(x))^2)/length(x)
 }
+
 theta_unbiased <- function(x){
   sum((x - x_bar(x))^2)/(length(x) - 1)
 }
 
-#Create vectors to store estimates from each simulation
-N_sim <- 1e6
-unbiased_estimates <- vector("numeric", N_sim)
-biased_estimates <- vector("numeric", N_sim)
-
-#Perform 100,000 simulations (R sticklers will be angry I didn't use apply())
-for (k in 1:N_sim) {
-  #draw 20 observations from N(0,1)
-  X <- rnorm(20)
-  biased_estimates[k] <- theta_biased(X)
-  unbiased_estimates[k] <- theta_unbiased(X)
+iter <- function(n, dist, dist_params, t){
+  X <- do.call(dist, append(n, dist_params))
+  output <- tibble(
+    biased = theta_biased(X),
+    unbiased = theta_unbiased(X),
+    iter_num = t
+  )
+  
+  return(output)
 }
 
-c(x_bar(biased_estimates), x_bar(unbiased_estimates))
+sim <- function(N, n, dist, dist_params){
+  output <- 1:N %>% 
+    map(iter, n = n, dist = dist, dist_params = dist_params) %>% 
+    bind_rows() %>% 
+    pivot_longer(!iter_num, names_to = "estimator", values_to = "estimate")
+}
+
+results <- sim(1e6, 20, rnorm, list(0, 1))
+
+results %>% 
+  group_by(estimator) %>% 
+  summarize(expected_value = mean(estimate))
 ```
 
 Alternatively, we can calculate the bias of each estimator:
 
 ```{r}
-1 - c(x_bar(biased_estimates), x_bar(unbiased_estimates))
+results %>% 
+  group_by(estimator) %>% 
+  summarize(bias = 1 - mean(estimate))
 ```
 
 It is also is informative to plot the density of our estimates, in effect illustrating the probability distributions of the estimators $\hat\theta(X)$ and $\hat\theta^*(X)$
@@ -340,19 +353,18 @@ It is also is informative to plot the density of our estimates, in effect illust
 #| fig-cap: "Distribution of estimators for the population variance"
 #| code-summary: "Show code which generates figure"
 
+biased_mean <- mean(results$estimate[results$estimator == 'biased']) 
+unbiased_mean <- mean(results$estimate[results$estimator == 'unbiased'])
 
-tibble(
-  estimate = c(biased_estimates, unbiased_estimates),
-  Estimator = c(rep("Biased", N_sim), rep("Unbiased", N_sim))
-  ) %>% 
-  ggplot(aes(estimate, color = Estimator)) +
+results %>% 
+  ggplot(aes(estimate, color = estimator)) +
   geom_density() +
   theme_minimal() +
   theme(legend.position = "bottom") +
   labs(x = "Estimates of Variance, True Value = 1", y = "Density") +
   scale_color_manual(values = c("red", "blue")) +
-  geom_vline(xintercept = mean(biased_estimates), size = 0.5, color = "red", linetype = "dashed") + 
-  geom_vline(xintercept = mean(unbiased_estimates), size = 0.5, color = "blue", linetype = "dashed") 
+  geom_vline(xintercept = biased_mean, size = 0.5, color = "red", linetype = "dashed") + 
+  geom_vline(xintercept = unbiased_mean, size = 0.5, color = "blue", linetype = "dashed") 
 ```
 
 Because $\hat\theta^*$ is unbiased, it is the most frequent way of calculating the variance of a random variable using a sample, and is often notated by $S^2$. While informative, this doesn't really pin down *why* the uncorrected estimator is biased. The bias arises from the fact that $\hat\theta({\X})$ is a function of another estimator -- $\bar X$. In the event we knew $\mu$ and didn't need to estimate it with $\bar X$, then $\frac{1}{n}\sum_{i=1}^n (X_i -\mu)^2$ is actually unbiased. It's the "intermediate" estimation of $\mu$ via $\bar X$, as the discrepancy between $\bar X$ and $\mu$ factors in when taking the sum of squared deviations. Assuming we know $\mu$, we can estimate $\sigma$  as 
@@ -386,16 +398,26 @@ weighted_xbar <- function(x){
   sum(w*x)
 }
 
-#Create vectors to store estimates from each simulation
-xbar_est <- vector("numeric", N_sim)
-weighted_xbar_est <- vector("numeric", N_sim)
 
-for (k in 1:N_sim) {
-  #draw 20 observations from N(0,1)
-  X <- rnorm(20)
-  xbar_est[k] <- x_bar(X)
-  weighted_xbar_est[k] <- weighted_xbar(X)
+iter <- function(n, dist, dist_params, t){
+  X <- do.call(dist, append(n, dist_params))
+  output <- tibble(
+    xbar = mean(X),
+    weighted_xbar = weighted_xbar(X),
+    iter_num = t
+  )
+  
+  return(output)
 }
+
+sim <- function(N, n, dist, dist_params){
+  output <- 1:N %>% 
+    map(iter, n = n, dist = dist, dist_params = dist_params) %>% 
+    bind_rows() %>% 
+    pivot_longer(!iter_num, names_to = "estimator", values_to = "estimate")
+}
+
+results <- sim(1e6, 20, rnorm, list(0,1))
 ```
 
 If we use the simulated estimates to plot the (approximate) densities of the estimators, one fact sticks out -- $\var{\hat\theta_1} < \var{\hat\theta_2}$.
@@ -409,11 +431,8 @@ If we use the simulated estimates to plot the (approximate) densities of the est
 #| fig-cap: "Distribution of estimators for the population mean"
 #| code-summary: "Show code which generates figure"
 
-tibble(
-  estimate = c(xbar_est, weighted_xbar_est), 
-  Estimator = c(rep("Sample Mean", N_sim), rep("Weighted Sample Mean", N_sim))
-  ) %>% 
-  ggplot(aes(estimate, color = Estimator)) +
+results %>% 
+  ggplot(aes(estimate, color = estimator)) +
   geom_density() +
   theme_minimal() +
   theme(legend.position = "bottom") +
@@ -434,7 +453,9 @@ S^2({\X}) & = \frac{1}{n-1}\sum_{i=1}^n (X_i -\bar X)^2.\\
 If we return to our estimates from @exm-var we can estimate the variance of each estimator using $S^2$. Just for clarification, we are using $S^2(S^2({\X})$ to estimate the variances of the estimators $S^2({\X})$ and $\hat\theta({\X})$. 
 
 ```{r}
-c(var(biased_estimates), var(unbiased_estimates))
+results %>% 
+  group_by(estimator) %>% 
+  summarize(variance = var(estimate))
 ```
 It seems that the biased estimator is more efficient than the unbiased estimator. It can be shown that 
 \begin{align*}
@@ -826,13 +847,29 @@ by the properties of expectation and variance. If we simulate realizations of th
 \end{align*}
 
 ```{r}
-estimates <- vector("numeric", N_sim)
-
-for (k in 1:N_sim) {
-  X <- rnorm(100)
-  estimates[k] <- mean(X)
+iter <- function(n, dist, dist_params, t){
+  X <- do.call(dist, append(n, dist_params))
+  output <- tibble(
+    xbar = mean(X),
+    iter_num = t
+  )
+  return(output)
 }
-c(mean(estimates), var(estimates))
+
+sim <- function(N, n, dist, dist_params){
+  output <- 1:N %>% 
+    map(iter, n = n, dist = dist, dist_params = dist_params) %>% 
+    bind_rows()
+  return(output)
+}
+
+results <- sim(1e6, 100, rnorm, list(0, 1))
+
+results %>% 
+  summarize(
+    expected_val = mean(xbar),
+    variance = var(xbar)
+  )
 ```
 
 ```{r}
@@ -844,8 +881,8 @@ c(mean(estimates), var(estimates))
 #| fig-cap: "Distribution of estimates of variance for an unbiased estimator and a biased estimator"
 #| code-summary: "Show code which generates figure"
 #| 
-tibble(estimates) %>% 
-  ggplot(aes(estimates)) +
+results %>% 
+  ggplot(aes(xbar)) +
   geom_histogram(aes(y = ..density..), colour = 1, fill = "white", bins = 100) + 
   labs(x = "Estimates of μ") +
   theme_minimal() +

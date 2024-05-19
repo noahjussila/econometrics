@@ -1,3 +1,9 @@
+---
+editor: 
+  markdown: 
+    wrap: 72
+---
+
 \DeclareMathOperator{\plim}{plim}
 \DeclareMathOperator{\argmin}{argmin}
 \DeclareMathOperator{\argmax}{argmax}
@@ -67,47 +73,74 @@
 \newcommand{\dto}{\overset{d}{\to}}
 \newcommand{\asim}{\overset{a}{\sim}}
 
-
 # Asymptotic Properties of Estimators {#sec-asy}
 
 ```{r}
 #| echo: false
 #| output: false
 library(tidyverse)
+library(gganimate)
 ```
 
-When considering estimators in @sec-est, we 
-kept the sample size $n$ fixed when assessing estimators. We now consider how estimators behave 
-as $n\to\infty.$ In practice, we will never have infinite data, asymptotics gives us an approximate idea of how estimators perform for large data sets. A comprehensive reference in asymptotic theory is due to @van2000asymptotic. For a treatment concerned purely with econometrics, @newey1994large provide a phenomenal survey, most of which we will touch on when discussing general classes of estimators. 
-
-With loss of some generality, we will assume that all random variables have finite expectation and variances. Dispensing with this assumption is something for a probability course. 
+When considering estimators in @sec-est, we kept the sample size
+$n$ fixed when assessing estimators. We now consider how estimators
+behave as $n\to\infty.$ In practice, we will never have infinite data,
+asymptotics gives us an approximate idea of how estimators perform for
+large data sets. A comprehensive reference in asymptotic theory is due
+to @van2000asymptotic. For a treatment concerned purely with
+econometrics, @newey1994large provide a phenomenal survey, most of which
+we will touch on when discussing general classes of estimators.\
+      With loss of some generality, we will assume that all random
+variables have finite expectation and variances. Dispensing with this
+assumption is something for a probability course.
 
 ## Convergence
 
-At some point in high school, most students encounter the concept of a numeric sequence, and how they can converge to a limit. Later on, perhaps when taking a real analysis course, sequences are generalized to spaces of functions. A sequence of functions may also converge to a limit, whether that be converging pointwise and/or converging uniformly (for details see @rudin1976principles). Random variables are functions from a sample space to $\mathbb R$, so we can consider how these functions converge. For the most part, the dimension of the random variable (i.e whether it takes on scalar values of vector values) won't really matter, so we'll remain agnostic about the exact case.
+At some point in high school, most students encounter the concept of a
+numeric sequence, and how they can converge to a limit. Later on,
+perhaps when taking a real analysis course, sequences are generalized to
+spaces of functions. A sequence of functions may also converge to a
+limit, whether that be converging pointwise and/or converging uniformly
+(for details see @rudin1976principles). Random variables are functions
+from a sample space to $\mathbb R$, so we can consider how these
+functions converge. 
 
 ### Convergence in MSE
 
 The first type of convergence we'll work with deals with MSE.
 
 ::: {#def-}
-A sequence of random variables $X_n$ <span style="color:red">**_converges in mean square_**</span> to a random variable $X$, written as $X_n\overset{ms}{\to} X$, if $$\lim_{n\to\infty} \E{(X_n - X)^2} = 0.$$
+A sequence of random variables $X_n$ [***converges in mean
+square***]{style="color:red"} to a random variable $X$, written as
+$X_n\overset{ms}{\to} X$, if
+$$\lim_{n\to\infty} \text{E}\left[(X_n - X)^2\right] = 0.$$ A sequence
+of random vectors $\mathbf{X}_n = (X_{1,n},\ldots X_{k,n})$ converges in
+mean square to $\mathbf{X}$ if $X_{i,n}\overset{ms}{\to} X_i$ for
+$i=1,\ldots, k$.
 :::
 
-$X_n \ms X$ if the average distance between $X_n$ and $X$ shrinks as $n\to\infty$ where distance is measured as $(X_n - X)^2$. We can also have $X_n \ms c$ for some constant $c$, as $c$ is a trivial random variable.
- 
+      $X_n \overset{ms}{\to}X$ if the average distance between $X_n$ and
+$X$ shrinks as $n\to\infty$ where distance is measured as $(X_n - X)^2$.
+We can also have $X_n \overset{ms}{\to}c$ for some constant $c$, as $c$
+is a trivial random variable.
+
 ::: {#exm-}
-Suppose we draw a sample of $n$ iid random variables $Z_i$ and define $X_n$ to be the sample mean of our observations.
-$$X_n = \frac{1}{n}\sum_{i=1}^n Z_i$$
-If $\E{Z_i} = \mu$ and $\var{Z_i} = \sigma^2$ for all $i$, we have $X_n\ms \mu$:
-\begin{align*}
-\lim_{n\to\infty}\E{(X_n - \mu)^2} & = \lim_{n\to\infty}\var{X_n} + \text{Bias}(X_n) \\
+Suppose we draw a sample of $n$ iid random variables $Z_i$ and define
+$X_n$ to be the sample mean of our observations.
+$$X_n = \frac{1}{n}\sum_{i=1}^n Z_i$$ If
+$\text{E}\left[Z_i\right] = \mu$ and
+$\text{Var}\left(Z_i\right) = \sigma^2$ for all $i$, we have
+$X_n\overset{ms}{\to}\mu$: \begin{align*}
+\lim_{n\to\infty}\text{E}\left[(X_n - \mu)^2\right] & = \lim_{n\to\infty}\text{Var}\left(X_n\right) + \text{Bias}(X_n) \\
 &= \lim_{n\to\infty} \frac{\sigma^2}{n} + 0 & (X_n \text{ unbiased}) \\
 & = \lim_{n\to\infty} \frac{\sigma^2}{n} \\
 & = 0.
 \end{align*}
 
-What does this convergence "look like"? If $Z_i\iid N(0,1)$, we know that $X_n = \bar Z \sim N(\mu, \sigma^2/n)$. Let's plot this distribution for increasing values of $n$.
+What does this convergence "look like"? If
+$Z_i\overset{iid}{\sim}N(0,1)$, we know that
+$X_n = \bar Z \sim N(\mu, \sigma^2/n)$. Let's plot this distribution for
+increasing values of $n$.
 
 ```{r}
 #| code-fold: true
@@ -115,68 +148,91 @@ What does this convergence "look like"? If $Z_i\iid N(0,1)$, we know that $X_n =
 #| fig-align: center
 #| fig-asp: 0.7
 #| fig-width: 8
-#| fig-cap: "The distribution of X_n for various values of n"
+#| fig-cap: "The distribution of X_n for increasing values of n"
 #| code-summary: "Show code which generates figure"
-expand.grid(
+expand_grid(
   x = seq(-3, 3, length = 500),
-  n = c(1, 5, 10, 50, 100)
+  n = 1:100
 ) %>% 
   mutate(
-    y = dnorm(x, 0, sqrt(1/n)),
-    n = as.factor(n)
+    y = dnorm(x, 0, sqrt(1/n))
   ) %>% 
-  ggplot(aes(x,y, color = n)) +
+  ggplot(aes(x,y)) +
   geom_line() +
   theme_minimal() +
   labs(x = "Value of X_n", y = "Density", color = "Sample Size") +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") +
+  transition_states(n) +
+  labs(title = 'n = {closest_state}')
 ```
-::: 
-
-This example betrays a useful property related to variables which converge in mean square. 
-
-::: {#prp-mse3}
-A sequence of random variables $X_n$ converges in mean square to a constant $c$ *if and only if* $\E{X_n}\to c$ and $\var{X_n}\to 0$.
 :::
 
-::: {.proof}
+      This example betrays a useful property related to variables which
+converge in mean square.
 
-$(\Longrightarrow)$ Suppose $X_n \ms c$. Then 
-\begin{align*}
-& \lim_{n\to\infty}\E{(X_n - c)^2} = 0\\
- \implies & \lim_{n\to\infty}\E{(X_n - c)^2} = 0\\
- \implies& \lim_{n\to\infty}\left[\E{X_n}^2 -2c \E{X_n} + c^2\right]= 0\\
- \implies& \lim_{n\to\infty}\left[(\E{X_n}^2 -\E{X_n}^2) + \E{X_n}^2 - 2c \E{X_n} + c^2\right]= 0 \\ 
- \implies &\lim_{n\to\infty} \var{X_n} + \lim_{n\to\infty}\left[\E{X_n} -c\right]^2 = 0 
-\end{align*}
-This final equality gives the desired result. 
+::: {#prp-mse3}
+A sequence of random variables $X_n$ converges in mean square to a
+constant $c$ *if and only if* $\text{E}\left[X_n\right]\to c$ and
+$\text{Var}\left(X_n\right)\to 0$.
+:::
 
-$(\Longleftarrow)$ Suppose $\E{X_n}\to c$ and $\var{X_n}\to 0$. We have 
+::: proof
+[space]{style="color:white"}
+
+$(\Longrightarrow)$ Suppose $X_n \overset{ms}{\to}c$. Then
 \begin{align*}
-&\lim_{n\to\infty} \var{X_n} + \lim_{n\to\infty}\left[\E{X_n} -c\right]^2 = 0 \\
-\implies & \lim_{n\to\infty}\E{(X_n - c)^2} = 0\\
-\implies & X_n\ms c
+& \lim_{n\to\infty}\text{E}\left[(X_n - c)^2\right] = 0\\
+ \implies & \lim_{n\to\infty}\text{E}\left[(X_n - c)^2\right] = 0\\
+ \implies& \lim_{n\to\infty}\left[\text{E}\left[X_n\right]^2 -2c \text{E}\left[X_n\right] + c^2\right]= 0\\
+ \implies& \lim_{n\to\infty}\left[(\text{E}\left[X_n\right]^2 -\text{E}\left[X_n\right]^2) + \text{E}\left[X_n\right]^2 - 2c \text{E}\left[X_n\right] + c^2\right]= 0 \\ 
+ \implies &\lim_{n\to\infty} \text{Var}\left(X_n\right) + \lim_{n\to\infty}\left[\text{E}\left[X_n\right] -c\right]^2 = 0 
+\end{align*} This final equality gives the desired result.
+
+$(\Longleftarrow)$ Suppose $\text{E}\left[X_n\right]\to c$ and
+$\text{Var}\left(X_n\right)\to 0$. We have \begin{align*}
+&\lim_{n\to\infty} \text{Var}\left(X_n\right) + \lim_{n\to\infty}\left[\text{E}\left[X_n\right] -c\right]^2 = 0 \\
+\implies & \lim_{n\to\infty}\text{E}\left[(X_n - c)^2\right] = 0\\
+\implies & X_n\overset{ms}{\to}c
 \end{align*}
 :::
 
 ::: {#cor-mseconv}
-Suppose $X_n$ is a sequence of random variables such that $\E{X_n} = c$ for all $n$. Then $X_n\ms c$ *if and only if* $\var{X_n}\to 0$.
+Suppose $X_n$ is a sequence of random variables such that
+$\text{E}\left[X_n\right] = c$ for all $n$. Then $X_n\overset{ms}{\to}c$
+*if and only if* $\text{Var}\left(X_n\right)\to 0$.
 :::
 
 ### Convergence in Probability
 
-Convergence in mean square captures the idea that a random variable gets "closer" to some value $c,$ but it is hardly the only way to define this behavior. A more "traditional" approach would be defining convergence using an inequality involving an arbitrarily small $\varepsilon >0$ (akin the to $\varepsilon-\delta$ definition of a limit).
+Convergence in mean square captures the idea that a random variable gets
+"closer" to some value $c,$ but it is hardly the only way to define this
+behavior. A more "traditional" approach would be defining convergence
+using an inequality involving an arbitrarily small $\varepsilon >0$
+(akin the to $\varepsilon-\delta$ definition of a limit).
 
 ::: {#def-}
-A sequence of random variables $X_n$ <span style="color:red">**_converges in probability_**</span> to a random variable $X$, written as $X_n\pto X$ or $\plim X_n = X$, if $$\lim_{n\to\infty} \Pr (|X_n - X| > \varepsilon)= 0$$ for all $\varepsilon > 0$. Equivalently, $X_n\pto X$ if for all $\varepsilon > 0$ and $\delta > 0$, there exists some $N$ such that for all $n \ge N$, 
-$$ \Pr (|X_n - X| > \varepsilon) < \delta.$$
+A sequence of random variables $X_n$ [***converges in
+probability***]{style="color:red"} to a random variable $X$, written as
+$X_n\overset{p}{\to}X$ or $\mathop{\mathrm{plim}}X_n = X$, if
+$$\lim_{n\to\infty} \Pr (|X_n - X| > \varepsilon)= 0$$ for all
+$\varepsilon > 0$. Equivalently, $X_n\overset{p}{\to}X$ if for all
+$\varepsilon > 0$ and $\delta > 0$, there exists some $N$ such that for
+all $n \ge N$, $$ \Pr (|X_n - X| > \varepsilon) < \delta.$$ A sequence
+of random vectors $\mathbf{X}_n = (X_{1,n},\ldots X_{k,n})$ converges in
+probability to $\mathbf{X}$ if $X_{i,n}\overset{p}{\to} X_i$ for
+$i=1,\ldots, k$.
 :::
 
-Intuitively, $X_n \pto X$ if the probability that the difference $|X_n - X|$ is not small (greater than some $\varepsilon$) goes to zero as $n\to\infty$.
+      Intuitively, $X_n \overset{p}{\to}X$ if the probability that the
+difference $|X_n - X|$ is not small (greater than some $\varepsilon$)
+goes to zero as $n\to\infty$. In other words, for large values of $n$, there is 
+a large probability that $X_n$ is close to $X$
 
 ::: {#exm-}
-Return to the previous example where $X_n = \bar Z$, and assume $Z_i \iid N(\mu,\sigma^2)$. We will verify that $X_n\pto \mu$ using the definition of convergence in probability using the fact that $X_n \sim N(\mu, \sigma^2/n)$.
-
+Return to the previous example where $X_n = \bar Z$, and assume
+$Z_i \overset{iid}{\sim}N(\mu,\sigma^2)$. We will verify that
+$X_n\overset{p}{\to}\mu$ using the definition of convergence in
+probability using the fact that $X_n \sim N(\mu, \sigma^2/n)$.
 
 ```{r}
 #| fig-align: center
@@ -189,22 +245,24 @@ Return to the previous example where $X_n = \bar Z$, and assume $Z_i \iid N(\mu,
 knitr::include_graphics("figures/converge.png")
 ```
 
-For some $\varepsilon > 0$, 
-\begin{align*}
+For some $\varepsilon > 0$, \begin{align*}
 \Pr (|X_n - \mu| > \varepsilon) & = 1 - \Pr (\mu - \varepsilon < X_n < \mu + \varepsilon)\\
 & = 1 - (F_{X_n}(\mu + \varepsilon) + F_{X_n}(\mu - \varepsilon))\\
 & = 1 - 2\left[F_{X_n}(\mu + \varepsilon) - \frac{1}{2}\right] & (F_{X_n} \text{symmetric about }\mu)\\
  & = 1 - 2\left[\Phi\left(\frac{(\mu + \varepsilon) - \mu}{\sigma/\sqrt{n}}\right) - \frac{1}{2}\right] & (\Phi\text{ standard normal distribution})\\
  & = 1 - 2\left[\Phi\left(\frac{\varepsilon}{\sigma/\sqrt{n}}\right) - \frac{1}{2}\right].
-\end{align*}
-Given some $\delta >0$, we can solve for the lowest value of $n$ that satisfies $\Pr (|X_n - c| > \varepsilon) < \delta$.
+\end{align*} Given some $\delta >0$, we can solve for the lowest value
+of $n$ that satisfies $\Pr (|X_n - c| > \varepsilon) < \delta$.
 \begin{align*}
 &\Pr (|X_n - c| > \varepsilon) < \delta \\ 
 \implies & 1 - 2\left[\Phi\left(\frac{\varepsilon}{\sigma/\sqrt{n}}\right) - \frac{1}{2}\right] < \delta \\
 \implies&  n > \left(\frac{\sigma \Phi^{-1}(1-\delta/2)}{\varepsilon}\right)^2
 \\\implies & n > \left\lceil \left(\frac{\sigma \Phi^{-1}(1-\delta/2)}{\varepsilon}\right)^2 \right\rceil
-\end{align*}
-Just to be excruciatingly pedantic, we rounded our solution up to the closest positive integer, as $n$ corresponds to a sample size. For fixed values of $\mu$ and $\sigma^2$ (say 3 and 2, respectively), we can define a function of $(\varepsilon, \delta)$ which calculates the sample size required to satisfy $\Pr(|X_n - c|>\varepsilon)<\delta$.
+\end{align*} Just to be excruciatingly pedantic, we rounded our solution
+up to the closest positive integer, as $n$ corresponds to a sample size.
+For fixed values of $\mu$ and $\sigma^2$ (say 3 and 2, respectively), we
+can define a function of $(\varepsilon, \delta)$ which calculates the
+sample size required to satisfy $\Pr(|X_n - c|>\varepsilon)<\delta$.
 
 ```{r}
 mu <- 3
@@ -225,7 +283,7 @@ Let's plot this function for various values of $(\varepsilon, \delta)$.
 #| fig-width: 8
 #| fig-cap: "The sample size required to satisfy the inequality in the definition of convergence of probability for various values (ε,δ)"
 #| code-summary: "Show code which generates figure"
-expand.grid(
+expand_grid(
   e = c(1, 0.1, 0.01, 0.001, 0.0001),
   d = 1:9999/10000
 ) %>% 
@@ -238,7 +296,10 @@ expand.grid(
   labs(x = "δ", y = "Sample Size", color = "ε")+
   theme(legend.position = "bottom")
 ```
-We can also verify that $\lim_{n\to\infty}\Pr (|X_n - \mu| > \varepsilon) = 0$ for various values of $\ep$.
+
+We can also verify that
+$\lim_{n\to\infty}\Pr (|X_n - \mu| > \varepsilon) = 0$ for various
+values of $\varepsilon.$
 
 ```{r}
 prob_ep <- function(n, ep){
@@ -254,7 +315,7 @@ prob_ep <- function(n, ep){
 #| fig-width: 8
 #| fig-cap: "The probability that X_n falls outside the interval  |μ-ε| for various values of (ε,n) "
 #| code-summary: "Show code which generates figure"
-expand.grid(
+expand_grid(
   e = c(1, 0.1, 0.01, 0.001, 0.0001),
   n = 1:100
 ) %>% 
@@ -266,77 +327,167 @@ expand.grid(
   labs(x = "Sample Size", y = "Pr(|X_n - mu| > ε)", color = "ε") +
   theme(legend.position = "bottom") 
 ```
-
 :::
 
-How does convergence in mean square related to convergence in probability? As it turns out the latter is a weaker condition implied by the prior. Before stating and proving this result, we will need a lemma. 
+      How does convergence in mean square related to convergence in
+probability? As it turns out the latter is a weaker condition implied by
+the prior. Before stating and proving this result, we will need a lemma.
 
 ::: {#lem-markovineq}
-
 ## Markov's inequality
 
-If $X$ is a nonnegative random variable, and $a > 0$, then $$\Pr(X\ge a) \le \frac{\E{X}}{a}$$   
-
+If $X$ is a nonnegative random variable, and $a > 0$, then
+$$\Pr(X\ge a) \le \frac{\text{E}\left[X\right]}{a}$$
 :::
 
-::: {.proof}
-The expectation of $X$ can be written as 
-\begin{align*}
-\E{X} & = \int_{-\infty}^\infty x\ dF_X(x) \\ 
+::: proof
+The expectation of $X$ can be written as \begin{align*}
+\text{E}\left[X\right] & = \int_{-\infty}^\infty x\ dF_X(x) \\ 
 & = \int_{0}^\infty x\ dF_X(x) & (X\text{ is nonnegative}) \\ 
 & = \int_{0}^a x\ dF_X(x) + \int_{a}^\infty x\ dF_X(x) \\ 
 & \ge \int_a^\infty x\ dF_X(x)\\
 & \ge \int_a^\infty a\ dF_X(x) & (a \ge x \text{ on }(a,\infty))\\
 & = a \int_a^\infty\ dF_X(x) \\
 & = a\Pr(X \ge a).
-\end{align*}
-Dividing both sides of this inequality by $a$ gives $\Pr(X\ge a) \le \E{X}/a$.
+\end{align*} Dividing both sides of this inequality by $a$ gives
+$\Pr(X\ge a) \le \text{E}\left[X\right]/a$.
 :::
 
 ::: {#prp-conv}
+## Convergence in MSE --\> Convergence in Probability
 
-## Convergence in MSE --> Convergence in Probability
-
-Let $X_n$ be a sequence of random variables. If $X_n\ms X$, then $X_n\pto X$. 
+Let $X_n$ be a sequence of random variables. If $X_n\overset{ms}{\to}X$,
+then $X_n\overset{p}{\to}X$.
 :::
-::: {.proof}
-Suppose $X_n\ms X$. For all $\varepsilon > 0$
+
+::: proof
+Suppose $X_n\overset{ms}{\to}X$. For all $\varepsilon > 0$
 \begin{align*}
 \lim_{n\to\infty} \Pr (|X_n - X| > \varepsilon) & = \lim_{n\to\infty} \Pr ((X_n - X)^2 > \varepsilon^2) \\
-& \le \lim_{n\to\infty} \frac{\E{(X_n - X)^2}}{\varepsilon^2} & (\text{Markov's Inequality}) \\
-& = \frac{0}{\varepsilon^2} & (X_n\ms X)\\
+& \le \lim_{n\to\infty} \frac{\text{E}\left[(X_n - X)^2\right]}{\varepsilon^2} & (\text{Markov's Inequality}) \\
+& = \frac{0}{\varepsilon^2} & (X_n\overset{ms}{\to}X)\\
 & = 0.
-\end{align*}
-Therefore $X_n\pto c$.
+\end{align*} Therefore $X_n\overset{p}{\to}c$.
 :::
 
-The usefulness of @prp-conv cannot be emphasized enough. Proving convergence in probability using the definition is cumbersome, so we will almost show convergence in mean square and then appeal to  @prp-conv to verify convergence in probability. Nevertheless, situations can arise where $X_n\pto c$, but $X_n \not\overset{ms}{\to} c$.
+      The usefulness of @prp-conv cannot be emphasized enough. Proving
+convergence in probability using the definition is cumbersome, so we
+will almost show convergence in mean square and then appeal to @prp-conv
+to verify convergence in probability. Nevertheless, situations can arise
+where $X_n\overset{p}{\to} X$, but $X_n \not\overset{ms}{\to} X$.
 
-::: {#exm-}
+::: {#exm-pnotmse}
 
 ## Convergence in Probability but not in Mean Square
 
-Suppose there is a sequence of random variables $X_n$ that take on the values $0$ and $n^2$ with probabilities $\Pr(X_n = 0) = 1-1/n$ and $\Pr(X_n=n^2) = 1/n$. The expected value of this random variable is 
-$$\E{X_n} = 0(1-1/n) + n^2(1/n) = n,$$ so $\E{X_n}\to\infty$ as $n\to \infty$. This rules out $X_n$ converging in mean square to any value. Nevertheless, we have $X_n\pto 0$. For all $\varepsilon > 0$, 
+Suppose $X_n$ is defined on the sample space $\{1,n^2\}$ such that:
+\begin{align*}
+\Pr(X_n = 0) &= 1-1/n\\
+\Pr(X_n = n^2) &= 1/n
+\end{align*}
+
+```{r}
+#| code-fold: true
+#| label: fig-plot24.2
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "The probability density function associated with X_n for increasing values of n."
+#| code-summary: "Show code which generates figure"
+expand_grid(n = 1:50, x = 0:1) %>% 
+  mutate(
+    x = x*(n^2),
+    p = (1-1/n)*(x == 0) + (1/n)*(x != 0)
+  ) %>% 
+  ggplot(aes(x = x, y = p)) +
+  geom_point() +
+  geom_segment(aes(x = x, xend = x, y = 0, yend = p)) +
+  theme_minimal() +
+  scale_x_sqrt(breaks = (1:10)*500) + 
+  labs(color = "n", y = "Probability Density", x = "X_n") +
+  theme(legend.position = "bottom")  + 
+  transition_states(n) +
+  labs(title = 'n = {closest_state}')
+```
+The expected value of $X_n$ is
+$$\text{E}\left[X_n\right] = 0(1-1/n) + n^2(1/n) = n,$$ so
+$\text{E}\left[X_n\right]\to\infty$ as $n\to \infty$. This rules out
+$X_n$ converging in mean square to any value. Nevertheless, we have
+$X_n\overset{p}{\to}0$. For all $\varepsilon > 0$,
 $$\Pr(|X_n - 0| > \varepsilon) = \Pr(X_n \neq 0) = \Pr(X_n = n^2) = 1/n \to 0.$$
+This disagreement among definitions of convergence arises because the convergence in probability
+only takes into consideration the probability assigned to each value in the sample space, whereas convergence in MSE is based on an expectation which takes into consideration the probability assigned to each value in the sample space *weighted* by the value in the sample space. In this particular example, the probability that $X_n = n^2$ is $1/n$, and the growth of $n^2$ as $n\to \infty$ outpaces the growth of $1/n$, so the expected value of $X_n$ grows indefinitely.
+:::
+
+
+::: remark 
+We can think of the counterexample in @exm-pnotmse arising from the "tail" of a density, where the "tail" happened to just be a single point because the random variable was discrete. This is a pattern that comes up often in asymptotics -- the tails of distributions and densities can cause trouble. Many theorems and results depend on these tails behaving well.
 :::
 
 ### Almost Sure Convergence
 
-Another form of convergence arises if we remember $X_n:\mathcal X\to\R$ is just a function from a sample space to $\R$ (or $\R^k$). While we usually write $X_n = x$, 
+An third type of convergence is almost sure convergence. Recalling that a random variable is just a function, we can define a stochastic analog to pointwise convergence of a sequence of functions. 
+
+::: {#def-}
+A sequence of random variables $X_n$ [***converges almost surely***]{style="color:red"} to a random variable $X$, written as
+$X_n\overset{a.s}{\to}X$ if
+$$ \Pr \left(\lim_{n\to\infty} X_n = X\right) = 1.$$ A sequence
+of random vectors $\mathbf{X}_n = (X_{1,n},\ldots X_{k,n})$ converges almost surely to $\mathbf{X}$ if $X_{i,n}\overset{a.s}{\to} X_i$ for
+$i=1,\ldots, k$.
+:::
+
+       Almost sure convergence is the probabilistic equivalent of a sequence of functions converging pointwise almost everywhere. The difference between $X_n\overset{a.s}{\to} X$ and $X_n\pto X$ is subtle, and arises from the limit being taken before or after we take the probability of the event. While convergence in probability tells us that the chance that $X_n$ and $X$ are far approaches zero, almost sure convergence says that the probability that $X_n\to X$ as $n\to \infty$ is 1. We're certain that $X_n$ will eventually coincide with $X$, although we don't know when that will happen. The next example makes the difference between these two definitions a bit more concrete. Later on in @exm-strongvsweak an illustration will be presented to distinguish the two definitions.
+
+::: {#exm-}
+
+## Convergence in Probability but not in Almost Surely
+
+Define $X_n$ on $\{0,1\}$ such that: 
+\begin{align*}
+\Pr(X_n = 1) & = 1/n\\
+\Pr(X_n = 0) & = 1-1/n
+\end{align*}
+We have $X_n\pto 0$ since 
+$$ \lim_{n\to\infty}\Pr(|X_n - 0| > \varepsilon) =  \lim_{n\to\infty}\Pr(X_n > \varepsilon) = \lim_{n\to\infty}\Pr(X_n = 1) = \lim_{n\to\infty} 1/n = 0$$ for all $\varepsilon > 0$.
+At the same time, we have 
+$$\sum_{n=1}^\infty \Pr(X_n = 1) =  \sum_{n=1}^\infty 1/n = \infty,$$ so by a form of the [Borel-Cantelli Lemma](http://www.columbia.edu/~ks20/stochastic-I/stochastic-I-BC.pdf) then $X_n = 1$ occurs an infinite number of times. This rules out the possibility that $\lim_{n\to\infty} X_n = 0$ with probability 1.
+
+:::
+
+::: {#prp-}
+
+## Convergence A.S -> Convergence in Probability
+
+Let $X_n$ be a sequence of random variables. If $X_n\overset{a.s}\to X$ then $X_n\pto X$. 
+
+:::
+
+       The proof of this result can be found in @van2000asymptotic. Almost sure convergence is not nearly as important as convergence in probability when it comes to assessing estimators. In fact, @lehmann1999elements doesn't even mention it in his treatment of asymptotic statistics. The math underlying almost sure convergence is also a bit complex, so the related proofs aren't very informative and will be omitted.
 
 ### Convergence in Distribution
 
-The final notion of convergence we will use related to the probability distribution of random variables. 
+The final notion of convergence we will use related to the probability
+distribution of random variables.
 
-::: {#def-}
-A sequence of random variables $X_n$ <span style="color:red">**_converges in distribution (converges weakly)_**</span> to a random variable $X$, written as $X_n \dto X$, if $$\lim_{n\to\infty} F_{X_n}(x)= F_X(x).$$ In this case, we refer to $F_X$ as the <span style="color:red">**_asymptotic distribution_**</span> of $X_n$, and sometimes write $X_n \asim F_X$.  
+:::{#def-}
+A sequence of random variables $X_n$ [***converges in distribution
+(converges weakly)***]{style="color:red"} to a random variable $X$,
+written as $X_n \overset{d}{\to}X$, if
+$$\lim_{n\to\infty} F_{X_n}(x)= F_X(x)$$ for all points $x$ where $F_{X}$ is continuous. In this case, we refer to
+$F_X$ as the [***asymptotic distribution***]{style="color:red"} of
+$X_n$, and write $X_n \overset{a}{\sim}F_X$.^[Convergence in distribution is also sometimes called convergence in law among mathematicians. The notation for this form of convergence is also as varied as it's name. Some other ways of writing $X_n\overset{d}{\to} X$ are: $X_n\rightsquigarrow X$, $X_n\Rightarrow X$, $X_n \overset{\mathcal L}\to X$, $\mathcal L(X_n) \to \mathcal L(X)$.] A sequence
+of random vectors $\mathbf{X}_n = (X_{1,n},\ldots X_{k,n})$ converges in distribution to $\X$ if $\lim_{n\to\infty} F_{\X_n}(x)= F_{\X}(x)$.
 :::
 
-For our purposes, $X_n\dto X$ means the distribution of $X_n$ can be approximated by $F_X$, and this approximation becomes increasingly better as $n\to\infty$. 
+      For our purposes, $X_n\overset{d}{\to}X$ means the distribution of $X_n$
+can be approximated by $F_X$, and this approximation becomes
+increasingly better as $n\to\infty$.
 
-::: {#exm- #tdist}
-One example of convergence in distribution you may be familiar with deals with the student's $t-$distribution where the degrees of freedom $n\to\infty$. If $X_n\sim t_n$, then $X_n \dto X$ where $X\sim N(0,1)$.
+::: {#exm-tdist}
+One example of convergence in distribution you may be familiar with
+deals with the student's $t-$distribution where the degrees of freedom
+$n\to\infty$. If $X_n\sim t_n$, then $X_n \overset{d}{\to}X$ where
+$X\sim N(0,1)$.
 
 ```{r}
 #| code-fold: true
@@ -344,116 +495,172 @@ One example of convergence in distribution you may be familiar with deals with t
 #| fig-align: center
 #| fig-asp: 0.7
 #| fig-width: 8
-#| fig-cap: "The t-distribution converges to the standard normal distribution (represented by the dashed black line) as the degrees of freedom increase."
+#| fig-cap: "The t-distribution converges to the standard normal distribution (represented by the dashed red line) as the degrees of freedom increase."
 #| code-summary: "Show code which generates figure"
-expand.grid(
-  x = seq(-4, 4, length = 10000),
-  n = c(1, 5, 10, 50, 100),
-  dist = "Student's t") %>% 
+expand_grid(
+  x = seq(-4, 4, length = 1e3),
+  n = 1:10,
+  dist = "Student's t"
+) %>% 
   mutate(val = dt(x, n)) %>% 
-  ggplot(aes(x, val, color = as.factor(n))) +
+  ggplot(aes(x, val)) +
   geom_line() +
   stat_function(
     fun = dnorm, 
     args = list(mean = 0, sd = 1), 
-    color = "black", 
-    size = 0.5, 
+    color = "red", 
     linetype="dashed"
   ) +
   theme_minimal() +
   labs(color = "t-distribution degrees of freedom, n", y = "Density") +
-  theme(legend.position = "bottom") 
+  theme(legend.position = "bottom") +
+  transition_states(n) +
+  labs(title = 'n = {closest_state}')
 ```
 :::
 
 ::: {#prp-}
+## Convergence in Probability --\> Convergence in Distribution
 
-## Convergence in Probability --> Convergence in Distribution
-
-Let $X_n$ be a sequence of random variables. If $X_n\pto X$, then $X_n\dto X$. 
+Let $X_n$ be a sequence of random variables. If $X_n\overset{p}{\to}X$,
+then $X_n\overset{d}{\to}X$.
 :::
 
-:::{.proof}
-Suppose $X_n\pto X$ and let $\varepsilon > 0$. We have,
+::: proof
+Suppose $X_n\overset{p}{\to}X$ and let $\varepsilon > 0$. We have,
 \begin{align*}
 \Pr(X_n \le x) & = \Pr(X_n\le x \text{ and } X \le x + \varepsilon) + \Pr(X_n\le x \text{ and } X > x + \varepsilon) \\
   & = \Pr(X \le x + \varepsilon) + \Pr(X_n - X\le x - X \text{ and } x - X < -\varepsilon)\\ 
   & \le \Pr(X \le x + \varepsilon) + \Pr(X_n - X < -\varepsilon)\\
   & \le \Pr(X \le x + \varepsilon) + \Pr(X_n - X < -\varepsilon) + \Pr(X - X_n > \varepsilon) \\
   & = \Pr(X \le x + \varepsilon) + \Pr(|X_n - X| > \varepsilon)
-\end{align*}
-Similarly, 
+\end{align*} Similarly,
 $$ \Pr(X \le x-\varepsilon) \le \Pr(X_n \le x) + \Pr(|X_n - X| > \varepsilon).$$
-We can use these inequalities to find an upper and lower bound of $\Pr(X_n \le x)$:
+We can use these inequalities to find an upper and lower bound of
+$\Pr(X_n \le x)$: 
+
+::: {.column-screen-inset-right}
 \begin{align*}
 & \Pr(X \le x-\varepsilon) - \Pr(|X_n - X| > \varepsilon)\le \Pr(X_n \le x) \le \Pr(X \le x + \varepsilon) + \Pr(|X_n - X| > \varepsilon) \\
 \implies & \lim_{n\to\infty}[\Pr(X \le x-\varepsilon) - \Pr(|X_n - X| > \varepsilon)]\le \lim_{n\to\infty}\Pr(X_n \le x) \le \lim_{n\to\infty}[\Pr(X \le x + \varepsilon) + \Pr(|X_n - X| > \varepsilon) ]\\
 \implies & \Pr(X \le x-\varepsilon) - \underbrace{\lim_{n\to\infty}\Pr(|X_n - X| > \varepsilon) }_0\le \lim_{n\to\infty}\Pr(X_n \le x) \le \Pr(X \le x + \varepsilon) + \underbrace{\lim_{n\to\infty}\Pr(|X_n - X| > \varepsilon)}_0 \\
-\implies & \Pr(X \le x-\varepsilon)\le \lim_{n\to\infty} \Pr(X_n \le x) \le  \Pr(X \le x + \varepsilon) & (X_n\pto X)\\ 
+\implies & \Pr(X \le x-\varepsilon)\le \lim_{n\to\infty} \Pr(X_n \le x) \le  \Pr(X \le x + \varepsilon) & (X_n\overset{p}{\to}X)\\ 
 \implies & F_X(x-\varepsilon)\le \lim_{n\to\infty} F_{X_n}(x) \le  F_X(x-\varepsilon) 
 \end{align*}
-This holds for all $\varepsilon > 0$, so it must be the case that $\lim_{n\to\infty} F_{X_n}(x) = F_X(x)$
+:::
+
+This holds for all $\varepsilon > 0$, so it must be the
+case that $\lim_{n\to\infty} F_{X_n}(x) = F_X(x)$
+:::
+
+       Of the different concepts of stochastic convergence, convergence in distribution is the weakest (as the alternate name weak convergence implies). If $X_n \overset{d}{\to} X$, we're not saying that $X_n$ and $X$ become close, or that the probability that $X_n$ and $X$ are close approaches 1. We're saying that, given a common probability space $(\mathcal X, \mathcal F, P)$,^[The probability space on which the sequence of random variables is defined need not be common, but assume as much for the sake of this digression.] that the distribution function $F_{X_n}$ defined via the distribution $P(X^{-1}(I))$^[where $I\subseteq \mathcal B(\mathbb R)$] happens to converge to the same function corresponding to the random variable $X$. Furthermore, the convergence of $F_{X_n}$ to $F_X$ only needs to occur at the points which $F_X$ is continuous, *and* even then the convergence only needs to be pointwise (opposed to uniform).
+
 :::
 
 ### Putting the Pieces Together
 
-The biggest takeaway from this should be the following relation:
-$$ X_n \ms X \implies X_n \pto X \implies X_n \dto X$$
+The biggest takeaway from this should be the following relations:
+\begin{align*}
+&X_n \overset{ms}{\to}X \implies X_n \overset{p}{\to}X \implies X_n \overset{d}{\to}X\\
+&X_n \overset{a.s}{\to}X \implies X_n \overset{p}{\to}X
+\end{align*}
+
 
 ## Consistency
 
-Our three modes of convergence were defined for any sequence of random variables. It should come as no surprise, considering the previous examples considering whether the sample mean converged, that we are interested in the convergence of estimators $\hat\theta(\X)$ as sample size increases. In particular we are interested in whether $\hat\theta(\X)$ converges to the constant $\theta\in\Theta$ it is estimating.
+Our three modes of convergence were defined for any sequence of random
+variables. It should come as no surprise, considering the previous
+examples considering whether the sample mean converged, that we are
+interested in the convergence of estimators $\hat\theta(\mathbf{X})$ as
+sample size increases. In particular we are interested in whether
+$\hat\theta(\mathbf{X})$ converges to the constant $\theta\in\Theta$ it
+is estimating.
 
-::: {#def-}
-An estimator $\hat\theta$ is <span style="color:red">**_consistent (for estimand $\theta$)_**</span> if $\hat\theta \pto \theta$.  
+:::{#def-}
+An estimator $\hat\theta$ is [***consistent (for estimand***
+$\theta$)]{style="color:red"} if $\hat\theta \overset{p}{\to}\theta$.
 :::
 
-We've already seen that $\bar X$ is a consistent estimator for $\mu$ when we take an iid sample from a normal distribution. Let's investigate it's variance-counterpart $S^2$.
+       We've already seen that $\bar X$ is a consistent estimator for $\mu$
+when we take an iid sample from a normal distribution. Let's investigate
+it's variance-counterpart $S^2$.
 
 ::: {#exm-consvarnorm}
-For $X_i \iid N(\mu,\sigma^2)$, $S^2 = \sum_{i=1}^n (X_i - \bar X)/(n-1)$ is an unbiased estimator for $\sigma^2$. This estimator's MSE (which is just its variance as it is unbiased) is $2\sigma^4/(n-1)$ which converges to $0$ as $n\to\infty$, so $S^2$ is consistent by @prp-conv. 
+For $X_i \overset{iid}{\sim}N(\mu,\sigma^2)$,
+$S^2 = \sum_{i=1}^n (X_i - \bar X)/(n-1)$ is an unbiased estimator for
+$\sigma^2$. This estimator's MSE (which is just its variance as it is
+unbiased) is $2\sigma^4/(n-1)$ which converges to $0$ as $n\to\infty$,
+so $S^2$ is consistent by @prp-conv.
 :::
 
-This example highlights the fact that proving an unbiased estimator is consistent is a matter of showing its variance converges to 0.  
+       This example highlights the fact that proving an unbiased estimator is
+consistent is a matter of showing its variance converges to 0.
 
 ::: {#cor-unbcon}
-Suppose $\hat\theta$ is an unbiased estimator for $\theta$. Then $\hat\theta$ is consistent *if and only if* $\var{\hat\theta}\to 0$.
+Suppose $\hat\theta$ is an unbiased estimator for $\theta$. Then
+$\hat\theta$ is consistent *if and only if*
+$\text{Var}\left(\hat\theta\right)\to 0$.
 :::
 
-::: {.proof}
-Apply @cor-mseconv to an unbiased estimator. 
+::: proof
+Apply @cor-mseconv to an unbiased estimator.
 :::
 
-A second type of convergence related to estimators pertains to the bias of an estimator. In @sec-est we saw a few estimators that were biased, but this bias was such that it diminished as $n\to\infty$. In effect, they were unbiased in an asymptotic sense.  
+      A second type of convergence related to estimators pertains to the bias
+of an estimator. In @sec-est we saw a few estimators that were biased,
+but this bias was such that it diminished as $n\to\infty$. In effect,
+they were unbiased in an asymptotic sense.
 
-::: {#def-}
-An estimator $\hat\theta$ is <span style="color:red">**_asymptotically unbiased_**</span> if $\lim_{n\to\infty}\text{Bias}(\hat\theta, \theta) = 0$.  
+:::{#def-}
+
+An estimator $\hat\theta$ is [***asymptotically
+unbiased***]{style="color:red"} if
+$\lim_{n\to\infty}\text{Bias}(\hat\theta, \theta) = 0$.
+
 :::
 
-::: {#exm-}
-For $X_i \iid N(\mu,\sigma^2)$, $\hat\theta = \sum_{i=1}^n (X_i - \bar X)/n$ is a biased estimator for $\sigma^2$. Its bias is 
-$$\text{Bias}(\hat\theta, \sigma^2) = \frac{n-1}{n}\sigma^2 - \sigma^2.$$ As $n\to\infty$, this bias vanishes. To illustrate this, we can simulate estimates for various sample sizes, taking $X_i \sim N(0,1)$. 
+:::{#exm}
+For $X_i \overset{iid}{\sim}N(\mu,\sigma^2)$,
+$\hat\theta = \sum_{i=1}^n (X_i - \bar X)/n$ is a biased estimator for
+$\sigma^2$. Its bias is
+$$\text{Bias}(\hat\theta, \sigma^2) = \frac{n-1}{n}\sigma^2 - \sigma^2.$$
+As $n\to\infty$, this bias vanishes. To illustrate this, we can simulate
+estimates for various sample sizes, taking $X_i \sim N(0,1)$.
 
 ```{r}
 theta <- function(X){
   sum((X - mean(X))^2)/length(X)
 }
 
-N_sim <- 1e6
-sample_sizes <- c(10, 25, 50, 100, 500)
-store_estimates <- matrix(NA, nrow = N_sim, ncol = length(sample_sizes))
-colnames(store_estimates) <- c("n=10", "n=25", "n=50", "n=100", "n=500")
-
-for (n in sample_sizes) {
-  col_index <- which(sample_sizes == n)
-  for (k in 1:N_sim){
-    X <- rnorm(n)
-    store_estimates[k, col_index] <- theta(X) 
-  }
+iter <- function(n, dist, dist_params, s){
+  X <- do.call(dist, append(n, dist_params))
+  output <- tibble(
+    sample_size = n,
+    iter_num = s,
+    estimate = theta(X)
+  )
+  return(output)
 }
 
+sim <- function(N, n, dist, dist_params){
+  output <- 1:N %>% 
+    map(iter, n = n, dist = dist, dist_params = dist_params) %>% 
+    bind_rows()
+}
+
+outer_sim <- function(N, n_vals, dist, dist_params){
+  output <- n_vals %>% 
+    map(sim, N = N, dist = dist, dist_params = dist_params) %>% 
+    bind_rows()
+}
+
+results <- c(10, 25, 50, 100, 500) %>% 
+  outer_sim(1e6, ., rnorm, list(0, 1))
+
 #Print bias calculated over 1,000,000 simulations
-colMeans(store_estimates) - 1
+results %>% 
+  group_by(sample_size) %>% 
+  summarize(bias = mean(estimate) - 1)
 ```
 
 ```{r}
@@ -466,62 +673,64 @@ colMeans(store_estimates) - 1
 #| code-summary: "Show code which generates figure"
 #| warning: false
 
-colnames(store_estimates) <- NULL
-store_estimates %>% 
-  as_tibble() %>% 
-  gather() %>% 
-  mutate(
-    key = ifelse(key == "V1", "10", 
-          ifelse(key == "V2", "25", 
-          ifelse(key == "V3", "50", 
-          ifelse(key == "V4", "100", "500")
-          )))
-  ) %>% 
-  mutate(key = as.numeric(key)) %>% 
-  rename(n = key)  %>% 
-  ggplot(aes(value, color = as.factor(n))) +
+results %>% 
+  ggplot(aes(estimate, color = as.factor(sample_size))) +
   geom_density() +
   xlim(0,2) +
   theme_minimal() +
   theme(legend.position = "bottom") +
   labs(x = "Estimates of Variance, True Value = 1", y = "Density", color = "Sample Size")
 ```
-The estimator $\hat\theta$ is also consistent, as it converges in mean square. 
+
+The estimator $\hat\theta$ is also consistent, as it converges in mean
+square.
+
 :::
 
-Neither asymptotic unbiasedness does not imply consistency, nor does consistency imply asymptotic unbiasedness.
+       Asymptotic unbiasedness does not imply consistency, and
+consistency does not imply asymptotic unbiasedness.
 
-::: {#exm-} 
+:::{#exm-}
 
 ## Consistent, Not Asymptotically Unbiased
 
-Recall that the sequence of discrete random variables $X_n$ with denisty 
+Recall that the sequence of discrete random variables $X_n$ with denisty
 $$ f_{X_n}(x) = \begin{cases}1-1/n& x=0\\ 1/n & x = n^2 \end{cases}.$$
-We established that $X_n\pto 0$, so an estimator with this distribution would be a consistent estimator for $0$. Despite this, the estimator would not be asymptotically unbiased, as $\E{X_n} = n$, which tends to infinity as $n$ grows.
+We established that $X_n\overset{p}{\to}0$, so an estimator with this
+distribution would be a consistent estimator for $0$. Despite this, the
+estimator would not be asymptotically unbiased, as
+$\text{E}\left[X_n\right] = n$, which tends to infinity as $n$ grows.
+
 :::
 
-::: {#exm-} 
-
+:::{#exm-}
 ## Asymptotically Unbiased, Not Consistent
-
-For $X_i\iid N(\mu,\sigma^2)$, define the estimator $\hat\mu(\X) =  X_1$. We simply take the first observation to be our estimate of $\mu$. This estimator is unbiased,
-$$\E{\hat\mu} = \E{X_1} = \mu,$$ so it is asymptotically unbiased. Nevertheless, the estimator fails to be consistent, as 
+For $X_i\overset{iid}{\sim}N(\mu,\sigma^2)$, define the estimator
+$\hat\mu(\mathbf{X}) = X_1$. We simply take the first observation to be
+our estimate of $\mu$. This estimator is unbiased,
+$$\text{E}\left[\hat\mu\right] = \text{E}\left[X_1\right] = \mu,$$ so it
+is asymptotically unbiased. Nevertheless, the estimator fails to be
+consistent, as
 $$\lim_{n\to\infty} \Pr (|\hat\mu - \mu| > \varepsilon)= \lim_{n\to\infty} \left\{1 - 2\left[\Phi\left(\frac{\varepsilon}{\sigma}\right) - \frac{1}{2}\right]\right\} \neq 0 .$$
 :::
 
-The incompatibility of asymptotic unbiasedness and consistency is due to the behavoir of $\var{X_n}$ as $n\to\infty$.
- 
-::: {#prp-consbias}
+       The incompatibility of asymptotic unbiasedness and consistency is due to
+the behavior of $\text{Var}\left(X_n\right)$ as $n\to\infty$.
 
+::: {#prp-consbias}
 ## Relating Consistency and Asymptotic Unbiasedness
 
 Suppose $\hat\theta$ is an estimator for $\theta$.
 
-1. If $\hat\theta$ is consistent and there exists some $M$ such that $\var{\hat\theta} \le M$ for all $n$ (bounded variance), then $\hat\theta$ is asymptotically unbiased.
-2. If $\hat\theta$ is asymptotically unbiased and $\lim_{n\to\infty}\var{\hat\theta} = 0$ (vanishing variance), then $\hat\theta$ is consistent
+1.  If $\hat\theta$ is consistent and there exists some $M$ such that
+    $\text{Var}\left(\hat\theta\right) \le M$ for all $n$ (bounded
+    variance), then $\hat\theta$ is asymptotically unbiased.
+2.  If $\hat\theta$ is asymptotically unbiased and
+    $\lim_{n\to\infty}\text{Var}\left(\hat\theta\right) = 0$ (vanishing
+    variance), then $\hat\theta$ is consistent
 :::
 
-::: {.proof}
+::: proof
 test
 :::
 
@@ -535,54 +744,74 @@ test
 
 knitr::include_graphics("figures/relating_convergence.png")
 ```
- 
-## Law of Large Numbers
 
-In most examples until now, the properties of estimators were implicitly a function of the underlying model the data is generated from. We established that $\bar X$ and $S^2$ are consistent estimators for $\mu$ and $\sigma^2$, respectively, *when* $X_i \iid N(\mu,\sigma^2)$. We know the distribution of $\bar X$, *when* $X_i \iid N(\mu,\sigma^2)$. In an ideal world, we would be able to establish desirable properties of estimators under more robust settings where our specified model may include a wide array of distributions. Our first step in doing this will be introducing one of the most important results in all of probability -- the law of large numbers. Proving this requires an inequality similar to @lem-markovineq.
+## Laws of Large Numbers
 
-:::{#lem-}
+In most examples until now, the properties of estimators were implicitly
+a function of the underlying model the data is generated from. We
+established that $\bar X$ and $S^2$ are consistent estimators for $\mu$
+and $\sigma^2$, respectively, *when*
+$X_i \overset{iid}{\sim}N(\mu,\sigma^2)$. We know the distribution of
+$\bar X$, *when* $X_i \overset{iid}{\sim}N(\mu,\sigma^2)$. In an ideal
+world, we would be able to establish desirable properties of estimators
+under more robust settings where our specified model may include a wide
+array of distributions. Our first step in doing this will be introducing
+variants of one of the most important results in all of probability -- the law of
+large numbers (LLN). In the context of estimation, LLNs give sufficient conditions for our favorite estimator, $\bar X$, to be consistent. 
 
+### Khinchine's Weak Law of Large Numbers
+
+The version of the LLN we'll use the most often deals with convergence in probability. To prove that $\bar X \overset{p}{\to}\mu$ we'll rely on an inequality similar to
+@lem-markovineq.
+
+::: {#lem-}
 ## Chebyshev's Inequality
 
-If $X$ is a random variable with an expected value $\mu$ and variance $\sigma^2$, then for all $a > 0$
+If $X$ is a random variable with an expected value $\mu$ and variance
+$\sigma^2$, then for all $a > 0$
 $$\Pr(|X - \mu| \ge k) \le \frac{\sigma^2}{k^2}.$$
 :::
 
-:::{.proof}
+::: proof
+```{=tex}
 \begin{align*}
 \Pr(|X - \mu| \ge k) &= \Pr((X - \mu)^2 \ge k^2)\\
-& \le \frac{\E{(X-\mu)^2}}{k^2} & (\text{Markov's Inequality})\\
+& \le \frac{\text{E}\left[(X-\mu)^2\right]}{k^2} & (\text{Markov's Inequality})\\
 & = \frac{\sigma^2}{k^2}
 \end{align*}
+```
 :::
 
-:::{#thm-}
+::: {#thm-}
+## LLN I
 
-## (Khinchine's Weak) Law of Large Numbers (LLN)
-
-If $(X_1,\ldots, X_n)$ are a set of iid random variables where $\E{X_i} = \mu$, then $\bar X \pto \mu$. 
+If $(X_1,\ldots, X_n)$ are a set of iid random variables where
+$\text{E}\left[X_i\right] = \mu$, then $\bar X \overset{p}{\to}\mu$.
 :::
 
-:::{.proof}
-Recall that $\var{\bar X} = \sigma^2/n$. By Chebyshev's Inequality,
-\begin{align*}
+::: proof
+Recall that $\text{Var}\left(\bar X\right) = \sigma^2/n$. By Chebyshev's
+Inequality, \begin{align*}
 \lim_{n\to\infty}\Pr(|X_n - \mu| \ge \varepsilon) \le \lim_{n\to\infty}\frac{(\sigma^2/n)}{\varepsilon^2} =   \lim_{n\to\infty} \frac{\sigma^2}{n\varepsilon} = 0.
-\end{align*}
-Therefore, $\bar X\pto \mu$.
+\end{align*} Therefore, $\bar X\overset{p}{\to}\mu$.
 :::
 
-Another way of thinking about the LLN is that we can approximate $\mu$ with $\bar X$, and this approximation gets better as $n\to\infty$.
+:::{#exm-lln1}
 
-:::{#exm-}
-To illustrate the LLN, let's simulate realizations of iid random variables from a series of different distributions and show that regardless of the distribution, $\bar X \to \mu$. We will use the following distributions:
-\begin{align*}
-X_i & \iid \text{Exp}(1/\mu)\\
-X_i & \iid \chi_\mu^2\\
-X_i & \iid \text{Uni}(0, 2\mu)\\
-X_i & \iid \text{Gamma}(2\mu, 2)\\
-X_i & \iid \text{HyperGeo}(10, 20, 15\mu)
-\end{align*}
-All these distributions have been selected such that $\E{X_i} = \mu$. For our simulations, we will take $\mu = 5$. If we plot the value of the sample mean versus the sample size $n$, we see that the values converge to the true value $\mu = 5$ regardless of the distribution of $X_i$.
+To illustrate the LLN, let's simulate realizations of iid random
+variables from a series of different distributions and show that
+regardless of the distribution, $\bar X \to \mu$. We will use the
+following distributions: \begin{align*}
+X_i & \overset{iid}{\sim}\text{Exp}(1/\mu)\\
+X_i & \overset{iid}{\sim}\chi_\mu^2\\
+X_i & \overset{iid}{\sim}\text{Uni}(0, 2\mu)\\
+X_i & \overset{iid}{\sim}\text{Gamma}(2\mu, 2)\\
+X_i & \overset{iid}{\sim}\text{HyperGeo}(10, 20, 15\mu)
+\end{align*} All these distributions have been selected such that
+$\text{E}\left[X_i\right] = \mu$. For our simulations, we will take
+$\mu = 5$. If we plot the value of the sample mean versus the sample
+size $n$, we see that the values converge to the true value $\mu = 5$
+regardless of the distribution of $X_i$.
 
 ```{r}
 #| code-fold: true
@@ -593,78 +822,204 @@ All these distributions have been selected such that $\E{X_i} = \mu$. For our si
 #| fig-cap: "The sample mean of all samples converges to the population mean by the LLN"
 #| code-summary: "Show code which generates figure"
 #| warning: false
-
-max_n <- 1e5
-store_estimates <- matrix(NA, ncol = 5, nrow = max_n/10)
-colnames(store_estimates) <- c("Exponential", "Chi-Squared", "Uniform", "Gamma", "Hypergeometric")
-
-exp_sample <- rexp(max_n, 1/5)
-chisq_sample <- rchisq(max_n, 5)
-unif_sample <- runif(max_n, 0, 10)
-gamma_sample <- rgamma(max_n, 10, 2)
-hyper_sample <- rhyper(max_n, 10, 20, 15)
-
-for (n in 1:(max_n/10)) {
-  store_estimates[n,1] <- mean(exp_sample[1:(n*10)])
-  store_estimates[n,2] <- mean(chisq_sample[1:(n*10)])
-  store_estimates[n,3] <- mean(unif_sample[1:(n*10)])
-  store_estimates[n,4] <- mean(gamma_sample[1:(n*10)])
-  store_estimates[n,5] <- mean(hyper_sample[1:(n*10)])
+iter <- function(n, dist, dist_params){
+  dist_string <- paste(substitute(dist))
+  output <- tibble(
+    sample_size = 1:n,
+    prob_dist = dist_string,
+    random_values = do.call(dist, append(n, dist_params))
+  ) %>% 
+    mutate(estimate = cummean(random_values))
+  return(output)
 }
 
-store_estimates %>% 
-  as_tibble() %>% 
-  gather() %>% 
-  group_by(key) %>% 
-  mutate(n = 10*row_number()) %>% 
-  ggplot(aes(n, value, color = key)) +
+# can likely use pmap here
+results <- bind_rows(
+  iter(1e5, rexp, list(1/5)),
+  iter(1e5, rchisq, list(5)),
+  iter(1e5, runif, list(0, 10)),
+  iter(1e5, rgamma, list(10, 2)),
+  iter(1e5, rhyper, list(10, 20, 15))
+)
+
+results %>% 
+  ggplot(aes(sample_size, estimate, color = prob_dist)) +
   geom_line(alpha=0.6) +
   theme_minimal() +
   labs(x = "Sample Size, n", y = "Sample Mean", color = "Distribution of iid Random Sample") +
   theme(legend.position = "bottom") +
   geom_hline(yintercept = 5) +
   ylim(4.5, 5.5)
+```
 
+For the sake of an even better illustration, let's focus on the case where $X_i \overset{iid}{\sim}\text{Exp}(1/\mu)$ where $\mu = 5$. We'll draw 10,000 samples of $X_i$, and calculate $\bar X$ for each sample as the sample size ranges from 1 all the way to 1,000.
+
+```{r}
+#| code-fold: true
+#| label: fig-plot28.2
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "10,000 lines, each of which corresponds to a simulated realization of the sample mean over a range of sample sizes. The area within the red dashed lines is the set |μ - Sample Mean| < 0.5"
+#| code-summary: "Show code which generates figure"
+#| warning: false
+
+iter <- function(n, s, dist, dist_params){
+  output <- tibble(
+    sample_size = 1:n,
+    random_values = do.call(dist, append(n, dist_params)),
+    iter_num = s
+  ) %>% 
+    mutate(estimate = cummean(random_values))
+  return(output)
+}
+
+sim <- function(N, n, dist, dist_params){
+  output <- 1:N %>% 
+    map(iter, n = n, dist = dist, dist_params = dist_params) %>% 
+    bind_rows()
+  return(output)
+}
+
+results <- sim(1e4, 1e3, rexp, list(1/5))
+
+epsilon <- 0.5 
+results %>% 
+  ggplot(aes(x = sample_size, y = estimate)) +
+  geom_line(aes(group = iter_num), alpha = 0.1, size = 0.05) +
+  ylim(0, 15) + 
+  geom_hline(yintercept = 5 - epsilon, color = "red", linetype="dashed") +
+  geom_hline(yintercept = 5 + epsilon, color = "red", linetype="dashed") +
+  theme_minimal()
+```
+
+The weak LLN tells us that since $\bar X\pto 5$, then by the definition of convergence in probability, the probability one of the lines falls in @fig-plot28.2 outside the interval within the red dashed lines at a particular sample size $n$ approaches zero as $n\to \infty$. Furthermore, this will hold regardless of how close we make the red lines to the true value $\mu = 5$. For the sake of illustration we took $\varepsilon = 0.5$, but it will hold *for all* $\varepsilon > 0$. In fact, we can go one step further and illustrate $\Pr(|\bar X-\mu| > \varepsilon)$ by looking at the proportion of times that $|\bar X-\mu| > \varepsilon$ holds across out 10,000 simulations. We'll do this for $\varepsilon=0.5,0.6,\ldots,1$.
+
+```{r}
+#| code-fold: true
+#| label: fig-plot28.3
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "For each ε, the observed probability in question approaches 0 as the sample size grows."
+#| code-summary: "Show code which generates figure"
+#| warning: false
+
+results %>% 
+  expand_grid(epsilon = 5:10/10) %>% 
+  mutate(outside = estimate >= 5 + epsilon | estimate <= 5 - epsilon) %>% 
+  group_by(sample_size, epsilon) %>% 
+  summarize(prob = sum(outside) / n()) %>%
+  ggplot(aes(x = sample_size, prob, color = factor(epsilon))) +
+  geom_line() +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  labs(y = "Observed Pr(|Estimate-μ|>ε)", x = "Sample Size n", color = "ε")
 ```
 
 :::
+
 
 :::{#exm-}
 
 ## Monte Carlo Simulations
 
-In @exm-var we performed a Monte Carlo simulation to illustrate the bias of $\hat\theta(\X) = \sum_{i=1}^n (X_i - \bar X)/n$ and unbiasedness of $S^2$. We did this by fixing $n=20$, drawing a random sample, recording estimates $\hat\theta(\x)$ and $S^2(\x)$, and repeating this $k$ times. This is nothing more than drawing $j=1,\ldots,k$ observations from the random variables $\hat\theta(\X)$ and $S^2(\X)$. By the LLN, 
+In @exm-var we performed a Monte Carlo simulation to illustrate the bias
+of $\hat\theta(\mathbf{X}) = \sum_{i=1}^n (X_i - \bar X)/n$ and
+unbiasedness of $S^2$. We did this by fixing $n=20$, drawing a random
+sample, recording estimates $\hat\theta(\mathbf{x})$ and
+$S^2(\mathbf{x})$, and repeating this $k$ times. This is nothing more
+than drawing $j=1,\ldots,k$ observations from the random variables
+$\hat\theta(\mathbf{X})$ and $S^2(\mathbf{X})$. By the LLN,
 \begin{align*}
-\frac{1}{k}\sum_{i=1}^k \hat\theta_j(\x) &\pto \E{\hat\theta(\X)},\\
-\frac{1}{k}\sum_{i=1}^k S_j^2(\x) &\pto \E{S^2(\X)},
-\end{align*}
-so for a large enough $k$, we can approximate the expected value with its sample counterpart. 
+\frac{1}{k}\sum_{i=1}^k \hat\theta_j(\mathbf{x}) &\overset{p}{\to}\text{E}\left[\hat\theta(\mathbf{X})\right],\\
+\frac{1}{k}\sum_{i=1}^k S_j^2(\mathbf{x}) &\overset{p}{\to}\text{E}\left[S^2(\mathbf{X})\right],
+\end{align*} so for a large enough $k$, we can approximate the expected
+value with its sample counterpart.
+
 :::
 
-The crucial assumption made by the LLN is that $\bar X$ is calculated with an iid random sample. If we drop this assumption, then $\bar X$ needn't estimate $\mu$ consistently.
+### Kolmogorov's Strong Law of Large Numbers
 
-:::{#exm-noiid}
+A stronger version of the LLN is stated in terms of almost sure convergence. Since almost sure convergence is stronger than convergence in probability (which is all that is needed for an estimator to be consistent), this version is referred to as the "strong" LLN. 
 
-## LLN Failing with Non-IID Data
+::: {#thm-}
+## LLN II
 
-Suppose $\X = (X_1, \ldots, X_n)$ where $X_i \sim N(-1, i)$ if $i$ is odd, and $X_i \sim N(1,i)$ is $i$ is even. The data is independent, but not identically distributed. If some LLN would hold here, we would suspect that $\bar X$ would converge $0$, the average of the underlying population means $1$ and $-1$.Let's simulate $\bar X$ for $n$ ranging from 1 to 100,000.
+If $(X_1,\ldots, X_n)$ are a set of iid random variables where
+$\text{E}\left[X_i\right] = \mu$, then $\bar X \overset{as}{\to}\mu$.
+:::
+
+::: proof
+See the proof of Theorem 6.1 in @billingsley2008probability.
+::: 
+
+
+:::{#exm-strongvsweak}
+## Strong vs Weak LLN
+We can actually visualize the difference between the strong and weak LLNs, and in doing so highlight the difference between almost sure convergence and convergence in probability. Like @exm-lln1, assume $X_i \sim\text{Exp}(1/\mu)$ where $\mu = 5$. We'll perform a similar simulation to that which gave @fig-plot28.2, but this time we'll only look at one sample of $X_i$ (instead of 10,000). 
 
 ```{r}
-X <- vector("numeric", 1e5)
-X_bar <- vector("numeric", 1e5)
+#| code-fold: true
+#| label: fig-plot28.4
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "A single simulation realization of the sample mean over a range of sample sizes. The area within the red dashed lines is the set |μ - Sample Mean| < 0.5"
+#| code-summary: "Show code which generates figure"
+#| warning: false
 
-#draw realizations for each X_i s
-for (i in 1:length(X)) {
-  #set mu modular arithmetic
-  mu <- (-1)^(i %% 2) * (1)^(1 - i %% 2)
-  X[i] <- rnorm(1, mu, i)
-  
-  #calculate sample mean 
-  X_bar[i] <- mean(X[1:i])
-}
+iter(1e5, 1, rexp, list(1/5)) %>% 
+  ggplot(aes(sample_size, estimate)) + 
+  geom_line() + 
+  geom_hline(yintercept = 5 - epsilon, color = "red", linetype="dashed") +
+  geom_hline(yintercept = 5 + epsilon, color = "red", linetype="dashed") +
+  theme_minimal() 
 ```
 
-We see that our estimates very much do not converge to any particular value.
+The strong LLN tells us that for some finite sample size $N$ the line in @fig-plot28.4 will fall within the red lines for all $n > N$.
+
+:::
+
+### Chebyshev's Weak Law of Large Numbers
+
+The crucial assumption made by both LLNs up to this point is that $\bar X$ is calculated
+with an iid random sample. If we drop this assumption, then $\bar X$
+needn't estimate $\mu$ consistently.
+
+::: {#exm-noiid}
+## LLN Failing with Non-IID Data
+
+Suppose $\mathbf{X}= (X_1, \ldots, X_n)$ where $X_i \sim N(-1, i)$ if
+$i$ is odd, and $X_i \sim N(1,i)$ is $i$ is even. The data is
+independent, but not identically distributed. If some LLN would hold
+here, we would suspect that $\bar X$ would converge $0$ since the average of
+the underlying population means $1$ and $-1$. Let's simulate $\bar X$ for
+$n$ ranging from 1 to 100,000.
+
+```{r}
+draw_X_i <- function(i){
+  mu_i <- (-1)^(i %% 2) * (1)^(1 - i %% 2)
+  sigma_i <- i 
+  
+  output <- rnorm(1, mu_i, sigma_i)
+  return(output)
+}
+
+draw_X <- function(n){
+  output <- tibble(
+    i = 1:n,
+    value = map_dbl(1:n, draw_X_i)
+  ) %>% 
+    mutate(estimate = cummean(value))
+  return(output)
+}
+
+results <- draw_X(1e5)
+```
+
+We see that our estimates very much do not converge to any particular
+value.
 
 ```{r}
 #| code-fold: true
@@ -674,65 +1029,94 @@ We see that our estimates very much do not converge to any particular value.
 #| fig-width: 8
 #| fig-cap: "The sample mean of non-IID data does not satisfy the LLN"
 #| code-summary: "Show code which generates figure"
-X_bar %>% 
-  as_tibble() %>% 
-  mutate(n = row_number()) %>% 
-  ggplot(aes(n, X_bar)) +
+results %>% 
+  ggplot(aes(i, estimate)) +
   geom_line() +
   theme_minimal() +
   labs(x = "Sample Size", y = "Sample Mean")
 ```
 :::
 
-The proof of the LLN relied on Chebyshev's equality and the fact that $\var{\bar X} = \sigma^2/n \to 0$ when $\var{X_i} = \sigma^2$. Perhaps if we added an assumption regarding the variance of a non-iid sample, then we could salvage a result similar to the LLN. This is precisely what Chebyshev's LLN does. 
+       The proof of the LLN relied on Chebyshev's equality and the fact that
+$\text{Var}\left(\bar X\right) = \sigma^2/n \to 0$ when
+$\text{Var}\left(X_i\right) = \sigma^2$. Perhaps if we added an
+assumption regarding the variance of a non-iid sample, then we could
+salvage a result similar to the LLN. This is precisely what Chebyshev's
+LLN does.
 
-:::{#thm-}
+:::{#prp-chebylln}
 
-## Chebyshev's (Weak) Law of Large Numbers 
+## Chebyshev's (Weak) Law of Large Numbers
 
-Suppose $(X_1,\ldots, X_n)$ are a sample such that $\E{X_i} = \mu_i$, $\cov{X_i, X_j} = \sigma_{ij}^2$, and  $\lim_{n\to\infty}\frac{1}{n^2}\sum_{i=1}^n \sigma_{ij}^2 =0$. If $\frac{1}{n}\sum_{i=1}^n\mu_i \pto \mu$, then $\bar X \pto \mu$.
+Suppose $(X_1,\ldots, X_n)$ are a sample such that
+$\text{E}\left[X_i\right] = \mu_i$,
+$\text{Cov}\left(X_i, X_j\right) = \sigma_{ij}^2$, and
+$\lim_{n\to\infty}\frac{1}{n^2}\sum_{i=1}^n \sigma_{ij}^2 =0$. If
+$\frac{1}{n}\sum_{i=1}^n\mu_i \overset{p}{\to}\mu$, then
+$\bar X \overset{p}{\to}\mu$.
+
 :::
 
-:::{.proof}
-The expected value of $\bar X$ is 
-$$\E{\bar X} = \frac{1}{n}\sum_{i=1}^n\E{X_i}= \frac{1}{n}\sum_{i=1}^n\mu_i \pto \mu.$$
-The variance is 
-$$ \var{\bar X} = \var{\frac{1}{n}\sum_{i=1}^nX_i} = \frac{1}{n^2}\sum_{i=1}^n\sum_{j=1}^n\cov{X_i,X_j} = \frac{1}{n}\sum_{i=1}^n \sigma_{ij}^2\to 0.$$ By Proposition @prp-mse3, $\bar X\ms \mu$, so $\bar X \pto \mu$.
+::: proof
+The expected value of $\bar X$ is
+$$\text{E}\left[\bar X\right] = \frac{1}{n}\sum_{i=1}^n\text{E}\left[X_i\right]= \frac{1}{n}\sum_{i=1}^n\mu_i \overset{p}{\to}\mu.$$
+The variance is
+$$ \text{Var}\left(\bar X\right) = \text{Var}\left(\frac{1}{n}\sum_{i=1}^nX_i\right) = \frac{1}{n^2}\sum_{i=1}^n\sum_{j=1}^n\text{Cov}\left(X_i,X_j\right) = \frac{1}{n}\sum_{i=1}^n \sigma_{ij}^2\to 0.$$
+By Proposition @prp-mse3, $\bar X\overset{ms}{\to}\mu$, so
+$\bar X \overset{p}{\to}\mu$.
 :::
 
-:::{.corrolary}
-Suppose $(X_1,\ldots, X_n)$ are an independent sample such that $\E{X_i} = \mu_i$, $\var{X_i} = \sigma_{i}^2$, and  $\lim_{n\to\infty}\frac{1}{n^2}\sum_{i=1}^n \sigma_i^2 =0$. If $\frac{1}{n}\sum_{i=1}^n\mu_i \pto \mu$, then $\bar X \pto \mu$.
+:::{#cor-}
+Suppose $(X_1,\ldots, X_n)$ are an independent sample such that
+$\text{E}\left[X_i\right] = \mu_i$,
+$\text{Var}\left(X_i\right) = \sigma_{i}^2$, and
+$\lim_{n\to\infty}\frac{1}{n^2}\sum_{i=1}^n \sigma_i^2 =0$. If
+$\frac{1}{n}\sum_{i=1}^n\mu_i \overset{p}{\to}\mu$, then
+$\bar X \overset{p}{\to}\mu$.
 :::
-:::{.proof}
-If the sample is independent, then $$\frac{1}{n^2}\sum_{i=1}^n\sum_{j=1}^n\cov{X_i,X_j} =\frac{1}{n^2}\sum_{i=1}^n\var{X_i}. $$
+
+::: proof
+If the sample is independent, then
+$$\frac{1}{n^2}\sum_{i=1}^n\sum_{j=1}^n\text{Cov}\left(X_i,X_j\right) =\frac{1}{n^2}\sum_{i=1}^n\text{Var}\left(X_i\right). $$
 :::
 
-The reason our non-iid sample in Example @exm-noiid did not converge was because
-$$ \frac{1}{n^2}\sum_{i=1}^n \sigma_i^2 = \frac{1}{n^2}\sum_{i=1}^n i = \frac{1}{n^2}\frac{n(n+1)}{2} = \frac{n^2 + n}{2n^2} \to \frac{1}{2} \neq 0.$$ Let's modify it slightly so the sum of the variances does converge to zero.
+The reason our non-iid sample in Example @exm-noiid did not converge was
+because
+$$ \frac{1}{n^2}\sum_{i=1}^n \sigma_i^2 = \frac{1}{n^2}\sum_{i=1}^n i = \frac{1}{n^2}\frac{n(n+1)}{2} = \frac{n^2 + n}{2n^2} \to \frac{1}{2} \neq 0.$$
+Let's modify it slightly so the sum of the variances does converge to
+zero.
 
-
-:::{#exm-noiid}
+:::{#exm-}
 
 ## LLN with Non-IID Data
 
-Suppose $\X = (X_1, \ldots, X_n)$ where $X_i \sim N(-1,i^{-1})$ if $i$ is odd, and $X_i \sim N(1,i^{-1})$ is $i$ is even. Now we have 
+Suppose $\mathbf{X}= (X_1, \ldots, X_n)$ where $X_i \sim N(-1,i^{-1})$
+if $i$ is odd, and $X_i \sim N(1,i^{-1})$ is $i$ is even. Now we have
 $$\lim_{n\to\infty}\frac{1}{n^2}\sum_{i=1}^n \sigma_i^2 = \left[\lim_{n\to\infty}\frac{1}{n^2}\right]\sum_{i=1}^\infty i^{-1} \to 0 .$$
-```{r}
-X <- vector("numeric", 200)
-X_bar <- vector("numeric", 200)
 
-#draw realizations for each X_i s
-for (i in 1:length(X)) {
-  #set mu modular arithmetic
-  mu <- (-1)^(i %% 2) * (1)^(1 - i %% 2)
-  X[i] <- rnorm(1, mu, i^(-1))
+```{r}
+draw_X_i <- function(i){
+  mu_i <- (-1)^(i %% 2) * (1)^(1 - i %% 2)
+  sigma_i <- 1/i 
   
-  #calculate sample mean 
-  X_bar[i] <- mean(X[1:i])
+  output <- rnorm(1, mu_i, sigma_i)
+  return(output)
 }
+
+draw_X <- function(n){
+  output <- tibble(
+    i = 1:n,
+    value = map_dbl(1:n, draw_X_i)
+  ) %>% 
+    mutate(estimate = cummean(value))
+  return(output)
+}
+
+results <- draw_X(150)
 ```
 
-Now we see that $\bar X$ is converging to $0$, and doing so rather quickly. 
+Now we see that $\bar X$ is converging to $0$, and doing so rather
+quickly.
 
 ```{r}
 #| code-fold: true
@@ -742,125 +1126,187 @@ Now we see that $\bar X$ is converging to $0$, and doing so rather quickly.
 #| fig-width: 8
 #| fig-cap: "Despite the data not being IID, the sample mean still converges to the population mean because the variance shrinks in the correct way."
 #| code-summary: "Show code which generates figure"
-X_bar %>% 
-  as_tibble() %>% 
-  mutate(n = row_number()) %>% 
-  ggplot(aes(n, value)) +
-  geom_line(size = .5) +
+results %>% 
+  ggplot(aes(i, estimate)) +
+  geom_line() +
   theme_minimal() +
   labs(x = "Sample Size", y = "Sample Mean")
 ```
+
 :::
 
 ## The Continuous Mapping Theorem and Slutsky's Theorem
 
-At first glance, the LLN may not seem especially useful as it only applies to the sample mean. However, when paired with two key results about convergence, the LLN becomes an indispensable tool to show the convergence of many random variables and estimators. The first of these is an extension of a key result in real analysis. A useful, and defining property, of continuous functions is that they preserve limits of numeric sequences. If $\{a_n\}$ is a numeric sequence, then 
+At first glance, the LLN may not seem especially useful as it only
+applies to the sample mean. However, when paired with two key results
+about convergence, the LLN becomes an indispensable tool to analyze the
+convergence of many random variables and estimators. The first of these
+is an extension of a key result in real analysis. A useful, and defining
+property, of continuous functions is that they preserve limits of
+numeric sequences. If $\{a_n\}$ is a numeric sequence, then
 $$\lim_{n \to\infty} f(a_n) = f\left(\lim_{n\to\infty} a_n\right) \iff f\text{ continuous}.$$
 
 :::{#thm-}
 
 ## Continuous Mapping Theorem I
 
-Suppose $X_n \pto X$, and let $g$ be a continuous function. Then 
-$$g(X_n)\pto g(X).$$ In other words we are able to interchange the $\plim$ operator with a continuous function:
-$$\plim g(X_n) = g\left(\plim X_n\right).$$
+Suppose $X_n \overset{p}{\to}X$, and let $g$ be a continuous function.
+Then $$g(X_n)\overset{p}{\to}g(X).$$ In other words we are able to
+interchange the $\mathop{\mathrm{plim}}$ operator with a continuous
+function:
+$$\mathop{\mathrm{plim}}g(X_n) = g\left(\mathop{\mathrm{plim}}X_n\right).$$
+
 :::
 
-The proof of this result can be found in @van2000asymptotic. An immediate corollary follows from the fact that convergence in probability implies convergence in distribution.
+The proof of this result can be found in @van2000asymptotic. An
+immediate corollary follows from the fact that convergence in
+probability implies convergence in distribution.
 
-:::{#cor-}
-
+::: {#cor-}
 ## Continuous Mapping Theorem II
 
-Suppose $X_n \pto X$, and let $g$ be a continuous function. Then 
-$$g(X_n)\dto g(X)$$
+Suppose $X_n \overset{p}{\to}X$, and let $g$ be a continuous function.
+Then $$g(X_n)\overset{d}{\to}g(X)$$
 :::
 
-An equally useful result involves the limit of a sums and products of convergent random variables. 
+An equally useful result involves the limit of a sums and products of
+convergent random variables.
 
 :::{#thm-}
 
 ## Slusky's Theorem
 
-Let $X_n$ and $Y_n$ be sequences of random variables. If $X_n\dto X$ for some random variable $X$, and $Y_n\pto c$ for some constant $c$, then 
-\begin{align*}
-X_n + Y_n &\dto X + c\\
-X_nY_n & \dto Xc.
-\end{align*}
-Furthermore, if $c\neq 0$, 
-$$ X_n/Y_n \dto X/c.$$
+Let $X_n$ and $Y_n$ be sequences of random variables. If
+$X_n\overset{d}{\to}X$ for some random variable $X$, and
+$Y_n\overset{p}{\to}c$ for some constant $c$, then \begin{align*}
+X_n + Y_n &\overset{d}{\to}X + c\\
+X_nY_n & \overset{d}{\to}Xc.
+\end{align*} Furthermore, if $c\neq 0$,
+$$ X_n/Y_n \overset{d}{\to}X/c.$$
+
 :::
 
-:::{.proof}
-Define a random vector to be $\mathbf Z_n = (X_n,Y_n)$. We have $\mathbf Z_n \dto (X,c)$ as $X_n\dto X$ and $Y_n \dto c$ (convergence in probability implies convergence in distribution). We can apply the continuous mapping theorem to $g(x,y) = x + y$, $g(x,y)=xy$, and $g(x/y)$ to establish the result.  
+::: proof
+Define a random vector to be $\mathbf Z_n = (X_n,Y_n)$. We have
+$\mathbf Z_n \overset{d}{\to}(X,c)$ as $X_n\overset{d}{\to}X$ and
+$Y_n \overset{d}{\to}c$ (convergence in probability implies convergence
+in distribution). We can apply the continuous mapping theorem to
+$g(x,y) = x + y$, $g(x,y)=xy$, and $g(x/y)$ to establish the result.
 :::
 
-Slutsky's theorem can be a bit hard to remember because it involves a sequence of random variable which converges in distribution to a random variable, and a sequence of random variables which converges in probability to a constant. These asymmetries in mode of convergence and the type of limit are essential, otherwise the result will not hold. Fortunately, the result does hold if we replace all convergences in distribution with convergence in probability (as the later implies the prior).
+       Slutsky's theorem can be a bit hard to remember because it involves a
+sequence of random variable which converges in distribution to a random
+variable, and a sequence of random variables which converges in
+probability to a constant. These asymmetries in mode of convergence and
+the type of limit are essential, otherwise the result will not hold.
+Fortunately, the result does hold if we replace all convergences in
+distribution with convergence in probability (as the later implies the
+prior).
 
 :::{#exm-}
-Suppose $X_n \sim\text{Uni}(0,1)$ and $Y_n = - X_n$. We have $X_n \dto \text{Uni}(0,1)$ and $Y_n \dto \text{Uni}(-1,0)$. Despite this $X_n + Y_n = 0 \not\dto \text{Uni}(0,1) + \text{Uni}(-1,0).$ 
+
+Suppose $X_n \sim\text{Uni}(0,1)$ and $Y_n = - X_n$. We have
+$X_n \overset{d}{\to}\text{Uni}(0,1)$ and
+$Y_n \overset{d}{\to}\text{Uni}(-1,0)$. Despite this
+$X_n + Y_n = 0 \not\overset{d}{\to}\text{Uni}(0,1) + \text{Uni}(-1,0).$
+
 :::
 
-:::{#exm-convar}
-
+::: {#exm-convar}
 ## Consistency of Sample Variance
 
-@exm-consvarnorm showed that $S^2$ is a consistent estimator for $\sigma^2$ when $X_i\iid N(\mu,\sigma^2)$. We can use the continuous mapping theorem, Slutsky's theorem, and the LLN to show that $S^2$ is consistent regardless of the distribution of our iid sample. Suppose $\E{X_i} = \mu$, $\E{X_i^2}=\mu_2$, and $\E{X_i^4}=\mu_4$ for all $i$. If we define our continuous function to be $g(x) = x^2$, then
-\begin{align*}
+@exm-consvarnorm showed that $S^2$ is a consistent estimator for
+$\sigma^2$ when $X_i\overset{iid}{\sim}N(\mu,\sigma^2)$. We can use the
+continuous mapping theorem, Slutsky's theorem, and the LLN to show that
+$S^2$ is consistent regardless of the distribution of our iid sample.
+Suppose $\text{E}\left[X_i\right] = \mu$,
+$\text{E}\left[X_i^2\right]=\mu_2$, and
+$\text{E}\left[X_i^4\right]=\mu_4$ for all $i$. If we define our
+continuous function to be $g(x) = x^2$, then \begin{align*}
 S^2 & = \frac{1}{n-1} \sum_{i=1}^nX_i - \frac{1}{n-1} \sum_{i=1}^n\bar X^2 \\
     & = \frac{1}{n-1} \sum_{i=1}^nX_i^2 + \frac{n}{n-1}\bar X^2  \\
     & = \frac{n}{n-1}\left[\frac{1}{n}\sum_{i=1}^{n}X_i^2 - \left(\frac{1}{n}\sum_{i=1}^{n}X_i\right)^2\right]
-\end{align*}
-The first term in the brackets is an unbiased estimator of $\mu_2$ with vanishing variance, so by @prp-consbias it is a consistent estimator for $\E{X^2}$:
-\begin{align*}
-\E{\frac{1}{n}\sum_{i=1}^{n}X_i^2} &= \frac{1}{n}\left(n \mu_2\right) = \mu^2\\
-\lim_{n\to\infty}\var{\frac{1}{n}\sum_{i=1}^{n}X_i^2} & = \lim_{n\to\infty}\frac{1}{n^2}n\left(\E{X_i^4} - \E{X_i^2}^2 \right) = \lim_{n\to\infty}\frac{\mu_4 + \mu_2^2}{n} = 0
-\end{align*}
-The second term in the brackets can be written as $g(\bar X)$, so by the continuous mapping theorem and the LLN, 
-$$ g(\bar X) = \left(\frac{1}{n}\sum_{i=1}^{n}X_i\right)^2 \pto \mu^2 = g(\mu).$$
-So 
-$$S^2= \underbrace{\frac{n}{n-1}}_{\to 1}\Bigg[\underbrace{\frac{1}{n}\sum_{i=1}^{n}X_i^2}_{\pto \mu_2} - \underbrace{\left(\frac{1}{n}\sum_{i=1}^{n}X_i\right)^2}_{\pto \mu^2} \Bigg].$$
-We can apply Slutsky's theorem to the sum of sequences of random variables which converge in probability to constants, so
-$$ S^2 \pto \mu_2 - \mu^2 = \sigma^2,$$ making $S^2$ consistent.
+\end{align*} The first term in the brackets is an unbiased estimator of
+$\mu_2$ with vanishing variance, so by @prp-consbias it is a consistent
+estimator for $\text{E}\left[X^2\right]$: \begin{align*}
+\text{E}\left[\frac{1}{n}\sum_{i=1}^{n}X_i^2\right] &= \frac{1}{n}\left(n \mu_2\right) = \mu^2\\
+\lim_{n\to\infty}\text{Var}\left(\frac{1}{n}\sum_{i=1}^{n}X_i^2\right) & = \lim_{n\to\infty}\frac{1}{n^2}n\left(\text{E}\left[X_i^4\right] - \text{E}\left[X_i^2\right]^2 \right) = \lim_{n\to\infty}\frac{\mu_4 + \mu_2^2}{n} = 0
+\end{align*} The second term in the brackets can be written as
+$g(\bar X)$, so by the continuous mapping theorem and the LLN,
+$$ g(\bar X) = \left(\frac{1}{n}\sum_{i=1}^{n}X_i\right)^2 \overset{p}{\to}\mu^2 = g(\mu).$$
+So
+$$S^2= \underbrace{\frac{n}{n-1}}_{\to 1}\Bigg[\underbrace{\frac{1}{n}\sum_{i=1}^{n}X_i^2}_{\overset{p}{\to}\mu_2} - \underbrace{\left(\frac{1}{n}\sum_{i=1}^{n}X_i\right)^2}_{\overset{p}{\to}\mu^2} \Bigg].$$
+We can apply Slutsky's theorem to the sum of sequences of random
+variables which converge in probability to constants, so
+$$ S^2 \overset{p}{\to}\mu_2 - \mu^2 = \sigma^2,$$ making $S^2$
+consistent.
 :::
 
-## Central Limit Theorem 
+## Central Limit Theorems
 
-The LLN told us that our favorite estimator for $\mu$, $\bar X$, is consistent. We know turn to what is perhaps an even more important result regarding $\bar X$, one that may in fact be the most important results in all of probability. 
+The LLN told us that our favorite estimator for $\mu$, $\bar X$, is
+consistent. We know turn to what is perhaps an even more important
+result regarding $\bar X$, one that may in fact be the most important
+results in all of probability -- the asymptotic distribution of $\bar X$ is a normal distribution.
+
+### Lindeberg-Lévy CLT
+
+The *classic* version of the CLT is formally known as the Lindeberg-Lévy CLT, and is likely familiar.
 
 :::{#thm-}
 
-## Lindeberg-Lévy Central Limit Theorem (CLT)
+## CLT I
 
-Suppose $\X=(X_1,\ldots, X_n)$ is a sequence of random variables with $\E{X_i}=\mu$ and $\var{X_i}=\sigma^2$. Then $$\sqrt{n}(\bar X - \mu) \dto N(0,\sigma^2),$$ which is also often written as 
-$$\bar X\dto N(\mu, \sigma^2/n),$$ or 
-$$\sum_{i=1}^n X_i \dto N(n\mu, \sqrt n \sigma^2) $$
+Suppose $\mathbf{X}=(X_1,\ldots, X_n)$ is a sequence of random variables
+with $\text{E}\left[X_i\right]=\mu$ and
+$\text{Var}\left(X_i\right)=\sigma^2$. Then
+$$\sqrt{n}(\bar X - \mu) \overset{d}{\to}N(0,\sigma^2),$$ which is also
+often written as $$\bar X\overset{d}{\to}N(\mu, \sigma^2/n),$$ or
+$$\sum_{i=1}^n X_i \overset{d}{\to}N(n\mu, \sqrt n \sigma^2) $$
 :::
 
-The Lindeberg-Lévy central limit theorem is often referred to as *the* central limit theorem, and is the form which most are familiar with. The proof is a bit technical and requires some measure-theoretic based probability theory. It can be found in @billingsley2008probability or @durrett2019probability. 
+       The proof is a bit technical and requires some measure-theoretic based
+probability theory. It can be found in @billingsley2008probability or
+@durrett2019probability.
 
 :::{#exm-}
-Suppose we have an iid sample from $\text{Exp}(1)$. If we simulate 1000 realizations of $\sqrt n(\bar X - \mu)$ for various sample sizes, we should see that the distribution of our realizations becomes approximately normal as we increase the sample size.
+Suppose we have an iid sample from $\text{Exp}(1)$. If we simulate 1000
+realizations of $\sqrt n(\bar X - \mu)$ for various sample sizes, we
+should see that the distribution of our realizations becomes
+approximately normal as we increase the sample size.
 
 ```{r}
-sample_sizes <- c(1, 5, 10, 25, 100, 1000)
-N_sim <- 10000
-
-store_estimates <- matrix(NA, nrow = N_sim, ncol = length(sample_sizes))
-colnames(store_estimates) <- paste("n =", sample_sizes)
-
-col_index <- 0
-for (n in sample_sizes) {
-  col_index <- col_index + 1
-  for (k in 1:N_sim) {
-    X <- rexp(n, 1)
-    store_estimates[k, col_index] <- sqrt(n)*(mean(X) - 1)
-  }
+iter <- function(n, dist, dist_params, s){
+  output <- tibble(
+    value = do.call(dist, append(n, dist_params))
+  ) %>% 
+    summarize(
+      sample_size = n,
+      iter_num = s, 
+      estimate = sqrt(n)*(mean(value) - 1)
+    ) 
+  return(output)
 }
 
+sim <- function(N, n, dist, dist_params){
+  output <- 1:N %>% 
+    map(iter, n = n, dist = dist, dist_params = dist_params) %>% 
+    bind_rows()
+  return(output)
+}
+
+outer_sim <- function(n_vals, N, dist, dist_params){
+  output <- n_vals %>% 
+    map(sim, N = N, dist = dist, dist_params = dist_params) %>% 
+    bind_rows()
+  return(output)
+}
+
+results <- outer_sim(c(1:25, 50, (1:10)*100), 1e4, rexp, list(1))
 ```
 
-Even for modest values of $n$, we can see that $\sqrt n(\bar X - \mu) \asim N(0, \sigma^2)$.
+Even for modest values of $n$, we can see that
+$\sqrt n(\bar X - \mu) \overset{a}{\sim}N(0, \sigma^2)$.
 
 ```{r}
 #| code-fold: true
@@ -871,21 +1317,23 @@ Even for modest values of $n$, we can see that $\sqrt n(\bar X - \mu) \asim N(0,
 #| fig-cap: "As the sample size increases, the distribution of the adjusted sample mean looks more and more like the standard normal."
 #| code-summary: "Show code which generates figure"
 
-df <- store_estimates %>% 
-  as_tibble() %>% 
-  gather() 
-
-df$key <- factor(df$key, levels = c('n = 1','n = 5','n = 10','n = 25', 'n = 100', 'n = 1000'))
-
-df %>% 
-  ggplot(aes(value)) +
-  geom_histogram(color = "black", fill = "white", bins = 50) +
-  facet_wrap(~key, scales = "free") +
+results %>% 
+  ggplot(aes(estimate)) +
+  geom_histogram(aes(y = after_stat(density)), color = "black", fill = "white", bins = 50) +
   theme_minimal() +
-  labs(x = "Estimates", y = "")
+  geom_function(fun = dnorm, colour = "red") + 
+  transition_states(sample_size) +
+  labs(title = 'Sample Size: {closest_state}', x = "Estimates", y = "") 
 ```
 
-An alternate way to visually test whether our estimates are normally distributed is with a quantile-quantile plot (QQ-plot), which graphs the observed quantiles of our estimates against the theoretical quantiles of a normal distribution (or those of any distribution we suspect our data is drawn from). If our estimates are (approximately) normally distributed, then the observed quantiles should be approximately equal to the theoretical quantiles of a normal distribution, forming a 45-degree line.
+An alternate way to visually test whether our estimates are normally
+distributed is with a quantile-quantile plot (QQ-plot), which graphs the
+observed quantiles of our estimates against the theoretical quantiles of
+a normal distribution (or those of any distribution we suspect our data
+is drawn from). If our estimates are (approximately) normally
+distributed, then the observed quantiles should be approximately equal
+to the theoretical quantiles of a normal distribution, forming a
+45-degree line.
 
 ```{r}
 #| code-fold: true
@@ -895,57 +1343,97 @@ An alternate way to visually test whether our estimates are normally distributed
 #| fig-width: 8
 #| fig-cap: "The QQ-plot for the simulated distribution of the adjusted sample mean"
 #| code-summary: "Show code which generates figure"
-df %>% 
-  ggplot(aes(sample = value)) +
+results %>% 
+  ggplot(aes(sample = estimate)) +
   stat_qq_line(color = "red") +
   geom_qq(size= 0.5) + 
-  facet_wrap(~key) + 
   theme_minimal() +
-  labs(x = "Quantiles of Simulated Estimates", y = "Quantiles of Normal Distribution")
+  transition_states(sample_size) + 
+  labs(title = 'Sample Size: {closest_state}', x = "Quantiles of Simulated Estimates", y = "Quantiles of Normal Distribution")
 ```
 
 :::
 
-The central limit theorem is similar to the LLN insofar that they only concern the estimator $\bar X$, so how useful can they really be? Well with the continuous mapping theorem and Slutsky's theorem, the answer is *very useful*!
+       The central limit theorem is similar to the LLN insofar that they only
+concern the estimator $\bar X$, so how useful can they really be? Well
+with the continuous mapping theorem and Slutsky's theorem, the answer is
+*very useful*!
 
 :::{#exm-}
-In Example @exm-tdist we illustrated the fact that $X_n \dto N(0,1)$ where $X_n \sim t_n$, but we didn't actually prove it. Directly proving this result is a matter of verify that 
+
+In @exm-tdist we illustrated the fact that
+$X_n \overset{d}{\to}N(0,1)$ where $X_n \sim t_n$, but we didn't
+actually prove it. Directly proving this result is a matter of verify
+that
 $$\lim_{n\to\infty} F_{X_n}(x) =\lim_{n\to\infty}\int_{-\infty}^x \frac{\Gamma\left(\frac{n+1}{2}\right)}{\Gamma\left(\frac{n}{2}\right)\sqrt{n\pi}}\left(1 + \frac{x^2}{n}\right)^{-\frac{n+1}{2}} = \frac{1}{\sqrt{2\pi}}\int_{-\infty}^x e^{-x^2/2} = F_X(x)$$
-where $\Gamma$ is the gamma function defined as 
-$$\Gamma(t) = \int_0^\infty s^{t-1}e^{-s}\ ds.$$ A much easier way to prove that $X_n \dto N(0,1)$, is by using Slutsky's theorem and the continuous mapping theorem. First recall that $$\frac{\bar X - \mu}{S/\sqrt n} \sim t_n,$$ so we can write $X_n$ as  $X_n = \frac{\bar X - \mu}{S/\sqrt n}$ due to the fact that random variables are uniquely determined by their distributions. From Example @exm-consvar, we know $S^2 \pto \sigma^2$. By the continuous mapping theorem $$ \sqrt{S^2} = S \pto \sigma = \sqrt{\sigma^2}.$$ So we have 
-$$ X_n = \frac{\bar X - \mu}{S/\sqrt n}= \underbrace{\sqrt{n}(\bar X - \mu)}_{\dto N(0, \sigma^2)}\underbrace{\frac{1}{s}}_{\pto \sigma}.$$ By Slutsky's theorem, 
-$$X_n \dto \frac{N(0,\sigma^2)}{\sigma} = N(0,1).$$ 
+where $\Gamma$ is the gamma function defined as
+$$\Gamma(t) = \int_0^\infty s^{t-1}e^{-s}\ ds.$$ A much easier way to
+prove that $X_n \overset{d}{\to}N(0,1)$, is by using Slutsky's theorem
+and the continuous mapping theorem. First recall that
+$$\frac{\bar X - \mu}{S/\sqrt n} \sim t_n,$$ so we can write $X_n$ as
+$X_n = \frac{\bar X - \mu}{S/\sqrt n}$ due to the fact that random
+variables are uniquely determined by their distributions. From
+@exm-consvarnorm, we have $S^2 \overset{p}{\to}\sigma^2$. By the continuous
+mapping theorem
+$$ \sqrt{S^2} = S \overset{p}{\to}\sigma = \sqrt{\sigma^2},$$ which gives
+$$ X_n = \frac{\bar X - \mu}{S/\sqrt n}= \underbrace{\sqrt{n}(\bar X - \mu)}_{\overset{d}{\to}N(0, \sigma^2)}\underbrace{\frac{1}{s}}_{\overset{p}{\to}\sigma}.$$
+Putting all the pieces together, Slutsky's theorem yields
+$$X_n \overset{d}{\to}\frac{N(0,\sigma^2)}{\sigma} = N(0,1).$$
+
 :::
 
-The CLT can be generalized to samples of random vectors $\X_i$.
+       The CLT can be generalized to samples of random vectors $\mathbf{X}_i$.
 
-:::{#thm- name="CLT in Higher Dimmensions"}
-Suppose $(\X_1,\ldots, \X_n)$ is a sequence of iid random vectors with $\E{\X_i}=\boldsymbol\mu$ and $\var{\X_i}=\boldsymbol\Sigma$. Then $$\sqrt{n}(\bar {\X }- \boldsymbol\mu) \dto N(\mathbf{0},\boldsymbol\Sigma).$$
+::: {#thm-}
+Suppose $(\mathbf{X}_1,\ldots, \mathbf{X}_n)$ is a sequence of iid
+random vectors with $\text{E}\left[\mathbf{X}_i\right]=\boldsymbol\mu$
+and $\text{Var}\left(\mathbf{X}_i\right)=\boldsymbol\Sigma$. Then
+$$\sqrt{n}(\bar {\mathbf{X}}- \boldsymbol\mu) \overset{d}{\to}N(\mathbf{0},\boldsymbol\Sigma).$$
 :::
 
-We can also generalize the CLT to the case where variables are independent but not necessarily identically distributed.
+### Not Identically Distributed
+
+@prp-chebylln allowed us to salvage a LLN when the iid assumption failed, so can we do the same with the CLT? Sort of. While we need an independent sample, we don't necessarily need realizations to be drawn from an identical distribution. Instead, the theorem will rely on the tails of distributions meeting a certion criterion. This version of the CLT is known as the Lindeberg-Feller CLT.
 
 :::{#thm-}
 
 ## Lindeberg-Feller CLT
 
-Suppose $\X=(X_1,\ldots, X_n)$ is a sequence of independent random variables with $\E{X_i}=\mu_i$ and $\var{X_i}=\sigma_i^2$, and define 
-\begin{align*}
+Suppose $\mathbf{X}=(X_1,\ldots, X_n)$ is a sequence of independent
+random variables with $\text{E}\left[X_i\right]=\mu_i$ and
+$\text{Var}\left(X_i\right)=\sigma_i^2$, and define \begin{align*}
 \bar \mu = \frac{1}{n}\sum_{i=1}^n\mu_i;\\
 \bar \sigma_n^2 = \frac{1}{n}\sum_{i=1}^n\sigma_i^2.
-\end{align*}
-If the collection of variances $\sigma_i^2$ satisfies:
+\end{align*} If the collection of variances $\sigma_i^2$ satisfies:
 \begin{align*}
 \lim_{n\to\infty} &\frac{\max\{\sigma_i\}}{n\bar\sigma} = 0;\\
 \lim_{n\to\infty} &\bar\sigma_n^2 = \bar\sigma^2,
-\end{align*}
-then $\sqrt n (\bar X-\mu)\dto N(0, \bar\sigma^2).$
+\end{align*} then
+$\sqrt n (\bar X-\mu)\overset{d}{\to}N(0, \bar\sigma^2).$
+
 :::
 
-::: {.remark}
-The Lindeberg-Feller conditions stipulates that $\lim_{n\to\infty}\bar\sigma_n^2 = \bar\sigma^2$ and $\lim_{n\to\infty} \frac{\max\{\sigma_i\}}{n\bar\sigma} = 0$, a condition known as the **_Lindeberg's condition_**. The condition is often presented in more general terms, but the intuition remains the same. For the CLT to hold for random variables that with different variances, we need to makes sure that no single term $\sigma_i$ dominates the standard deviation. We can think about the sample mean $\bar X$ as "mixing" many random variables $X_i.$ After mixing these random variables, we hope to have a normal distribution, but that only happens if tails of the various distributions of $X_i$ are negligible as $n\to\infty$, giving us the trademark tails of a normal distribution which tapper off. Let's consider a counterexample. Suppose $X_i$ is defined on the sample space $\{-i,0,i\}$ is distributed such that 
+::: {#exm-}
+
+## Lindeberg's Condition
+
+The Lindeberg-Feller conditions stipulates that
+$\lim_{n\to\infty}\bar\sigma_n^2 = \bar\sigma^2$ and
+$\lim_{n\to\infty} \frac{\max\{\sigma_i\}}{n\bar\sigma} = 0$, a
+condition known as the ***Lindeberg's condition***. The condition is
+often presented in more general terms, but the intuition remains the
+same. For the CLT to hold for random variables that with different
+variances, we need to makes sure that no single term $\sigma_i$
+dominates the standard deviation. We can think about the sample mean
+$\bar X$ as "mixing" many random variables $X_i.$ After mixing these
+random variables, we hope to have a normal distribution, but that only
+happens if tails of the various distributions of $X_i$ are negligible as
+$n\to\infty$, giving us the trademark tails of a normal distribution
+which tapper off. Let's consider a counterexample. Suppose $X_i$ is
+defined on the sample space $\{-i,0,i\}$ is distributed such that
 $$\Pr(X_i = k) = \begin{cases} 1/2i^2 & k = -i^2 \\ 1/2i^2 & k = i^2 \\ 1 - 1/i^2&k=0\end{cases}.$$
-Graphing the density function for a few values of $i$ gives us a better sense of how $X_i$ behaves.
+Graphing the density function for a few values of $i$ gives us a better
+sense of how $X_i$ behaves.
 
 ```{r}
 #| code-fold: true
@@ -960,48 +1448,43 @@ expand_grid(i = 1:5, x = -100:100) %>%
   mutate(y = ifelse(x == 0, 1 - 1/(i^2), 1/(2*i^2))) %>% 
   ggplot(aes(x, y)) +
   geom_point(size = 0.2) +
-  facet_wrap(~i, ncol = 1) +
   xlab("k") +
   geom_segment(aes(x = x, xend = x, y= 0, yend = y)) +
-  theme_minimal()
+  theme_minimal() + 
+  transition_states(i) + 
+  labs(title = 'i = {closest_state}', y = "Pr(X_i = k)")
 ```
 
-As $i\to\infty$, nearly all the probability is concentrated as $k = 0$. The remaining probability is at the extreme tails of the distribution $\pm i^2$, and these tails become more and more extreme (quadritically so) as $i\to\infty$. This is the exact type of behavior Lindeberg's condition rules out. The expectation, expectation squared, and variance of $X_i$ are:
-\begin{align*}
-\E{X_i} & = (1/2i^2)(-i^2) + (1/2i^2)(i^2) +  (1 - 1/i^2)(0) = 0\\
-\E{X_i^2} & = (1/2i^2)(i^4) + (1/2i^2)(i^4) +  (1 - 1/i^2)(0) = i^2\\
-\var{X_i} & = i^2 - 0^2 = i^2
-\end{align*} 
+As $i\to\infty$, nearly all the probability is concentrated as $k = 0$.
+The remaining probability is at the extreme tails of the distribution
+$\pm i^2$, and these tails become more and more extreme (quadritically
+so) as $i\to\infty$. This is the exact type of behavior Lindeberg's
+condition rules out. The expectation, expectation squared, and variance
+of $X_i$ are: \begin{align*}
+\text{E}\left[X_i\right] & = (1/2i^2)(-i^2) + (1/2i^2)(i^2) +  (1 - 1/i^2)(0) = 0\\
+\text{E}\left[X_i^2\right] & = (1/2i^2)(i^4) + (1/2i^2)(i^4) +  (1 - 1/i^2)(0) = i^2\\
+\text{Var}\left(X_i\right) & = i^2 - 0^2 = i^2
+\end{align*}
 
-We can verify that Lindeberg's condition does not hold.
-\begin{align*}
+We can verify that Lindeberg's condition does not hold. \begin{align*}
 \lim_{n\to\infty}\bar \sigma_n = \lim_{n\to\infty}\frac{1}{n}\sum_{i=1}^n i^2 = \lim_{n\to\infty}\frac{(n+1)(2n+1)}{6} \to\infty
-\end{align*} 
+\end{align*}
 
-To simulate realizations of this random variable, we can define $X_i$ using $U_i\sim\text{Uni}(0,1)$.^[We can actually draw observations of *any* random variable using the uniform distribution on $[0,1]$ via [**_inverse transform sampling_**](https://en.wikipedia.org/wiki/Inverse_transform_sampling#Reduction_of_the_number_of_inversions). This is one of the primary ways computers generate random observations from a given distribution.] 
+To simulate realizations of this random variable, we can define $X_i$
+using $U_i\sim\text{Uni}(0,1)$.[^asymptotics-1]
 
 $$X_i = \begin{cases}-i^2 & U_i\in[0, 1/2i^2)\\ i^2 & U_i\in[1/2i^2, 1/i^2) \\ 0 & U_i\in [1/i^2,1]\end{cases}$$
 
 ```{r}
-N_sim <- 100
-draw_X <- function(n){
+draw_X <- function(n,...){
   U <- runif(n)
   prob_pos_i <- (U < 1/(2*(1:n)^2))
   prob_neg_i <- (U > 1/(2*(1:n)^2) & U < 1/((1:n)^2))
   (1:n)^2*prob_pos_i - (1:n)^2*prob_neg_i
 }
 
-store_estimates <- matrix(NA, nrow = N_sim, ncol = length(sample_sizes))
-colnames(store_estimates) <- paste("n =", sample_sizes)
-
-col_index <- 0
-for (n in sample_sizes) {
-  col_index <- col_index + 1
-  for (k in 1:N_sim) {
-    X <- draw_X(n)
-    store_estimates[k, col_index] <- sqrt(n)*(mean(X) - 1)
-  }
-}
+results <- c(1, 5, 10, 25, 100, 1000) %>% 
+  outer_sim(., 200, draw_X, list(0))
 ```
 
 ```{r}
@@ -1012,21 +1495,21 @@ for (n in sample_sizes) {
 #| fig-width: 8
 #| fig-cap: "Histograms of estimates as sample size increases."
 #| code-summary: "Show code which generates figure"
-df <- store_estimates %>% 
-  as.data.frame() %>% 
-  gather() 
 
-df$key <- factor(df$key, levels = c('n = 1','n = 5','n = 10','n = 25', 'n = 100', 'n = 1000'))
-
-df %>% 
-  ggplot(aes(value)) +
+results %>% 
+  ggplot(aes(estimate)) +
   geom_histogram(color = "black", fill = "white", bins = 50) +
-  facet_wrap(~key, scales = "free") +
+  facet_wrap(~sample_size, scales = "free") +
   theme_minimal() +
   labs(x = "Estimates", y = "")
 ```
 
-The apparent distribution of our estimates is not converging to a normal distribution, as we always have a few outliers that are too plentiful relative to their distance from the mean to be drawn from a normal distribution. As $n\to\infty$ these outliers become even more extreme. This is also evident from QQ-plots, where the points far away from the 45-degree line are drawn even farther away as $n\to\infty$.
+The apparent distribution of our estimates is not converging to a normal
+distribution, as we always have a few outliers that are too plentiful
+relative to their distance from the mean to be drawn from a normal
+distribution. As $n\to\infty$ these outliers become even more extreme.
+This is also evident from QQ-plots, where the points far away from the
+45-degree line are drawn even farther away as $n\to\infty$.
 
 ```{r}
 #| code-fold: true
@@ -1036,79 +1519,153 @@ The apparent distribution of our estimates is not converging to a normal distrib
 #| fig-width: 8
 #| fig-cap: "The QQ-plot for the simulated distribution of the adjusted sample mean"
 #| code-summary: "Show code which generates figure"
-df %>% 
-  ggplot(aes(sample = value)) +
+results %>% 
+  ggplot(aes(sample = estimate)) +
   stat_qq_line(color = "red") +
   geom_qq(size= 0.5) + 
-  facet_wrap(~key, scales = "free") +
+  facet_wrap(~sample_size) + 
   theme_minimal() +
   labs(x = "Quantiles of Simulated Estimates", y = "Quantiles of Normal Distribution")
 ```
-
 :::
 
-While theoretically important, Lindeberg's condition can be a bit hard to verify. It is much more common to appeal to a stronger assumption which gives rise to a second CLT that holds for independent, but not necessarily identically distributed, random variables. This final CLT may not be as general as the Lindeberg-Feller CLT, but it is much easier to work with.
+[^asymptotics-1]: We can actually draw observations of *any* random
+    variable using the uniform distribution on $[0,1]$ via [***inverse
+    transform
+    sampling***](https://en.wikipedia.org/wiki/Inverse_transform_sampling#Reduction_of_the_number_of_inversions).
+    This is one of the primary ways computers generate random
+    observations from a given distribution.
+
+       While theoretically important, Lindeberg's condition can be a bit hard
+to verify. It is much more common to appeal to a stronger assumption
+which gives rise to a second CLT that holds for independent, but not
+necessarily identically distributed, random variables. This final CLT
+may not be as general as the Lindeberg-Feller CLT, but it is much easier
+to work with.
 
 :::{#thm-}
 
 ## Lyapunov CLT
 
-Suppose $\X=(X_1,\ldots, X_n)$ is a sequence of independent random variables with $\E{X_i}=\mu_i$ and $\var{X_i}=\sigma_i^2$. If $\E{\abs{X_i - \mu_i}^{2+\kappa}}$ is finite for some $\kappa > 0,$ then $\sqrt n (\bar X-\mu)\dto N(0, \bar\sigma^2)$, where $\bar\sigma = (1/n)\sum_{i=1}^n \sigma_i.$
+Suppose $\mathbf{X}=(X_1,\ldots, X_n)$ is a sequence of independent
+random variables with $\text{E}\left[X_i\right]=\mu_i$ and
+$\text{Var}\left(X_i\right)=\sigma_i^2$. If
+$\text{E}\left[\left\lvert X_i - \mu_i\right\rvert^{2+\kappa}\right]$ is
+finite for some $\kappa > 0,$ then
+$\sqrt n (\bar X-\mu)\overset{d}{\to}N(0, \bar\sigma^2)$, where
+$\bar\sigma = (1/n)\sum_{i=1}^n \sigma_i.$
+
 :::
 
 ## Delta Method
 
-Slutsky's theorem and the continuous mapping theorem in tandem with the LLN give us the ability to prove that certain functions of sample means are convergent. Is it possible that we can do something similar with the CLT to find the asymptotic distribution of functions of sample means? 
+Slutsky's theorem and the continuous mapping theorem in tandem with the
+LLN give us the ability to prove that certain functions of sample means
+are convergent. Is it possible that we can do something similar with the
+CLT to find the asymptotic distribution of functions of sample means?
 
-Suppose $g$ is a function of $\bar X$, where a CLT applies to the random sample $\X$. We know $\sqrt n(\bar X-\mu)\asim N(0, \sigma^2)$. Is it possible to conclude that $\sqrt n(g(\bar X)-g(\mu))\asim N(0, \tilde\sigma^2)$ for some $\tilde\sigma^2$? Furthermore, can we determine $\tilde\mu$ and $\tilde\sigma^2$ only knowing $g$, $\mu$, and $\sigma^2$? 
+       Suppose $g$ is a function of $\bar X$, where a CLT applies to the random
+sample $\mathbf{X}$. We know
+$\sqrt n(\bar X-\mu)\overset{a}{\sim}N(0, \sigma^2)$. Is it possible to
+conclude that
+$\sqrt n(g(\bar X)-g(\mu))\overset{a}{\sim}N(0, \tilde\sigma^2)$ for
+some $\tilde\sigma^2$? Furthermore, can we determine $\tilde\mu$ and
+$\tilde\sigma^2$ only knowing $g$, $\mu$, and $\sigma^2$?
 
-We have information about the difference $\bar X-\mu$ and want information about the difference $g(\bar X)-g(\mu)$. Situations where we know something about behavior in the domain of a function and want to relate it to the function's behavior in the codomain are common place in math, but in particular in real analysis. This is where the mean value theorem saves the day. Assuming $g$ is continuously differentiable and fixing $n$, there exists some $T_n$ in between $\bar X$ and $\theta$ ($\bar X< T_n < \mu$ or $\mu < T_n < \bar X$) such that: 
-\begin{align*}
+       We have information about the difference $\bar X-\mu$ and want
+information about the difference $g(\bar X)-g(\mu)$. Situations where we
+know something about behavior in the domain of a function and want to
+relate it to the function's behavior in the codomain are common place in
+math, but in particular in real analysis. This is where the mean value
+theorem saves the day. Assuming $g$ is continuously differentiable and
+fixing $n$, there exists some $T_n$ in between $\bar X$ and $\theta$
+($\bar X< T_n < \mu$ or $\mu < T_n < \bar X$) such that: \begin{align*}
 & \frac{g(\bar X)-g(\mu)}{\bar X - \mu} = g'(T_n)\\
 \implies & g(\bar X) = g(\mu) + g'(T_n)(\bar X-\mu)\\
 \implies & \sqrt{n}[g(\bar X) - g(\mu)] = g'(T_n)\sqrt{n} (\bar X-\mu)
-\end{align*}
-If we let $n$ vary, we have a sequence of random variables $\{T_n\}$ such that $\abs{T_n -\mu} < \abs{\bar X - \mu}$. By the LLN $\abs{\bar X - \mu} \pto 0$, so $\abs{T_n -\mu} \pto 0$, which is equivalent to $T_n \pto \mu$. By the continuous mapping theorem, $g(T_n) \pto g(\mu)$. This means 
-$$\sqrt{n}[g(\bar X) - g(\mu)] = \underbrace{g'(T_n)}_{\pto g(\mu)}\cdot\underbrace{\sqrt{n} (\bar X-\mu)}_{\dto N(0, \sigma^2)},$$ so Slutsky's theorem gives 
-$$\sqrt{n}[g(\bar X) - g(\mu)] \dto g(\mu)\cdot N(0,\sigma^2) = N(0, \sigma^2[g(\mu)]^2).$$ This all is contingent on $g$ not being a function of $n$, otherwise things fall apart when we apply limiting processes.
+\end{align*} If we let $n$ vary, we have a sequence of random variables
+$\{T_n\}$ such that
+$\left\lvert T_n -\mu\right\rvert < \left\lvert\bar X - \mu\right\rvert$.
+By the LLN $\left\lvert\bar X - \mu\right\rvert \overset{p}{\to}0$, so
+$\left\lvert T_n -\mu\right\rvert \overset{p}{\to}0$, which is
+equivalent to $T_n \overset{p}{\to}\mu$. By the continuous mapping
+theorem, $g(T_n) \overset{p}{\to}g(\mu)$. This means
+$$\sqrt{n}[g(\bar X) - g(\mu)] = \underbrace{g'(T_n)}_{\overset{p}{\to}g(\mu)}\cdot\underbrace{\sqrt{n} (\bar X-\mu)}_{\overset{d}{\to}N(0, \sigma^2)},$$
+so Slutsky's theorem gives
+$$\sqrt{n}[g(\bar X) - g(\mu)] \overset{d}{\to}g(\mu)\cdot N(0,\sigma^2) = N(0, \sigma^2[g(\mu)]^2).$$
+This all is contingent on $g$ not being a function of $n$, otherwise
+things fall apart when we apply limiting processes.
 
-This result is known as the delta method, and applies to any sequence of random variables that is asymptotically normal. It is also readily generalized to higher dimensions where $\mathbf g$ is a vector valued function. 
+       This result is known as the delta method, and applies to any sequence of
+random variables that is asymptotically normal. It is also readily
+generalized to higher dimensions where $\mathbf g$ is a vector valued
+function.
 
 :::{#thm-}
 
 ## Delta Method
 
-Suppose $(\X_1,\ldots, \X_n)$ is a sequence of random vectors such that $\sqrt n (\X_n -  \mathbf t) \dto N(\mathbf 0, \boldsymbol\Sigma)$ for some vector $\mathbf t$ in the interior of $\mathcal X$. If $\mathbf g(\X_n)$ is a vector valued function that:
+Suppose $(\mathbf{X}_1,\ldots, \mathbf{X}_n)$ is a sequence of random
+vectors such that
+$\sqrt n (\mathbf{X}_n - \mathbf t) \overset{d}{\to}N(\mathbf 0, \boldsymbol\Sigma)$
+for some vector $\mathbf t$ in the interior of $\mathcal X$. If
+$\mathbf g(\mathbf{X}_n)$ is a vector valued function that:
 
-1. is continuously differentiable,
-2. does not involve $n$,
-3. $\frac{\partial \mathbf g}{\partial\mathbf x}(\mathbf t) \neq 0$,^[$\frac{\partial \mathbf g}{\partial\mathbf x}(\mathbf t)$ is the $\dim(\mathbf g(\X_n)) \times \dim(\mathbf X_n)$ Jacobian matrix comprised of the partial derivatives of the components of $\mathbf g$.]
+1.  is continuously differentiable,
+2.  does not involve $n$,
+3.  $\frac{\partial \mathbf g}{\partial\mathbf x}(\mathbf t) \neq 0$,[^asymptotics-2]
 
-then, 
+then,
 
-$$ \sqrt n \left[\mathbf g(\X_n) - \mathbf g(\mathbf t)\right] \dto N\left(\mathbf 0, \left[\frac{\partial \mathbf g}{\partial\mathbf x}(\mathbf t)\right]\boldsymbol\Sigma\left[\frac{\partial \mathbf g}{\partial\mathbf x}(\mathbf t)\right]'\right)$$
+$$ \sqrt n \left[\mathbf g(\mathbf{X}_n) - \mathbf g(\mathbf t)\right] \overset{d}{\to}N\left(\mathbf 0, \left[\frac{\partial \mathbf g}{\partial\mathbf x}(\mathbf t)\right]\boldsymbol\Sigma\left[\frac{\partial \mathbf g}{\partial\mathbf x}(\mathbf t)\right]'\right)$$
+
 :::
 
+[^asymptotics-2]: $\frac{\partial \mathbf g}{\partial\mathbf x}(\mathbf t)$
+    is the $\dim(\mathbf g(\mathbf{X}_n)) \times \dim(\mathbf X_n)$
+    Jacobian matrix comprised of the partial derivatives of the
+    components of $\mathbf g$.
+
 :::{#exm-}
-Return to the example where $X_i\iid\text{Exp}(1)$, giving $\E{X_i} = 1$ and $\var{X_i} = 1$. By the CLT, $\sqrt n(\bar X - 1)\dto N(0,1)$. If $g(t) = t^2 +3$, what is the asymptotic distribution of $\sqrt{n}[g(\bar X) - g(1)]$? According to the delta method we have 
-\begin{align*}
-&\sqrt{n}[g(\bar X) - g(1)]  \asim N(0, 1[g'(1)]^2),\\
-\implies & \sqrt{n}\left[\bar X^2 - 1\right] \asim N(0, 4).
+
+Return to the example where $X_i\overset{iid}{\sim}\text{Exp}(1)$,
+giving $\text{E}\left[X_i\right] = 1$ and
+$\text{Var}\left(X_i\right) = 1$. By the CLT,
+$\sqrt n(\bar X - 1)\overset{d}{\to}N(0,1)$. If $g(t) = t^2 +3$, what is
+the asymptotic distribution of $\sqrt{n}[g(\bar X) - g(1)]$? According
+to the delta method we have \begin{align*}
+&\sqrt{n}[g(\bar X) - g(1)]  \overset{a}{\sim}N(0, 1[g'(1)]^2),\\
+\implies & \sqrt{n}\left[\bar X^2 - 1\right] \overset{a}{\sim}N(0, 4).
 \end{align*}
 
 ```{r}
-N_sim <- 10000
-sample_size <- 10000
-
 g <- function(t){
   t^2 + 3
 }
 
-g_of_mean <- sapply(1:N_sim, function(x) g(mean(rexp(sample_size))))
-estimates <- sqrt(sample_size)*(g_of_mean - g(1))
+iter <- function(g, n, dist, dist_params, s){
+  output <- tibble(
+    value = do.call(dist, append(n, dist_params))
+  ) %>% 
+    summarize(
+      sample_size = n,
+      iter_num = s, 
+      estimate = sqrt(n)*(g(mean(value)) - g(1))
+    ) 
+  return(output)
+}
+
+sim <- function(N, g, n, dist, dist_params){
+  output <- 1:N %>% 
+    map(iter, g = g, n = n, dist = dist, dist_params = dist_params) %>% 
+    bind_rows()
+}
+
+results <- sim(1e4, g, 1e5, rexp, list(1))
 ```
 
-We can plot a histogram of our estimates and overlay the distribution $N(0,4)$.
+We can plot a histogram of our estimates and overlay the distribution
+$N(0,4)$.
 
 ```{r}
 #| code-fold: true
@@ -1119,16 +1676,20 @@ We can plot a histogram of our estimates and overlay the distribution $N(0,4)$.
 #| fig-cap: "Histogram of adjusted sample mean transformed by g, and theoretical distribution given by the delta method"
 #| code-summary: "Show code which generates figure"
 
-tibble(x = estimates) %>% 
-  ggplot(aes(x)) +
+results %>% 
+  ggplot(aes(estimate)) +
   geom_histogram(aes(y = ..density..), colour = 1, fill = "white", bins = 100) + 
   xlab("Estimates of √n(g(X) - g(1)) ") +
   theme_minimal() +
   stat_function(fun = dnorm, args = list(mean = 0, sd = 2), color = "red")
 ```
+
 :::
 
-The big takeaway from the delta method is that estimators which are nice functions of sample means will be asymptotically distributed according to a normal distribution. Furthermore, any nice function of such an estimator will also have a normal asymptotic distribution! 
+       The big takeaway from the delta method is that estimators which are nice
+functions of sample means will be asymptotically distributed according
+to a normal distribution. Furthermore, any nice function of such an
+estimator will also have a normal asymptotic distribution!
 
 ```{r}
 #| fig-align: center
@@ -1143,240 +1704,145 @@ knitr::include_graphics("figures/meme.png")
 
 ## Little $o_p$, Big $O_p$, and Taylor Expansions
 
-We've talked a lot about whether or not random variables converge, and how they converge, but not the rate at which they converge. We can introduce some notation that allows us to quantify this rate.
+We've talked a lot about whether or not random variables converge, and
+how they converge, but not the rate at which they converge. We can
+introduce some notation that allows us to quantify this rate.
 
 :::{#def-}
-Given a sequence of random variables $X_n$, we say $X_n$ is  <span style="color:red">**_little "O.P" of $n^k$_**</span>, denoted $X_n = o_p(n^k)$, if $X_n / n^k\pto 0$.
+
+Given a sequence of random variables $X_n$, we say $X_n$ is [***little
+"O.P" of*** $n^k$]{style="color:red"}, denoted $X_n = o_p(n^k)$, if
+$X_n / n^k\overset{p}{\to}0$.
+
 :::
 
-Note that $X_n\pto 0$ implies that $X_n = o_p(1)$. The use of "=" is a bit misleading in this definition, as $X_n = o_p(n^k)$ does not establish any equality, instead referring to how $X_n$ behaves asymptotically. For instance, if we have two sequences of random variables $X_n$ and $Y_n$ such that $X_n\pto X$ and $Y_n\pto 0$, we have $ X_n + Y_n \pto X + 0 $, but could write $X_n + Y_n$ as $X_n + o_p(1)$. This emphasizes the sequence $X_n$, and frames $Y_n$ as some negligible remainder term that tends to zero.
+       Note that $X_n\overset{p}{\to}0$ implies that $X_n = o_p(1)$. The use of
+"=" is a bit misleading in this definition, as $X_n = o_p(n^k)$ does not
+establish any equality, instead referring to how $X_n$ behaves
+asymptotically. For instance, if we have two sequences of random
+variables $X_n$ and $Y_n$ such that $X_n\overset{p}{\to}X$ and
+$Y_n\overset{p}{\to}0$, we have \$ X_n + Y_n \overset{p}{\to} X + 0 \$,
+but could write $X_n + Y_n$ as $X_n + o_p(1)$. This emphasizes the
+sequence $X_n$, and frames $Y_n$ as some negligible remainder term that
+tends to zero.
 
 :::{#def-}
-Given a sequence of random variables $X_n$, we say $X_n$ is <span style="color:red">**_big "O.P" of $n^k$_**</span>, denoted $X_n = O_p(n^k)$,  if for all $\varepsilon > 0$, there exists some $\delta$ and $N$ such that $\Pr(|X_n/n^k| \ge \delta) <\varepsilon$ for all $n > N$. In other words, $X_n/n^k$ is <span style="color:red">**_bounded in probability_**</span>.
+
+Given a sequence of random variables $X_n$, we say $X_n$ is [***big
+"O.P" of*** $n^k$]{style="color:red"}, denoted $X_n = O_p(n^k)$, if for
+all $\varepsilon > 0$, there exists some $\delta$ and $N$ such that
+$\Pr(|X_n/n^k| \ge \delta) <\varepsilon$ for all $n > N$. In other
+words, $X_n/n^k$ is [***bounded in probability***]{style="color:red"}.
+
 :::
 
-We are most interested in the case where $X_n = O_p(1)$. If this is the case, then as $n\to\infty$, we can bound the area in the tails of $f_{X_n}$ by some constant $\delta$ such that the area is negligible (less than $\varepsilon$).
+       We are most interested in the case where $X_n = O_p(1)$. If this is the
+case, then as $n\to\infty$, we can bound the area in the tails of
+$f_{X_n}$ by some constant $\delta$ such that the area is negligible
+(less than $\varepsilon$).
 
 :::{#exm-}
-We know that $\bar X \dto N(\mu, \sigma^2/n)$ when $\X$ is an iid sample. We have that $\bar X = O_p(1)$. We have 
-$$\Pr(|\bar X/1| \ge \delta) = \Pr(-\bar X\ge -\delta \text{ and }\delta \le \bar X) = 2\cdot\Pr(\bar X\ge \delta) = 2\left[1 - \Phi\left(\frac{\delta - \mu}{\sigma/\sqrt n}\right)\right].$$ If we take the limit of this as $n\to \infty$ we have $$ \lim_{n\to \infty}\Pr(|X\bar X/1| \ge \delta) = \lim_{n\to \infty}2\left[1 - \Phi\left(\frac{\delta - \mu}{\sigma/\sqrt n}\right)\right] = 0.$$ By the definition of a limit, there must exists some $N$ such that $\Pr(|\bar X/1| \ge \delta) < \varepsilon$ for any $n > N$, so $\bar X = O_p(1)$. 
+
+We know that $\bar X \overset{d}{\to}N(\mu, \sigma^2/n)$ when
+$\mathbf{X}$ is an iid sample. We have that $\bar X = O_p(1)$. We have
+$$\Pr(|\bar X/1| \ge \delta) = \Pr(-\bar X\ge -\delta \text{ and }\delta \le \bar X) = 2\cdot\Pr(\bar X\ge \delta) = 2\left[1 - \Phi\left(\frac{\delta - \mu}{\sigma/\sqrt n}\right)\right].$$
+If we take the limit of this as $n\to \infty$ we have
+$$ \lim_{n\to \infty}\Pr(|X\bar X/1| \ge \delta) = \lim_{n\to \infty}2\left[1 - \Phi\left(\frac{\delta - \mu}{\sigma/\sqrt n}\right)\right] = 0.$$
+By the definition of a limit, there must exists some $N$ such that
+$\Pr(|\bar X/1| \ge \delta) < \varepsilon$ for any $n > N$, so
+$\bar X = O_p(1)$.
+
 :::
 
-:::{#prp-}
-If $X_n \dto X$, then $X_n = O_p(1)$.
+:::{#exm-}
+
+If $X_n \overset{d}{\to}X$, then $X_n = O_p(1)$.
+
 :::
 
-:::{#cor-}
+:::{#exm-}
+
 If $X_n = o_p(1)$, then $X_n = O_p(1)$.
+
 :::
 
-A common place to encounter $o_p$ is when performing Taylor expansions.
+       A common place to encounter $o_p$ is when performing Taylor expansions.
 
 :::{#exm-}
 
 ## Taylor's Theorem
 
-Taylor's theorem, as given in @rudin1976principles, tells us that if $f:\mathbb R\to\mathbb R$ is $k-$times differentiable at a point $a\in \mathbb R$, then there is some element $c\in (a,b)$ such that 
+Taylor's theorem, as given in @rudin1976principles, tells us that if
+$f:\mathbb R\to\mathbb R$ is $k-$times differentiable at a point
+$a\in \mathbb R$, then there is some element $c\in (a,b)$ such that
 \begin{align*}
 f(b) & = \sum_{j=0}^{k-1}\frac{f^{(j)}(a)}{k!}(b-a)^j + \frac{f^{(n)}(c)}{k!}(b-a)^k.
-\end{align*}
-For $n = 2$, we have the mean value theorem:
-$$ f(b)= f(a) + f'(c)(b-a).$$
-If we let $a\to b$, then 
-\begin{align*}
+\end{align*} For $n = 2$, we have the mean value theorem:
+$$ f(b)= f(a) + f'(c)(b-a).$$ If we let $a\to b$, then \begin{align*}
 &\lim_{a\to b}f(b)  = \sum_{j=0}^{k-1}\lim_{a\to b}\frac{f^{(j)}(a)}{j!}(b-a)^j + \lim_{a\to b}\frac{f^{(k)}(c)}{k!}(b-a)^k.\\
 \implies & f(b)  =\lim_{a\to b} f(a) + \sum_{j=1}^{k-1}\lim_{a\to b}\frac{f^{(j)}(a)}{j!}(b-a)^j +  \lim_{a\to b}\frac{f^{(k)}(c)}{k!}(b-a)^k\\
 \implies & f(b)  = f(b) + \underbrace{\sum_{j=1}^{k-1}\frac{f^{(j)}(b)}{j!}(b-b)^j}_0 + \lim_{a\to b}\frac{f^{(k)}(c)}{k!}(b-a)^k\\
 \implies & \lim_{a\to b}\frac{f^{(k)}(c)}{n!}(b-a)^k = 0\\
 \implies & \lim_{a\to b}\frac{f^{(k)}(c)}{n!(b-a)^k} = 0\\
 \implies & \frac{f^{(k)}(c)}{k!} = o(|a-b|^k)\\
-\end{align*}
-Here, $o$ is the deterministic counterpart of $o_p$ (we're not working with random variables just yet). This means we can write Taylor's theorem as 
-$$ f(b) = \sum_{j=0}^{k-1}\frac{f^{(j)}(a)}{j!}(b-a)^k +o(|a-b|^k).$$ In the event $f$ is infinitely differentiable we can make this approximation arbitrarily accurate, giving rise toa function's Taylor series.
+\end{align*} Here, $o$ is the deterministic counterpart of $o_p$ (we're
+not working with random variables just yet). This means we can write
+Taylor's theorem as
+$$ f(b) = \sum_{j=0}^{k-1}\frac{f^{(j)}(a)}{j!}(b-a)^k +o(|a-b|^k).$$ In
+the event $f$ is infinitely differentiable we can make this
+approximation arbitrarily accurate, giving rise toa function's Taylor
+series.
 
-Now suppose $f_n(X)$ is a sequence of functions of random variables, where the subscript $n$ emphasizes that $f_n$ is a random variable. IF we apply Taylor's theorem to $f_n(X)$ we have 
-$$f_n(b) = \sum_{j=0}^{k-1}\frac{f_n^{(j)}(a)}{j!}(b-a)^k +o_p(|a-b|^k)$$ for realizations of the random variable $a,b,c\in\mathcal X$ where $c\in(a,b)$. Assuming $k \ge 1$, then $o_p(|a-b|^k)$ implies $o_p(1)$, so 
-$$f_n(b) = \sum_{j=0}^{k-1}\frac{f_n^{(j)}(a)}{j!}(b-a)^k +o_p(1).$$ 
+Now suppose $f_n(X)$ is a sequence of functions of random variables,
+where the subscript $n$ emphasizes that $f_n$ is a random variable. IF
+we apply Taylor's theorem to $f_n(X)$ we have
+$$f_n(b) = \sum_{j=0}^{k-1}\frac{f_n^{(j)}(a)}{j!}(b-a)^k +o_p(|a-b|^k)$$
+for realizations of the random variable $a,b,c\in\mathcal X$ where
+$c\in(a,b)$. Assuming $k \ge 1$, then $o_p(|a-b|^k)$ implies $o_p(1)$,
+so $$f_n(b) = \sum_{j=0}^{k-1}\frac{f_n^{(j)}(a)}{j!}(b-a)^k +o_p(1).$$
+
 :::
 
+## Asymptotically Normal Estimators
 
-## Asymptotically Normal Estimators 
-
-When putting our asymptotic tools to work on an estimator of interest, we will almost always find that it converges to a normal distribution, is consistent, and that the rate of convergence is linked to $\sqrt{n}$.
+When putting our asymptotic tools to work on an estimator of interest,
+we will almost always find that it converges to a normal distribution,
+is consistent, and that the rate of convergence is linked to $\sqrt{n}$.
 
 :::{#def-}
-An estimator $\hat{\thet}$ is <span style="color:red">**_$\sqrt{n}-$consistent asymptotically normal (root-n CAN)_**</span>, if $$\sqrt{n}(\hat{\thet}- \thet) \dto N(\mathbf 0, \mathbf V)$$ for a PSD matrix $\mathbf V$. Equivalently, $$ \hat{\thet}\asim N(\thet, \mathbf V/n).$$ We refer to $\mathbf V/n$ as the <span style="color:red">**_asymptotic variance_**</span> of $\hat{\thet}$ and write $\avar{\hat{\thet}} = \mathbf V /n$.
-:::
 
-"$\sqrt n-$" emphasizes the fact that $\sqrt{n}(\hat{\thet} - \thet) = O_p(1)$, which is equivalent to $\hat{\thet} = \thet + O_p(n^{-1/2})$. In other words, as $n\to\infty$ the error term associated with our estimate decreases at a rate of $n^{1/2}$. A fourfold increase in observations results in half the error. We also have that $\sqrt{n}(\hat{\thet} - \thet) = o_p(1)$, so $\hat{\thet}\pto \thet$, hence the "consistent" in the previous definition. We also have that $\hat{\thet}$ is asymptotically unbiased if it is root-n CAN, as $\E{\hat{\thet}}\to \thet$. This will be the one of, if not the, **_most important property_** an estimator can posses. 
-
-
-Our final example highlights some interesting properties of root-N CAN estimators in the context of the mean value theorem.  This will be especially important in Section \@ref(extremum-estimators).
-
-## Thinking Beyond $\mathbb{R}^k$
-
-### Normed Vector Spaces and Metric Spaces
-
-A **_normed vector space_** $V$ defined over a field $F$ is, as the name implies, a vector space equipped with a **_norm_** $\norm{\cdot}:V\mapsto [0,\infty)$ satisfying:
-
-1. $\norm{v} = 0 \iff v = 0$, where $0$ is the additive identity;
-2. $\norm{av} = \abs{a}\norm{v}$ for all $a\in F$ and $v\in V$;
-3. $\norm{w + v} \le \norm{w} + \norm{v}$ for all $w,v\in V$.
-
-A norm measures the the "distance" an element of $V$ is from the origin $0$. A **_metric space_** $(X,d)$ is some set $X$ with a **_metric_** $d:X\times X\to [0,\infty)$ such that:
-
-1. $d(x,y) = 0 \iff x=y$ for $x,y\in X$;
-2. $d(y,x)=d(x,y$ for all $x,y\in X$; 
-3. $d(x,z) \le d(x,y) + d(y,z)$.
-
-A metric measures the distance between any two points in a metric space. Any normed vector space is a metric space if we define 
-
-$$d(x,y)= \norm{x-y}$$
-for $x,y\in V$.
-
-::: {#exm-}
-
-## Euclidean Space
-
-$\R^k$ is a vector space, where the norm is given as 
-$$ \norm{\x} = \left(\sum_{i=1}^k x_i^2\right)^{1/2},$$ and is called the **_Euclidean norm_**. To measure the distance between two vectors in  $\R^k$ we use a familiar formula. 
-$$ \norm{\x -\y} = \left(\sum_{i=1}^k (x_i-y_i)^2\right)^{1/2}.$$
+An estimator $\hat{\boldsymbol{\theta}}$ is [$\sqrt{n}-$consistent
+asymptotically normal (root-n CAN)]{style="color:red"}, if
+$$\sqrt{n}(\hat{\boldsymbol{\theta}}- \boldsymbol{\theta}) \overset{d}{\to}N(\mathbf 0, \mathbf V)$$
+for a PSD matrix $\mathbf V$. Equivalently,
+$$ \hat{\boldsymbol{\theta}}\overset{a}{\sim}N(\boldsymbol{\theta}, \mathbf V/n).$$
+We refer to $\mathbf V/n$ as the [***asymptotic
+variance***]{style="color:red"} of $\hat{\boldsymbol{\theta}}$ and write
+$\text{Avar}\left(\hat{\boldsymbol{\theta}}\right) = \mathbf V /n$.
 
 :::
 
-::: {#exm-}
-
-## Euclidean Space with the $p$-norm
-
-We could also define the vector space $\R^k$ with the norm 
-$$\norm{\x}_p = \left(\sum_{i=1}^k \abs{x_i}^p\right)^{1/p}.$$ If $p = 1$, then $$\norm{\x - \y}_1 = \sum_{i=1}^n \abs{x_i - y_i},$$ whose name follows from how you would define distance if you were driving between two points in a city with a grid layout. If $p=2$ we have the Euclidean norm. Why bother considering  values of $p$ other than $2$? We can think of $p$ as the way we weight the component-wise "distances" from the origin $\abs{x_1},\abs{x_2},\ldots \abs{x_k}$. For $p = 2$, we square each of these distances (meaning the result is always positive rendering the absolute value moot), assigning more weight to components where $x_i$ is relatively large. What happens as $p\to\infty?$? Let's look at some plots.
-
-```{r}
-#| code-fold: true
-#| label: fig-plot2213
-#| fig-align: center
-#| fig-asp: 0.7
-#| fig-width: 8
-#| fig-cap: "p norm"
-#| code-summary: "Show code which generates figure"
-
-p_norm <- function(p, x){
-  (sum(abs(x)^p))^(1/p)
-}
-
-tibble(x1 = c(1, 1, 1, 1),
-       x2 = c(0, 2, 2, 2),
-       x3 = c(0, 0, 3, 3),
-       x4 = c(0, 0, 0, -4)
-       ) %>% 
-  mutate(vector = ifelse(x4 == -4, "x = (1,2,3,-4)", ifelse(x3 == 3, "x = (1,2,3)", ifelse(x2 == 2, "x = (1,2)", "x = 1"))))  %>% 
-  expand_grid(p = seq(1,10, length = 100)) %>% 
-  rowwise() %>% 
-  mutate(norm = p_norm(p, c(x1, x2, x3, x4))) %>% 
-  ggplot(aes(p, norm)) +
-  geom_line() + 
-  facet_wrap(~vector, scales = "free") +
-  theme_minimal() +
-  labs(x = "p", y = "p-norm")
-  
-```
-
-It appears that 
-$$ \lim_{p\to\infty}\norm{\x}_p= \max_{x_i}\abs{x_i}.$$ For this reason we define the limiting case of the $p-$norm as 
-$$ \norm{\x}_\infty= \max_{x_i}\abs{x_i}.$$
-A useful illustration is of the unit circle in $(\R^k,\norm{\cdot}_p)$ for various values of $p$
-
-```{r}
-#| echo: false
-#| fig-align: center
-#| label: fig-plot1241123
-#| fig-asp: 0.5
-#| fig-width: 0.8
-#| fig-cap: "test"
-
-knitr::include_graphics("figures/lp_norm.png")
-```
-:::
-
-We want to think about a vector space formed by random variables where each vector is its own random variable. Before jumping straight to this case, let's consider a vector space formed by real functions, and then worry about randomness later on.
-
-::: {#exm-}
-
-## The Space of Real Continuous Bounded Functions
-
-Define the space $C(X)$ as 
-
-$$C(X) = \{f:X\to\R \mid X\subset\R, f\text{ continuous and bounded}\}.$$ This is a vector space over the field $\R$ where addition and scalar multiplication are defined as:
-\begin{align*}
-(f +g)(x)&=f(x)+g(x),\\
-(cf)(x) & = c\times f(x).
-\end{align*}
-
-How would we define a norm on a space of functions though? Firstly, by the definition of addition of vectors, the $0$ elements is $f(x) = 0$. So how do we measure the distance between some $f\in C(X)$ and $f(x) = 0$? In the event $X$ is an interval of $\R$, it contains uncountably many points, so we cannot use the $p$-norm and sum $|f(x)|$ over all the values of $x$. We can however integrate over all such values, as one interpretation of the integral is as an uncountably infinite counterpart to a countable sum. We define the $p-$norm on $C(X)$ as 
-$$ \norm{f}_p = \left[\int_X \abs{f(x)}^p\ dx\right]^{1/p}.$$
-In the event we want to take $p\to\infty$, we have 
-$$ \norm{f}_\infty = \sup_{x\in X}\abs{f(x)}.$$ We know can use this norm to define the distance between two functions in $C(X)$, 
-$$ \norm{f}_\infty = \sup_{x\in X}\abs{f(x) - g(x)}.$$ This gives the distance between two functions as the distance between their evaluated values where this distance is its largest. We refer to $\norm{\cdot}_\infty$ on $C(X)$ as the **_uniform norm_** or **_supremum norm_**.
-
-:::
-
-### Convergence and Continuity
-
-Given a metric space $(X,d)$, a sequence of elements $\{x_n\}\subset X$ **_converges_** to an element $x$ if *in* $X$ for all $\varepsilon > 0$, there exists some integer $N\in \Z^+$ such that $d(x_n,x)<\varepsilon$ for all $n>N$. If $\{x_n\}$ converges to $x$, we write $x_n\to x$ or $\lim_{n\to\infty}x_n=x$. It's important to remember that convergence is defined in relation to the metric space $X$. A sequence $\{x_n\}$ may converge in one metric space but not another, so it's important to remember what space we're working in, and the metric the space is equipped with.
-
-::: {#exm-}
-
-## Euclidean Space
-
-A sequence of vectors $\{\x_n\}\subset \R^k$ converges to $\x$ if for all $\varepsilon > 0$, there exists some integer $N\in \mathbb{Z}^+$ such that $$\norm{x_n -x} =\left(\sum_{i=1}^k (x_{n,i} - x_i)^2\right)^{1/2} <\varepsilon$$ for all $n>N$. It can be shown that a sequence of vectors only converges to a limit if and only if each of its components converges to their respective limits. 
-:::
-
-::: {#exm-}
-
-## Pointwise Convergence 
-
-Suppose we have a sequence of real functions $\{f_n\}$ where $f_n:X\to \R$ for some $X\subset \R$. One way to think about $f_n$ converging to some limit is by considering $\{f_n(x)\}\subset \R$ as a sequence in Euclidean space for each $x\in X$. If $f_n(x)\to f(x)$ for all $x\in X$, then we say $f$ **_converges pointwise_** to $f$, and write $f_n\to f$. In other words, $f_n\to f$ if for all $\varepsilon > 0$, there exists some $N_x$ such that $\abs{f_n(x) - f(x)}< \varepsilon$ for all $n> N$, for each $x\in X$.
-
-:::
-
-
-::: {#exm-}
-
-## Uniform Convergence
-
-In the definition of pointwise convergence, note that $N_x$ depends on $x$. This means that while $\abs{f_n(x_1) - f(x_1)} < \varepsilon$, it may not be the case that $\abs{f_n(x_2) - f(x_2)} < \varepsilon$. We can strengthen pointwise convergence by insuring that $N$ does not depend on $x$, and $\{f_n\}$ gets arbitrarily close to $f$ uniformly on $X$. We say $f$ **_converges uniformly_** to $f$, and write $f_n\overset{uni}\to f$ if for all $\varepsilon >0$, there exists some $N$ (idenpendent of $x$) such that $\abs{f_n(x) - f(x)}< \varepsilon$ for all $n> N$ and any $x\in X$. Uniform convergence has some great properties that pointwise convergence lacks,^[It preserves continuity, integration, and under an additional weak condition it also preserves differentiation.] making it much more attractive, albeit a much stricter condition. A more natural formulation of uniform convergence arises by considering the vector space of bounded continuous functions $f:X\to \R$, $C(X)$, equipped with the supremum norm $\norm{\cdot}_\infty$. In this case, $f_n\to f$ (in $(C(X),\norm{\cdot}_\infty)$) if for all $\varepsilon > 0$ there exists some $N\in \mathbb Z^+$ such that $$d(f_n,f) = \norm{f_n-f} = \sup_{x\in X}\abs{f_n-f} < \varepsilon$$ for all $n > N$. By the definition of $\norm{\cdot}_\infty$, 
-$$\abs{f_n(x)-f(x)} \le \sup_{x\in X}\abs{f_n-f} \le \varepsilon$$ for all $x\in X$ when $n>N$.
-
-:::
-
-
-
-Recall from real analysis that a function $f:X\to Y$ defined on metric spaces $X$ and $Y$, each equipped with metrics $d_X(\cdot,\cdot)$ and $d_Y(\cdot,\cdot)$, is continuous at $x\in X$ if for all $\varepsilon>0$, there exists some $\delta_x$ such that 
-$$ d_Y(f(x),f(p)) < \varepsilon$$ when $d_X(x,p) < \delta_x$. That is, for any arbitrarily small distance $\varepsilon$, we can find some point $p$ which is arbitrarily close (within a distance of $\delta_x$ to be exact) to $x$ such that the distance between $f(x)$ and $f(p)$ is less than $\varepsilon$. If $f$ is continuous for all $p$ in some subset $E\subset X$, then we say $f$ is continuous on $E$. 
-
-One of the more subtle parts about the definition of continuity is that $\delta_x$ depends on $x$. If we want to ensure that a single value of $\delta$ can be used for all $x\in E$, then we need to strengthen the definition of continuity. We say $f$ is uniformly continuous on $E$ if for every $\varepsilon > 0$, there exists some $\delta$ independent of $x$ such that 
-$$d_Y(f(x),f(p)) < \varepsilon$$ whenever $d(x,p) <\delta$ for all $x,p\in E$. Now we can use one uniform $\delta$ on the entire set $x\in E$. Uniform continuity is *much* stronger then continuity, but it naturally arises in many common settings.^[Any continuous function on a compact set is uniformly continuous, because compactness allows you to "chop up" $E$ into discrete points and then take $\delta$ to be the smallest $\delta_x$ associated with the discrete points. Intuitively, there must be some $\delta_x$ that is the "strictest" among all $x\in E$, and that one will work for all the other points in $E$. This intuition is what makes the proof of this result so beautiful.] 
-
-Now suppose we have a collection of a functions $\mathcal F$, each of which is uniformly continuous on $E\subset X$. This means for all $f\in\mathcal F$ and $\varepsilon > 0$, there exists a $\delta_{f}$  independent of $x$ such that 
-$$d_Y(f(x),f(p)) < \varepsilon$$ when $d_X(x,p) < \delta_f$. Of course $\delta_f$ depends on the function $f\in\mathcal F$ here. Once we start looking at multiple functions, we need to adjust $\delta_f$ accordingly. Even if $\delta_f$ is uniform across $x\in E$ for each separate $f$, it isn't guaranteed it will be uniform across $x\in E$ uniformly across $f\in \mathcal F$. A special case we're interested in is when $\mathcal F$ is some sequence sequence of functions indexed by $n$, $\mathcal F=\{f_n\mid n\in\Z^+\}$.  
-
-::: {#exm-}
-Define the sequence of functions $f_n:[0,1]\to \R$ where $f_n(x)=x^n$ and let our collection of functions be this sequence. We will focus our attention on $x = 1$. The function $f_n$ is continuous on $[0,1]$ for all $n$. In fact, one can show that for all $\varepsilon > 0$, 
-
-$$\abs{f_n(x) - f_n(p)} < \varepsilon$$ whenever 
-$$ \delta_{n,x} = \frac{\varepsilon}{n(x + 1)^{n-1}}.$$ We can go a step further and conclude that $f_n$ is uniformly continuous on $[0,1]$, by setting 
-$$ \delta_{n} = \inf_{x\in[0,1]}\delta_{n,x} = \frac{\varepsilon}{n(1 + 1)^{n-1}} = \frac{\varepsilon}{n2^{n-1}}.$$ By construction $\delta_{n}$ will now work on the entire interval $[0,1]$ and doesn't depend on $x$. Unfortunately, $\delta_n$ still depends on the function $f_n$ (hence the subscript $n$), and we cannot perform the same "trick" to get a $\delta$ common to all $n$. 
-
-### Convergence of Stochastic Process
-
-### Functional Central Limit Theorem
-
-:::
+       "$\sqrt n-$" emphasizes the fact that
+$\sqrt{n}(\hat{\boldsymbol{\theta}} - \boldsymbol{\theta}) = O_p(1)$,
+which is equivalent to
+$\hat{\boldsymbol{\theta}} = \boldsymbol{\theta}+ O_p(n^{-1/2})$. In
+other words, as $n\to\infty$ the error term associated with our estimate
+decreases at a rate of $n^{1/2}$. A fourfold increase in observations
+results in half the error. We also have that
+$\sqrt{n}(\hat{\boldsymbol{\theta}} - \boldsymbol{\theta}) = o_p(1)$, so
+$\hat{\boldsymbol{\theta}}\overset{p}{\to}\boldsymbol{\theta}$, hence
+the "consistent" in the previous definition. We also have that
+$\hat{\boldsymbol{\theta}}$ is asymptotically unbiased if it is root-n
+CAN, as
+$\text{E}\left[\hat{\boldsymbol{\theta}}\right]\to \boldsymbol{\theta}$.
+This will be the one of, if not the, ***most important property*** an
+estimator can posses.
 
 ## Further Reading
 
-- Eric Zivot's [primer on asymptotics](http://faculty.washington.edu/ezivot/econ583/econ583asymptoticsprimer.pdf)
-- @wooldridge2010econometric, Chapter 3
-- @greene2003econometric, Appendix D
-- @van2000asymptotic
-- @white2014asymptotic
+-   Eric Zivot's [primer on
+    asymptotics](http://faculty.washington.edu/ezivot/econ583/econ583asymptoticsprimer.pdf)
+-   @wooldridge2010econometric, Chapter 3
+-   @greene2003econometric, Appendix D
+-   @van2000asymptotic
+-   @white2014asymptotic

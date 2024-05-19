@@ -1,0 +1,93 @@
+# Discrete Choice
+
+```{r}
+library(tidyverse)
+library(nnet)
+```
+
+```{r}
+softmax <- function(z){
+  exp(z)/rowSums(exp(z))
+}
+
+n <- 10000
+x <- runif(n, -5, 5)
+X <- cbind(1, x)
+
+beta <- cbind(c(1,2), c(0.5,2.5), c(-1,1))
+
+p <- softmax(X %*% beta)
+y <- sapply(1:n, function(i) sample(0:2, 1, prob = p[i,]))
+
+
+results <- multinom(y ~ x, Hess = TRUE)
+
+```
+
+
+```{r}
+Nldata <- read.table("~/Documents/GitHub/advanced_econometrics_examples/data/Nldata.asc", quote="\"", comment.char="")
+df <- Nldata %>% 
+  mutate(i = ceiling(row_number()/4)) %>% 
+  group_by(i) %>% 
+  mutate(row = row_number()) %>% 
+  pivot_wider(names_from = row, values_from = c(1, 2, 3, 4))  %>%
+  select(
+    i,
+    mode = 2,
+    price = 6,
+    catch_rate = 10,
+    beach = 14,
+    pier = 3,
+    private = 7,
+    charter = 11,
+    price_beach = 15,
+    price_pier = 4,
+    price_private = 8,
+    price_charter = 12,
+    cacth_rate_beach = 16,
+    cacth_rate_pier = 5,
+    cacth_rate_private = 9,
+    cacth_rate_charter =13,
+    income = 17
+  ) %>% 
+  ungroup() %>% 
+  mutate(
+    N = n(),
+    income = income / 1000,
+    mode = factor(mode,  labels = c("Beach", "Pier", "Private", "Charter"))
+  )
+```
+
+
+```{r}
+df %>% 
+  bind_rows(
+    mutate(df, mode = factor(5, labels = c("Overall")))
+  ) %>%
+  group_by(mode) %>% 
+  summarize(
+    `Income` = round(mean(income), 3),
+    `Price Beach` = round(mean(price_beach)),
+    `Price Pier` = round(mean(price_pier)),
+    `Price Private` = round(mean(price_private)),
+    `Price Charter` = round(mean(price_charter)),
+    `Catch Rate Beach` = round(mean(cacth_rate_beach), 2),
+    `Catch Rate Pier` = round(mean(cacth_rate_pier), 2),
+    `Catch Rate Private` = round(mean(cacth_rate_private), 2),
+    `Catch Rate Charter` = round(mean(cacth_rate_charter), 2),
+    `Sample Probability` = round(n()/max(N), 3),
+    `Observations` = n()
+  ) %>% 
+  pivot_longer(!mode) %>% 
+  pivot_wider(names_from = mode, values_from = value) %>% 
+  rename(`Explanatory Variable` = name) %>%
+  knitr::kable()
+```
+
+
+
+```{r}
+multinom(mode ~ income, data = df)
+```
+

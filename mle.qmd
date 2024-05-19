@@ -1,0 +1,302 @@
+\DeclareMathOperator{\plim}{plim}
+\DeclareMathOperator{\argmin}{argmin}
+\DeclareMathOperator{\argmax}{argmax}
+\newcommand{\var}[1]{\text{Var}\left(#1\right)}
+\newcommand{\avar}[1]{\text{Avar}\left(#1\right)}
+\newcommand{\E}[1]{\text{E}\left[#1\right]}
+\newcommand{\cov}[1]{\text{Cov}\left(#1\right)}
+\newcommand{\mse}[1]{\text{MSE}\left(#1\right)}
+\newcommand{\se}[1]{\text{se}\left(#1\right)}
+\newcommand{\limfunc}{lim} 
+\newcommand{\X}{\mathbf{X}}
+\newcommand{\Xm}{\mathbb{X}}
+\newcommand{\EER}{\bar{\thet}_\text{EE}}
+\newcommand{\NLS}{\hat{\bet}_\text{NLLS}}
+\newcommand{\z}{\mathbf{z}}
+\newcommand{\rr}{\mathbf{r}}
+\newcommand{\C}{\mathbf{C}}
+\newcommand{\Pe}{\mathbf{P}}
+\newcommand{\y}{\mathbf{y}}
+\newcommand{\Y}{\mathbf{Y}}
+\newcommand{\uu}{\mathbf{u}}
+\newcommand{\e}{\mathbf{e}}
+\newcommand{\D}{\mathbf{D}}
+\newcommand{\x}{\mathbf{x}}
+\newcommand{\xm}{\mathbb{x}}
+\newcommand{\Zm}{\mathbb{Z}}
+\newcommand{\Wm}{\mathbb{W}}
+\newcommand{\Hm}{\mathbb{H}}
+\newcommand{\W}{\mathbf{W}}
+\newcommand{\Z}{\mathbf{Z}}
+\newcommand{\Hess}{\mathbf{H}(\mathbf{\Z\mid\thet})}
+\newcommand{\Score}{\mathbf{S}(\mathbf{\Z\mid\thet})}
+\newcommand{\A}{\mathbf{A}}
+\newcommand{\h}{\mathbf{h}}
+\newcommand{\Q}{\mathbf{Q}}
+\newcommand{\F}{\mathbf{F}}
+\newcommand{\G}{\mathbf{G}}
+\newcommand{\I}{\mathbf{I}}
+\renewcommand{\D}{\mathbf{D}}
+\renewcommand{\C}{\mathbf{C}}
+\newcommand{\zer}{\mathbf{0}}
+\newcommand{\OLS}{\hat{\boldsymbol\beta}_\text{OLS} }
+\newcommand{\OLSOV}{\hat{\boldsymbol\beta}_\text{OLS,OV} }
+\newcommand{\OLSME}{\hat{\boldsymbol\beta}_\text{OLS,ME} }
+\newcommand{\EE}{\hat{\boldsymbol\theta}_\text{EX} }
+\newcommand{\ME}{\hat{\boldsymbol\theta}_\text{M} }
+\newcommand{\MDE}{\hat{\boldsymbol\theta}_\text{MDE} }
+\newcommand{\MLE}{\hat{\boldsymbol\theta}_\text{MLE} }
+\newcommand{\IV}{\hat{\boldsymbol\beta}_\text{IV} }
+\newcommand{\TSLS}{\hat{\boldsymbol\beta}_\text{2SLS} }
+\newcommand{\thet}{\boldsymbol{\theta}}
+\newcommand{\et}{\boldsymbol{\eta}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Sig}{\boldsymbol{\Sigma}}
+\newcommand{\ep}{\boldsymbol{\varepsilon}}
+\newcommand{\Omeg}{\boldsymbol{\Omega}}
+\newcommand{\Thet}{\boldsymbol{\Theta}}
+\newcommand{\bet}{\boldsymbol{\beta}}
+\newcommand{\rk}{rank}
+\newcommand{\tsum}{\sum}
+\newcommand{\tr}{tr}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\abs}[1]{\left\lvert#1\right\rvert}
+\newcommand{\ms}{\overset{ms}{\to}}
+\newcommand{\pto}{\overset{p}{\to}}
+\newcommand{\iid}{\overset{iid}{\sim}}
+\newcommand{\dto}{\overset{d}{\to}}
+\newcommand{\asim}{\overset{a}{\sim}}
+
+
+# Maximum Likelihood Estimation
+
+
+```{r}
+#| echo: false
+#| output: false
+library(pracma)
+library(tidyverse)
+library(mvtnorm)
+```
+
+## Motivation and Introduction
+
+:::{#exm-}
+## Bernoulli Trials
+Suppose $X_i \iid \text{Ber}(p)$. If we observe $n$ realizations of $X_i$, let's use MLE to estimate the the probability of a success, $p=\Pr(X_i = 1)$. We have 
+$$ f_X(x\mid p) = p^x(1-p)^{1-x},$$ giving a likelihood function of
+$$ L(p\mid \X) = \prod_{i=1}^n p^{X_i}(1-p)^{1-X_i},$$ and finally a log-likelihood function of 
+\begin{align*}
+\ln L(p\mid \X) & = \ln\left[\prod_{i=1}^n p^{X_i}(1-p)^{1-X_i}\right]\\
+& = \sum_{i=1}^n \left[\ln\left[p^{X_i}\right] + \ln\left[(1-p)^{1-X_i}\right]\right]\\
+& = \sum_{i=1}^n \left[X_i \ln(p)+(1-X_i) \ln(1-p)\right]\\
+& = \sum_{i=1}^n X_i \ln(p)+\left(n-\sum_{i=1}^n X_i\right) \ln(1-p).
+\end{align*}
+Maximizing this with respect to $p$ gives a familiar estimator. 
+\begin{align*}
+&\hat p = \argmax_{p\in[0,1]}\ \ln L(p\mid \X) \\
+\implies & \frac{d\ln L(p\mid \X)}{dp}\biggr|_{p=\hat p} = 0\\
+\implies & \frac{\textstyle\sum_{i=1}^n X_i }{\hat p}+\left(n-\sum_{i=1}^n X_i\right)\frac{-1}{1-\hat p}=0\\
+\implies & \hat p = \frac{1}{n}\sum_{i=1}^n X_i\\
+\implies & \hat p = \bar X
+\end{align*}
+
+The estimator given by MLE is just the sample mean. In other words, if we were to flip a fair coin $n$ times, MLE tells us that we should estimate the probability of the coin landing on heads using the proportion of flips that were heads. For the sake of completeness, let's simulate this experiment and calculate $\hat p$ using ```optim()```. We'll take $p = 0.543$ and $n = 100$.
+
+```{r}
+p <- 0.543
+n <- 1000
+X <- rbinom(n, 1, p)
+
+neg_LL <- function(p){
+  -( sum(X)*log(p) + (n-sum(X))*log(1-p) )
+}
+
+neg_LL_grad <- function(p){
+  -( sum(X)/p  - (n-sum(X))/(1-p) )
+}
+
+p_hat_mle <- optim(
+  par = 0.5, 
+  fn = neg_LL, 
+  gr = neg_LL_grad,
+  # use Brent's method so we can set parameter space as [0,1]
+  method = "Brent", 
+  lower = 0, 
+  upper = 1
+)
+p_hat_mle$par 
+mean(X)
+```
+
+
+```{r}
+tibble(x = (0:999)/1000) %>% 
+  mutate(f = -sapply(x, neg_LL)) %>% 
+  ggplot(aes(x, f)) + 
+  geom_line() +
+  theme_minimal() +
+  labs(x = "Parameter Space", y = "Log Likelihood") +
+  geom_vline(xintercept = mean(X), , color = "red", linetype = "dashed") +
+  ylim(-1000,-600)
+```
+:::
+
+:::{#exm-}
+## Multivariate Normal
+
+Suppose we have a collection of random vectors $\X_i$ on $\R^K$ which satisfy $\X_i\iid N(\boldsymbol\mu,\boldsymbol\Sigma)$. We can estimate $\thet = (\boldsymbol\mu,\boldsymbol\Sigma)$ using MLE. The common density of each $\X_i$ is 
+$$f_{\X}(\x \mid \boldsymbol\mu,\boldsymbol\Sigma) = (2\pi)^{-K/2}\det(\boldsymbol\Sigma)^{-1/2}\exp\left[-\frac{1}{2}(\x-\boldsymbol\mu)'\boldsymbol\Sigma^{-1}(\x-\boldsymbol\mu)\right].$$ Note that since $\boldsymbol\Sigma$ is a PSD matrix, $\det(\boldsymbol\Sigma) >0$. The likelihood function is 
+\begin{align*}
+L(\boldsymbol\mu,\boldsymbol\Sigma \mid \Xm) &= \prod_{i=1}^n (2\pi)^{-K/2}\det(\boldsymbol\Sigma)^{-1/2}\exp\left[-\frac{1}{2}(\X_i-\boldsymbol\mu)'\boldsymbol\Sigma^{-1}(\X_i-\boldsymbol\mu)\right]\\
+  & = \prod_{i=1}^n\left[(2\pi)^{-K/2}\right]\prod_{i=1}^n\left[\det(\boldsymbol\Sigma)^{-1/2}\right]\prod_{i=1}^n\exp\left[-\frac{1}{2}(\X_i-\boldsymbol\mu)'\boldsymbol\Sigma^{-1}(\X_i-\boldsymbol\mu)\right]\\
+  & = \left[(2\pi)^{-K/2}\right]^n\left[\det(\boldsymbol\Sigma)^{-1/2}\right]^n \exp\left[\sum_{i=1}^n-\frac{1}{2}(\X_i-\boldsymbol\mu)'\boldsymbol\Sigma^{-1}(\X_i-\boldsymbol\mu)\right]\\
+  & = (2\pi)^{-nK/2}\det(\boldsymbol\Sigma)^{-n/2}\exp\left[-\frac{1}{2}\sum_{i=1}^n(\X_i-\boldsymbol\mu)'\boldsymbol\Sigma^{-1}(\X_i-\boldsymbol\mu)\right]
+\end{align*}
+
+Taking the natural log of this gives 
+
+$$\ln L(\boldsymbol\mu,\boldsymbol\Sigma \mid \Xm) = -\frac{nK}{2}\ln(2\pi) - \frac{n}{2}\ln(\det(\boldsymbol\Sigma)) - \frac{1}{2}\sum_{i=1}^n(\X_i-\boldsymbol\mu)'\boldsymbol\Sigma^{-1}(\X_i-\boldsymbol\mu).$$
+To solve the requisite optimization problem, we'll partition the gradient of $\ln L$ into the components corresponding to $\boldsymbol\mu$ and those corresponding to $\boldsymbol\Sigma$. The full details on the matrix calculus behind this example can be found [here](https://www.statlect.com/fundamentals-of-statistics/multivariate-normal-distribution-maximum-likelihood).
+
+
+\begin{align*}
+&\hat{\thet} = \argmax_{\thet}\ \ln L(\thet\mid \Xm) \\
+\implies & \nabla_\thet \ln L(\thet\mid \Xm)\biggr|_{\thet=\hat{\thet}} = \zer \\
+\implies &\begin{bmatrix}{\nabla_{\boldsymbol\mu} \ln L(\boldsymbol\mu,\boldsymbol\Sigma \mid \Xm) }\\ {\nabla_{\boldsymbol\Sigma} \ln L(\boldsymbol\mu,\boldsymbol\Sigma \mid \Xm)} \end{bmatrix}_{(\boldsymbol\mu,\boldsymbol\Sigma) = (\hat{\boldsymbol\mu},\hat{\boldsymbol\Sigma})}= \zer\\
+\implies & \begin{bmatrix} \sum_{i=1}^n\hat{\boldsymbol\Sigma}^{-1}(\X_i-\hat{\boldsymbol\mu}) \\ \frac{n}{2}\hat{\boldsymbol\Sigma}' - \frac{1}{2}\left[\sum_{i=1}^n(\X_i-\hat{\boldsymbol\mu})(\X_i-\hat{\boldsymbol\mu})'\right]'\end{bmatrix} = \zer\\
+\implies & \begin{bmatrix} \sum_{i=1}^n\X_i-n\hat{\boldsymbol\mu} \\ \frac{1}{2}\left[\sum_{i=1}^n(\X_i-\hat{\boldsymbol\mu})(\X_i-\hat{\boldsymbol\mu})'\right] - \frac{n}{2}\hat{\boldsymbol\Sigma} \end{bmatrix} = \zer\\
+\implies & \begin{bmatrix} \hat{\boldsymbol\mu} \\ \hat{\boldsymbol\Sigma} \end{bmatrix} = \begin{bmatrix}n^{-1}\sum_{i=1}^n\X_i \\ n^{-1}\sum_{i=1}^n(\X_i-\hat{\boldsymbol\mu})(\X_i-\hat{\boldsymbol\mu})'\end{bmatrix}
+\end{align*}
+
+In the event that $K = 1$ and this is a normal distribution, we have 
+\begin{align*}
+\hat\mu &= \bar X,\\ 
+\hat \sigma & = \frac{1}{n}\sum_{i=1}^n (X_i - \bar X)^2.
+\end{align*}
+Note that the estimator for the variance is *not* the unbiased $S^2$ with Bessel's correction to account for it depending on $\bar X$. Before even considering the properties of $\MLE$, we're able to conclude that it is not unbiased. Having derived the MLE estimates in this case, we can now turn to a simulation to verify our work. 
+
+```{r}
+n <- 10000
+mu <- c(0,0)
+Sigma <- matrix(c(1,0,0,1), nrow = 2)
+X <- (rmvnorm(n, mu, Sigma))
+
+neg_LL <- function(theta){
+  mu <- c(theta[1], theta[2]) 
+  Sigma <- matrix(c(theta[3], theta[4], theta[4], theta[5]), nrow = 2)
+  -sum(log(dmvnorm(X, mu, Sigma)))
+}
+
+start <- c(1,1,2,1,2)
+mle <- fminunc(x0 = start, fn = neg_LL)
+```
+
+```{r}
+colMeans(X)
+mle$par[1:2]
+```
+
+```{r}
+var(X)
+matrix(c(mle$par[3], mle$par[4], mle$par[4], mle$par[5]), nrow = 2)
+```
+
+:::
+
+## Properties and Asymptotic Distribution
+
+:::{#exm-}
+
+## Normal Distribution
+
+```{r}
+n <- 1000
+mu <- 0 
+sigma <- 1
+
+neg_LL <- function(theta, data){
+  mu <- theta[1]
+  sigma <- exp(theta[2])
+  -sum( log(dnorm(data, mu, sigma)) )
+}
+
+N_sim <- 10000
+store <- matrix(NA, nrow = N_sim, ncol = 2)
+for (i in 1:N_sim) {
+  X <- rnorm(n, mu, sigma)
+  store[i,] <- c(fminunc(x0 = c(1,1), fn = neg_LL, data = X)$par)
+}
+
+  
+```
+
+
+:::
+
+
+
+## MLE vs. Conditional MLE
+
+## MLE and Information Theory
+
+## Recaping with the Linear Model
+
+```{r}
+library(pracma)
+library(tidyverse)
+
+beta <- c(2,4)
+n <- 1000
+k <- 2
+
+x1 <- runif(n, 0, 10)
+e <- rnorm(n)
+X <- cbind(1, x1)
+y <- X %*% beta + e
+
+#analytic
+OLS <- solve(t(X) %*% X) %*% t(X) %*% y
+
+#numeric extremum
+ssr <- function(beta){
+  t(y -X %*% beta) %*% (y -X %*% beta)
+}
+OLS2 <- optim(c(1,1), ssr)$par
+
+# method of moments 
+g <- function(beta){
+  (1/n) * t(X) %*% (y - X%*% beta)
+}
+MM <- fsolve(g, c(1,1), tol = 1e-8)$x
+
+# GMM
+GMM_objective <- function(beta, Ω){
+  t(g(beta)) %*% Ω %*% g(beta)
+}
+GMM <- optim(c(1,1), GMM_objective, Ω = eye(k))$par
+
+#MLE
+log_liklihood <- function(beta){
+  -sum(log(dnorm(y -X %*% beta)))
+}
+MLE <- optim(c(1,1), log_liklihood)$par 
+
+
+tibble(
+  method = c('OLS, Analytic Solution', 'OLS, Minimize SSR', 'MoM', 'GMM', 'MLE'),
+  est1 = c(OLS[1], OLS2[1], MM[1], GMM[1], MLE[1]),
+  est2 = c(OLS[2], OLS2[2], MM[2], GMM[2], MLE[2])
+) %>% 
+  pivot_longer(!method) %>% 
+  ggplot(aes(method, value)) + 
+  geom_point() + 
+  facet_wrap(~name, ncol = 1, scales = "free") + 
+  theme_minimal()
+  
+
+```
+
+
+
+

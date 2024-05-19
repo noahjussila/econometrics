@@ -1,0 +1,120 @@
+\DeclareMathOperator{\plim}{plim}
+\DeclareMathOperator{\argmin}{argmin}
+\DeclareMathOperator{\argmax}{argmax}
+\newcommand{\var}[1]{\text{Var}\left(#1\right)}
+\newcommand{\avar}[1]{\text{Avar}\left(#1\right)}
+\newcommand{\E}[1]{\text{E}\left[#1\right]}
+\newcommand{\cov}[1]{\text{Cov}\left(#1\right)}
+\newcommand{\mse}[1]{\text{MSE}\left(#1\right)}
+\newcommand{\se}[1]{\text{se}\left(#1\right)}
+\newcommand{\limfunc}{lim} 
+\newcommand{\X}{\mathbf{X}}
+\newcommand{\Xm}{\mathbb{X}}
+\newcommand{\EER}{\bar{\thet}_\text{EE}}
+\newcommand{\NLS}{\hat{\bet}_\text{NLLS}}
+\newcommand{\z}{\mathbf{z}}
+\newcommand{\rr}{\mathbf{r}}
+\newcommand{\C}{\mathbf{C}}
+\newcommand{\Pe}{\mathbf{P}}
+\newcommand{\y}{\mathbf{y}}
+\newcommand{\Y}{\mathbf{Y}}
+\newcommand{\uu}{\mathbf{u}}
+\newcommand{\e}{\mathbf{e}}
+\newcommand{\D}{\mathbf{D}}
+\newcommand{\x}{\mathbf{x}}
+\newcommand{\xm}{\mathbb{x}}
+\newcommand{\Zm}{\mathbb{Z}}
+\newcommand{\Wm}{\mathbb{W}}
+\newcommand{\Hm}{\mathbb{H}}
+\newcommand{\W}{\mathbf{W}}
+\newcommand{\Z}{\mathbf{Z}}
+\newcommand{\Hess}{\mathbf{H}(\mathbf{\Z\mid\thet})}
+\newcommand{\Score}{\mathbf{S}(\mathbf{\Z\mid\thet})}
+\newcommand{\A}{\mathbf{A}}
+\newcommand{\h}{\mathbf{h}}
+\newcommand{\Q}{\mathbf{Q}}
+\newcommand{\F}{\mathbf{F}}
+\newcommand{\G}{\mathbf{G}}
+\newcommand{\I}{\mathbf{I}}
+\renewcommand{\D}{\mathbf{D}}
+\renewcommand{\C}{\mathbf{C}}
+\newcommand{\zer}{\mathbf{0}}
+\newcommand{\OLS}{\hat{\boldsymbol\beta}_\text{OLS} }
+\newcommand{\OLSOV}{\hat{\boldsymbol\beta}_\text{OLS,OV} }
+\newcommand{\OLSME}{\hat{\boldsymbol\beta}_\text{OLS,ME} }
+\newcommand{\EE}{\hat{\boldsymbol\theta}_\text{EX} }
+\newcommand{\ME}{\hat{\boldsymbol\theta}_\text{M} }
+\newcommand{\MDE}{\hat{\boldsymbol\theta}_\text{MDE} }
+\newcommand{\IV}{\hat{\boldsymbol\beta}_\text{IV} }
+\newcommand{\TSLS}{\hat{\boldsymbol\beta}_\text{2SLS} }
+\newcommand{\thet}{\boldsymbol{\theta}}
+\newcommand{\et}{\boldsymbol{\eta}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Sig}{\boldsymbol{\Sigma}}
+\newcommand{\ep}{\boldsymbol{\varepsilon}}
+\newcommand{\Omeg}{\boldsymbol{\Omega}}
+\newcommand{\Thet}{\boldsymbol{\Theta}}
+\newcommand{\bet}{\boldsymbol{\beta}}
+\newcommand{\rk}{rank}
+\newcommand{\tsum}{\sum}
+\newcommand{\tr}{tr}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\abs}[1]{\left\lvert#1\right\rvert}
+\newcommand{\ms}{\overset{ms}{\to}}
+\newcommand{\pto}{\overset{p}{\to}}
+\newcommand{\iid}{\overset{iid}{\sim}}
+\newcommand{\dto}{\overset{d}{\to}}
+\newcommand{\asim}{\overset{a}{\sim}}
+
+# Generalized Least Squares 
+
+```{r}
+#| echo: false
+#| output: false
+library(tidyverse)
+library(sandwich)
+source("functions/sim_gen_linear_model.r")
+```
+
+
+
+## OLS with Heteroskedasticity and/or Autocorrelation
+
+Before we jump into possible solutions for non-spherical errors, we need to assess the impact they have on out OLS estimator. From @sec-ols we know that in the absence of spherical errors: $\bet$ is identified, $\OLS$ is consistent, $\OLS$ is unbiased, and $$\var{\OLS \mid \Xm} = (\Xm'\Xm)^{-1}\Xm'\Sig\Xm(\Xm'\Xm)^{-1}.$$ Right off the bat, we're in a much better position than when we dropped our assumption that $\X$ and $\ep$ were orthogonal, since that resulted in $\bet$ not even being identified. Recall that in the presence of spherical errors, @cor-olsvar2 gave us $\var{\OLS\mid\Xm} = \sigma^2(\Xm'\Xm)^{-1}$. This looks similar to the asymptotic variance we arrived at when concluding
+$$ \OLS \asim N\left(\bet, \sigma^2 \E{\Xm'\Xm}^{-1}\right).$$ Could it be that $\bet$ is still root-n CAN in the presence of spherical errors albeit with an asymptotic variance analog to $(\Xm'\Xm)^{-1}\Xm'\Sig\Xm(\Xm'\Xm)^{-1}$? Proving @thm-asymols came down to applying Slutsky's theorem, the LLN, and the CLT to $\sqrt{n}(\OLS - \bet)$ written as 
+$$ \sqrt{n}(\OLS - \bet) = \left(\frac{1}{n}\sum_{i=1}^n\X_i'\X_i\right)^{-1}\left(\frac{1}{\sqrt n}\sum_{i=1}^n\X_i'\varepsilon_i\right).$$ Like before the first term will converge in probability to $\E{\X'\X}^{-1}$. When it comes to applying the CLT to the right term, which can be expanded as
+$$\frac{1}{\sqrt n}\sum_{i=1}^n\X_i'\varepsilon_i = \sqrt n \left(\frac{1}{ n}\sum_{i=1}^n\X_i'\varepsilon_i - \E{\X_i'\varepsilon_i}\right),$$ we begin to deviate from the case of sperhical errors on account of the $\E{\X_i'\varepsilon_i}$ term. In the event that $\ep$ only exhibits heteroskedasticity, $(\X_i, \varepsilon_i)$ are still IID. 
+
+```{r}
+model <- sim_gen_linear_model(
+  beta = c(2, 3),
+  n = 1e3,
+  mu_X = 5,
+  cov_Xe = matrix(c(3, 0, 0, 1), nrow = 2),
+  sked_fun = "u*x2"
+)
+
+# model$observed_data %>% 
+#   ggplot(aes(x2, y)) + 
+#   geom_point() + 
+#   theme_minimal()
+
+est <- lm(y ~ x2, data = model$observed_data)
+sqrt(diag(vcovHC(est)))
+sqrt(diag(vcov(est)))
+
+X <- cbind(1, (0:100)/100)
+draw_SE <- function(X, beta){
+  n <- nrow(X)
+  u <- rnorm(n)
+  e <- u*X[,2]
+  y <- X %*% beta + e
+  output <- lm(y ~ X - 1) %>% 
+    vcov() %>% 
+    diag() %>% 
+    sqrt()
+  return(output)
+}
+draw_SE(X, beta = c(1,2))
+```
+

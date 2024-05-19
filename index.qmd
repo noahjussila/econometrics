@@ -101,36 +101,79 @@
 
 ## Probablitiy Theory
 
-We'll briefly go over the basics of probability theory, _none of which is strictly required_. A rigorous treatment can be found in @durrett2019probability or @billingsley2008probability. For an even more general discussion, see @folland1999real, @royden1988real, and/or @rudin. If you have zero interest in the formal math behind probability (who would blame you?) then skip to the end of this section where all the math is reduced to two notational conventions. 
+\indent We'll briefly go over the basics of probability theory. A rigorous treatment can be found in @durrett2019probability or @billingsley2008probability. For an even more general discussion, see @folland1999real, @royden1988real, and/or @rudin.
 
-A probability space is a triple $(\mathcal X, \mathcal F, P)$ comprised of:
 
-1. A **_sample space_** $\mathcal X$
-2. A collection of events $\mathcal F$ which is a subset of the power set of events $2^{\mathcal X}$. This collection of sets satisfies the following properties: $\mathcal X\subset F$, $A^c\in F$ if $A\in F$, and $\cup_{i=1}^n A_i \subset F$ if $A_i\subset \mathcal F$ for all $i$. Such a collection of sets is known as a **_sigma-algebra_**.^[We cannot define probability over the entire power set $2^{\mathcal X}$, or else we run into some technical problems.]
-3. A **_probability measure_** $P:\mathcal F\to [0,1]$ satisfying: $P(\mathcal X) = 1$, $P(\emptyset) = 0$, $P(A) \le P(B)$ for $A\subset B\in \mathcal F$, and $P\left(\cup_{i=1}^n A_i\right) = \sum_{i=1}^n P(A_i)$. 
+::: {#def-}
+A [***measure space***]{style="color:red"} is a triple $(X, \mathcal F, \mu)$ comprised of:
 
-A probability space is a special case of a measure space $(X, \mathcal N,\mu)$. This is just any set $X$, an associated sigma-algebra $\mathcal N\subseteq 2^X$, and some measure $\mu$ which assigns values to sets in $\mathcal N\subseteq$. The most important such space is used to measure subsets of the real line (and more generally euclidean spaces). If we want to measure subsets of $\mathbb R$, we define the associated sigma-algebra as the collection of all open intervals, denoted $\mathcal B(\mathbb R) = \{(a,b)\subset \mathbb R\mid a,b\in\mathbb R\}$.^[Anytime a set is endowed with a topology (some notion of open sets), we can define a sigma-algebra as the collection of open subsets. This is known as the Borel sigma-algebra] The measure of some interval $I = (a,b)\subset \mathbb R$ is defined as $$m(I)=b -a,$$ which is fairly reasonable. This measure is known as the **_Lebesgue measure_**. Another nice example of a measure space is $(X, 2^{X}, \mu)$ where $$\mu(A) = \begin{cases}|A|& A\text{ finite}\\ \infty& A\text{ infinite}\end{cases}.$$ This measure simply assigns each set its cardinality, and is known as the **_counting measure_**.  
+1. A set $\mathcal X$.
+2. A collection of subsets of $X$, $\mathcal F\subseteq 2^{X}$. This collection of sets satisfies the following properties: $A^c\in \mathcal F$ if $A\in \mathcal F$, and $\cup_{\alpha} A_\alpha \subseteq \mathcal F$ for all countable collections of sets $\{A_\alpha\}\subseteq \mathcal F$. Such a collection of sets is known as a [***sigma-algebra***]{style="color:red"}.^[We cannot define measure over the entire power set $2^{\mathcal X}$, or else we run into some technical problems.] 
+3. A [***measure***]{style="color:red"} $\mu:\mathcal F\to [0,\infty]$ satisfying $\mu(\emptyset) = 0$, and $\mu(\sum_\alpha A_\alpha)= \sum_\alpha \mu(A_\alpha)$ for all countable collections of *disjoint* sets $\{A_\alpha\}\subseteq \mathcal F$.
 
-Given a probability space $(\mathcal X, \mathcal F, P)$, we can define a **_random variable_** $X:\mathcal X\to\mathbb R$ to be a function such that the preimage of every set in $\mathcal B(\mathbb R)$ is in $\mathcal F$.^[More generally, such functions are called measurable.] 
-$$ X^{-1}(I) \in \mathcal F \ \ \ \forall I\in\mathcal B(\mathbb R)$$ In other words, if we can measure $I$ using the Lebesgue measure $\mu$, we are able to measure $X^{-1}(I)$ using the probability measure $P$. This allows us to define a probability measure $P(X^{-1}(I))$ on $\mathcal B(\mathbb R)$ which gives us the probability that $X$ is in the set $I\subset \mathcal B(\mathbb R)$. This probability measure is the **_distribution_** of $X$. If $I = (-\infty,x)$ for $x\in\mathcal X$, then the distribution takes the form $P(X^{-1}(I)) = P(X \in (-\infty,x)) = P(X\le x)$. We usually work with the distribution in this form and call it the  **_distribution function_** $F_X(x) = P(X\le x)$.
+We also refer to just the pair $(X,\mathcal F)$ as a [***measurable space***]{style="color:red"}.
+:::
 
-The chief motivation for defining measure spaces and measurable functions is a general theory of integration. The Riemann integral is achieved by taking the limit of a process which partitions the area under a function into rectangles. The width of these rectangles is the length of their base, which can be thought of as the measure of an interval. When performing Riemann integration, if $I=(a,b)$ is the base of a rectangle, we take the width to be $m(I)=b -a$. That is, we use the Lebesgue measure. This is why you will sometimes see integrals written as 
+
+::: {#exm-}
+## Lebesgue Measure
+The most important such space is used to measure subsets of the real line (and more generally euclidean spaces). If we want to measure subsets of $\mathbb R$, we define the associated sigma-algebra as the collection of all compliments and countable unions of the open intervals (along with the subsequent sets generated), denoted $\mathcal B(\mathbb R) = \{(a,b)\subset \mathbb R\mid a,b\in\mathbb R\}$.^[Anytime a set is endowed with a topology (some notion of open sets), we can define a sigma-algebra as the collection of open subsets. This is known as the Borel sigma-algebra] The measure of some interval $I = (a,b)\subset \mathbb R$ is defined as $$m(I)=b -a,$$ which is fairly reasonable. This measure is known as the Lebesgue measure.
+:::
+
+::: {#exm-}
+## Counting Measure
+Another nice example of a measure space is $(X, 2^{X}, \mu)$ where $$\mu(A) = \begin{cases}|A|& A\text{ finite}\\ \infty& A\text{ infinite}\end{cases}.$$ This measure simply assigns each set its cardinality, and is known as the counting measure.  
+:::
+
+       One of the main motivations of measure theory is to make the operation of integration more robust. We can do this by defining a property of functions that will make integration with respect to a measure possible. 
+
+::: {#def-}
+Let $(X, \mathcal F)$ and $(Y, \mathcal G)$ be two measurable spaces. A function $f:X\to Y$ is [***measurable***]{style="color:red"} if 
+\begin{align*}
+& f^{-1}(G) \in \mathcal F & (\forall G\in\mathcal G)
+\end{align*}
+where $f^{-1}(G)$ is the preimage of a set $G\in \mathcal G$.
+:::
+
+       It turns out that any function that is Riemann integrable is measurable.^[Examples include continuous functions, monotonic functions, and functions that are discontinuous at a countable number of points.] Defining the integral of a measurable function with respect to a measure $\mu$ requires some intermediate steps that make for a verbose definition. Instead of presenting the technical definition, we'll just introduce the notation:
+$$\int_{[a,b]} f\ d\mu$$ This is the [***Lebesgue integral***]{style="color:red"} of $f$ on $[a,b]\subseteq \mathcal F$ with respect to the measure $\mu$. 
+
+::: {#exm-}
+## Integration and Lebesgue Measure
+Suppose we have the measure space $(\R, \mathcal B(\R), m)$. For a measurable function $f:[a,b]\to\R$ we have 
+$$\int_{[a,b]}f\ dm = \int_a^b f(x)\ dx$$ where the later integral is the Riemann integral. Since they're equal, it's rare that we need to turn to tools beyond basic calculus to integrate functions.
+:::
+
+::: {#exm-}
+## Integration and Counting Measure
+Suppose we have a measure space $(\mathbb N, 2^{\mathbb N}, \mu)$ where $\mu$ is the counting measure. If we have some function $f:\mathbb N\to\R$^[Technically this function is a real sequence, as a real sequence is just a mapping from the natural numbers to $\R$.] and a set $A\subset \mathbb N$ on which we want to integrate $f$, then 
+$$\int_A f\ d\mu = \sum_{x\in A}f(x).$$ Proving why this is the case requires the formal definition of the Lebesgue integral, but the intuition shouldn't be anything new. An integral can be thought of as a continuous version of summation, so if we integrate on a discrete set we should just end up with a summation.
+:::
+
+       The fact that the Lebesgue integral reduces to summation demonstrates why it's such a powerful tool. 
+ 
+      Given a probability space $(\mathcal X, \mathcal F, P)$, we can define a function $X:\mathcal X\to E$ where $E$ is some set equipped with a sigma-algebra $\mathcal E$. This function is a **_random variable_** if the preimage of every set in $\mathcal E$ is in $\mathcal F$.^[More generally, such functions are called measurable.] 
+$$ X^{-1}(I) \in \mathcal F \ \ \ \forall I\in\mathcal E.$$ In most cases, we're interested in random variables that take on real values (equipped with the $\mathcal B(\mathbb R)$) in which case $X:\mathcal X\to \R$ and 
+$$ X^{-1}(I) \in \mathcal F \ \ \ \forall I\in\mathcal B(\R).$$ In other words, if we can measure $I$ using the Lebesgue measure $\mu$, we are able to measure $X^{-1}(I)$ using the probability measure $P$. This allows us to define a probability measure $P(X^{-1}(I))$ on $\mathcal B(\mathbb R)$ which gives us the probability that $X$ is in the set $I\subset \mathcal B(\mathbb R)$. This probability measure is the **_distribution_** of $X$. If $I = (-\infty,x)$ for $x\in\mathcal X$, then the distribution takes the form $P(X^{-1}(I)) = P(X \in (-\infty,x)) = P(X\le x)$. We usually work with the distribution in this form and call it the  **_distribution function_** $F_X(x) = P(X\le x)$.
+      The chief motivation for defining measure spaces and measurable functions is a general theory of integration. The Riemann integral is achieved by taking the limit of a process which partitions the area under a function into rectangles. The width of these rectangles is the length of their base, which can be thought of as the measure of an interval. When performing Riemann integration, if $I=(a,b)$ is the base of a rectangle, we take the width to be $m(I)=b -a$. That is, we use the Lebesgue measure. This is why you will sometimes see integrals written as 
 $$ \int f(x)\ dx = \int f(x) \ dm.$$ Writing the integral this way emphasize that we are integrating with respect to some measure (notion of length/volume), but it is more than just a notational difference. It is the result of defining integration in an entirely different way giving the **_Lebesgue integral (with respect to $m$)_**. In practice this won't matter a whole lot, because if we can calculate the Riemann integral of a function than we can calculate the Lebesgue integral, and both integrals are equal.^[The converse is not true, which is why the Lebesgue integral is of more theoretical interest. It turns out there are *many* functions which are not Riemann integrable but are Lebesgue integrable.] What's important is that the idea of integration with respect to a measure can be generalized to any measure space $(X, \mathcal N,\mu)$. In general, the **_Lebesgue integral_** of $f$ over $A\in \mathcal N$ is written as $$\int_A f \ d\mu.$$ The rigorous definition of this integral, and how it is calculated using that definition, aren't essential at the moment. That being said, one useful property to know is that if we integrate the constant $1$ on $A$ with respect to a measure $\mu$, we get $\mu(A)$. 
 $$\int_A 1\ d\mu = \int_A d\mu =\mu(A)$$ This should seem familiar from calculus. If we have a set $I=(a,b)$, then $$\int_a^b 1\ dx = b - a$$ using Riemann integration. Lebesgue integration gives 
 $$ \int_I 1\ dm = m(I) = b-a.$$ Interestingly, if we look at counting measure on the set of real numbers (our measure space is $(\mathbb R, 2^{\mathbb R}, \mu)$), and some set $A = \{a_1,\ldots, a_n\}\in 2^{\mathbb R}$ 
 $$ \int_Af\ d\mu = \int_A 1\ d\mu = \mu(A) = |A| = \sum_{i=1}^n 1=\sum_{i=1}^n f(a_i).$$ In general, integration with respect to the counting measure is a simple summation. This illustrates one nice consequence of the generality that Lebesgue integration provides -- summation is a special case of integration.^[But is this really new? The Riemann integral is just the limit of a sum.] 
-
-What happens if we apply Lebesgue integration to the distribution of a random variable $X$ defined on the sample space $\mathcal X$? Well if we integrate $1$ with respect to some real interval $I=(a,b)\subset \mathbb R$, then 
+      What happens if we apply Lebesgue integration to the distribution of a random variable $X$ defined on the sample space $\mathcal X$? Well if we integrate $1$ with respect to some real interval $I=(a,b)\subset \mathbb R$, then 
 $$ \int _I 1\ dP = P(I) = F(b) - F(a).$$ If we instead integrate over all $x\in\mathcal X$, we can think of the integral over the measure $P$ as a weighted sum of all $x$, where weights are given by $P$. This is just the **_expected value_** of $X$. $$\E{X} = \int_{\mathcal X}x \ dP = \int_{\mathcal X}x\ dF_X$$ But how do we calculate this expectation? Even though this is a measure space over real numbers, we really don't know how to calculate integrals with respect to any measure besides Lebesgue measure. In the event that the distribution $F$ satisfies certain standard conditions, we can find some function $f_X$ such that 
 $$ \E{X} = \int_{\mathcal X}x\ dF_X = \int_{\mathcal X} xf_X(x)\ d\mu = \int_{\mathcal X} x f_X(x)\ dx.$$ This function is called the **_density function_** $f(x)$ of $X$, and is actually given as $$f_X = \frac{dF_X}{dx}.$$ In a sense, the density function is a "conversion rate" between the measure $P$ and the measure $\mu$.^[In general, this type of construction is called the **_Radon–Nikodym derivative_**, and its existence is outlined by the **_Radon–Nikodym theorem_**.] 
-
-But what about "discrete" random variables? The expectation of a discrete random variable is not an integral...or is it? Just like how the integral with respect to the counting measure reduces to a sum, if our sample space $\mathcal X$ is countably infinite such that a random variable $X:\mathcal X \to \mathbb R$ takes on one of a discrete number of values, then 
+      But what about "discrete" random variables? The expectation of a discrete random variable is not an integral...or is it? Just like how the integral with respect to the counting measure reduces to a sum, if our sample space $\mathcal X$ is countably infinite such that a random variable $X:\mathcal X \to \mathbb R$ takes on one of a discrete number of values, then 
 $$ \E{X} = \int_{\mathcal X} x\ dF_X = \sum_{\mathcal x\in \mathcal X}x f(x).$$
+
+       Definitions are readily extended to higher dimensions.  $$
 
 If you couldn't care less about measure theory,^[It won't save your life in emergency situations.] then all this boils down to two facts:
 
 1. All results will be stated in terms of continuous random variables. If you want to show them for discrete random variables, just replace integrals with sums.
 2. Sometimes we will write expectation as $\int x\ dF_X$, which is the same as $$\int xf(x)\ dx.$$
+
+
 
 
  
@@ -357,7 +400,6 @@ The foundation of econometrics is *the* linear model. In this section, we build 
 11. **Extremum Estimators** 
 12. **The Generalized Method of Moments** 
 13. **Maximum Likelihood Estimation**
-
 
 
 

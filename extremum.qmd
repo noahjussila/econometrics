@@ -65,6 +65,7 @@
 \newcommand{\iid}{\overset{iid}{\sim}}
 \newcommand{\dto}{\overset{d}{\to}}
 \newcommand{\asim}{\overset{a}{\sim}}
+\DeclareMathOperator{\sech}{sech}
 
 # Extremum Estimators 
 
@@ -72,15 +73,100 @@
 #| echo: false
 #| message: false
 library(tidyverse)
+library(pracma)
 ```
 
 The estimation of linear models turned out to be fairly straightforward, as all our estimators were somehow related to OLS. When moving beyond linear models, we need to consider more general approaches to estimation, such as the generalized method of moments (GMM) or maximum likelihood estimation (MLE). Both of these estimators fall into a very broad class of estimators formalized by @takeshi1985advanced known as extremum estimators. We'll establish the properties of this broad class of estimators before considering special cases in Section \@ref(generalized-method-of-moments) and Section \@ref(maximum-likelihood-estimation). A great deal of this will be based off of @newey1994large, and requires comfort with [real analysis](https://github.com/noahjussila/analysis_notes/blob/master/Analysis%20Notes.pdf). It may be helpful to review the relationship between continuity and limits, sequences of functions, properties of uniform convergence, compactness (and how it relates to extrema), convexity (in the context of sets and functions), and the mean value theorem as it applies to gradients and Hessians.
+
+First we'll consider a motivating example. 
+
+:::{#exm-}
+Recall the random function $Q(t) = n^{-1}\sum_{i=1}^n (X_i-t)^2$ introduced in @exm-ref2. For a sample $X_i\iid N(\mu_0,\sigma_0^2)$, $Q(t)$ was the average distance of the sample points from some number $t\in\theta$. Is it possible to use this measure to arrive at an estimator for $\mu_0$? If $\mu_0$ is the 
+*de facto* measure of central tendency, then $Q(\mu_0)$ should be relatively small. Using this idea, let's define an estimator $\hat\mu$ to be the value of $\mu\in\R$ which minimizes $Q(\mu)$.
+$$ \hat\mu(\X) = \argmin_{\mu\in\R}\ Q(\mu) = \argmin_{\mu\in\R}\ \frac{1}{n}\sum_{i=1}^n (X_i-\mu)^2$$
+Let's simulate 1,000 realizations of our estimator where $\mu_0 = 0$, $\sigma_0^2=1$, and $n=100$.
+
+```{r}
+#| code-fold: true
+#| fig-align: center
+#| label: fig-plot101
+#| fig-asp: 0.7
+#| warning: false
+#| fig-width: 8
+#| fig-cap: "1000 realizations of the stochastic process Q(μ) with the values of μ which minimize Q(μ) indicated by red lines."
+#| code-summary: "Show code which generates figure"
+#| 
+obj <- function(sample,t){
+  sum((sample-t)^2) / length(sample)
+}
+n <- 100
+
+N_sim <- 1000
+store <- list()
+est <- vector("numeric", length = 100)
+for(i in 1:N_sim){
+  X <- rnorm(n)
+  est[i] <- optim(par = 1, obj, sample = X, method = "Brent", lower = -10, upper = 10)$par
+  store[[i]] <- tibble(
+    sim = i,
+    t = seq(-2, 2, length = 1000),
+    f = sapply(t, FUN = obj, sample = X)
+  )
+}
+
+df <- bind_rows(store)
+df %>% 
+  ggplot(aes(t, f)) +
+  geom_line(aes(group = sim), size = 0.1, alpha = 0.4) +
+  theme_minimal() +
+  labs(y = 'Q', x = 'μ') +
+  geom_vline(xintercept = est, color = "red", alpha= 0.1, size = 0.1)
+```
+
+If we plot the simulated values of $\hat \mu$, it appears they're normally distributed. 
+
+```{r}
+#| code-fold: true
+#| fig-align: center
+#| label: fig-plot102
+#| fig-asp: 0.7
+#| warning: false
+#| fig-width: 8
+#| fig-cap: "A histogram of our 1000 estimates of μ as given by the argument which minimizes Q(μ)."
+#| code-summary: "Show code which generates figure"
+
+est %>% 
+  tibble() %>% 
+  rename(est = 1) %>% 
+  ggplot(aes(est)) + 
+  geom_histogram(bins = 20, color = "black", fill = "white") +
+  theme_minimal() +
+  labs(y = "Count", x = "Estimates of μ")
+```
+
+We calculated our simulated estimates by using R's `optim()` function to calculate $\hat\mu$ directly using its definition. In this case, we're actually able to explicitly solve the minimization problem to find an analytic form for $\hat\mu$.
+
+\begin{align*}
+& \hat\mu(\X)  = \argmin_{\mu\in\R}\ \frac{1}{n}\sum_{i=1}^n (X_i-\mu)^2\\
+\implies & \frac{d}{d\mu}\left[\frac{1}{n}\sum_{i=1}^n (X_i-\mu)^2\right]_{\mu = \hat\mu} = 0\\
+\implies & \frac{1}{n}\left[\frac{1}{n}\sum_{i=1}^n(X_i^2 - 2X_i\mu _ \mu^2)\right]_{\mu = \hat\mu} = 0\\
+\implies & \left[- \frac{2}{n}\sum_{i=1}^nX_i + 2\mu)\right]_{\mu = \hat\mu} = 0 \\
+\implies & 2\hat\mu = \frac{2}{n}\sum_{i=1}^nX_i\\
+\implies & \hat\mu = \frac{1}{n}\sum_{i=1}^nX_i\\
+\implies & \hat\mu(\X) = \bar X
+\end{align*}
+
+It may not come as a surprise that our estimator is just the sample mean $\bar X$. This gives another justification for the ubiquity of the sample mean. It minimizes the objective $\frac{1}{n}\sum_{i=1}^n (X_i-\mu)^2$, which is equivelent to minimizing the sum of squared residuals between $X_i$ and $\mu$. For this reason, the sample mean is actually a special case of OLS! 
+
+:::
+
+       
 
 ## Definition and Identification
 
 As the name implies, an extremum estimator is one that is defined via optimization.
 
-:::{.definition}
+:::{#def-}
 Suppose $\Wm = [\W_1,\ldots, \W_n]' \sim P_\thet$ where $P_\thet\in\mathcal P$ for a known model $\mathcal P$. An <span style="color:red">**_extremum estimator_**</span> $\EE:\mathcal W\to \Thet$ is an estimator of the form 
 $$ \EE = \argmax_{\thet \in \Thet} Q_n(\thet \mid \Wm)$$ for an objective function $Q_n(\thet \mid \Wm)$ which depends on realized observations and sample size. A more general definition defines $\EE$ as the value which satisfies 
 $$Q_n(\EE) \ge \sup_{\thet \in \Thet} Q_n(\thet) + o_p(1).$$
@@ -89,7 +175,7 @@ $$Q_n(\EE) \ge \sup_{\thet \in \Thet} Q_n(\thet) + o_p(1).$$
 We've written $\EE$ as the argument which maximizes an objective function, but this implicitly includes the case where $\EE$ is the minimizing argument of a function, as 
 $$ \argmax_{\thet \in \Thet} Q_n(\thet) = \argmin_{\thet \in \Thet} [-Q_n(\thet)].$$ The idea that an estimate should arise from an optimization problem should feel natural. We generally want an estimator to be "better" than other estimators, and extremum estimators achieve this in terms of some criterion $Q_n(\thet)$. 
 
-:::{.example}
+:::{#exm-}
 The estimator $\OLS$ is an extremum estimator.
 $$\OLS = (\Xm'\Xm)^{-1}\Xm'\Y = \argmin_{\mathbf b \in \mathbb R^k} \sum_{i=1}^n (Y_i - \X_i\mathbf b)^2 = \argmax_{\mathbf b \in \mathbb R^k}\left[ - \sum_{i=1}^n (Y_i - \X_i\mathbf b)^2\right] = \argmax_{\mathbf b \in \mathbb R^k} -\norm{\Y - \Xm\mathbf b}^2$$ We could also maximize any monotonic transformation of this, giving way to a few other common objectives:
 \begin{align*}
@@ -119,7 +205,7 @@ $$ \plim \argmax_{\thet \in \Thet} Q_n(\thet) = \thet_0$$
 
 The fact that we are dealing with the limiting process of $\argmax_{\thet \in \Thet} Q_n(\thet)$ instead of $Q_n$ complicates things. Limiting processes of function do not play well with many of our favorite operators.^[If you're a real analysis nerd, you likely see what assumption we're heading towards.] 
 
-:::{.example}
+:::{#exm-}
 Suppose $\Theta = [-1,\infty]$ and $\theta_0 = -1/2$. Define functions $Q$, $g_n$, and $Q_n$ as: 
 \begin{align*}
 Q(\theta) &= \begin{cases}1+\theta & -1\le\theta\le\theta_0 \\ -\theta & \theta_0<\theta\le 0 \\ 0 & \text{otherwise}  \end{cases}\\
@@ -181,7 +267,7 @@ If we compare the limit of the $\argmax$ and the $\argmax$ of the limit, we have
 
 One reason this happens, is because the nature in which $Q_n$ converges. While we have $\plim Q_n(\thet) = Q(\thet)$ for all $\thet \in \Thet$, the function does not converge uniformly in the sense that $Q_n$ does not approaches $Q$ on all of $\Thet$ simultaneously. We need to strengthen our definition of convergence in probability to insure this happens.
 
-:::{.definition}
+:::{#def-}
 A sequence of functions random variables $f_n(X)$ <span style="color:red">**_converges in probability uniformly (on $\mathcal X$)_**</span> to a function $f$ if for all $\varepsilon > 0$ and $\delta > 0$ there exists a fixed $N$ independent of $X_n$ such that 
 $$ \Pr(\abs{f_n(X) - f} > \varepsilon,\ \forall X \in\mathcal X) < \delta,$$ which is equivalent to 
 $$ \lim_{n\to\infty}\Pr(\abs{f_n(X) - f} < \varepsilon,\ \forall X \in\mathcal X) = 0  $$. Yet another definition is 
@@ -189,7 +275,7 @@ $$\sup_{\thet\in \Thet}\abs{f_n(X) - f} \pto 0.$$
 ::: 
 The definition using the supremum follows from the fact that if the maximum distance between $f_n(X)$ and $f$ shrinks as $n\to\infty$, then is must be the case that the distance between $f_n$ and $f$ at any point in the support is shrinking as well. So let's assume that $Q_n$ converges uniformly to some limit $Q_0$. Let's look at another example, but this time define $Q_n$ such that it converges uniformly to some $Q_0$. 
 
-:::{.example}
+:::{#exm-}
 Suppose $\Theta = [0,\theta_0]$ and $Q_n(\theta) = \theta/n$. Once again, there are no random variables in the picture, so $\plim$ reduces to $\lim_{n\to\infty}$. We have 
 $$ \sup_{\theta \in [0,1]}\abs{\theta/n - 0} = 1/n \to 0,$$ so $Q_n(\theta)$ converges uniformly to $Q_0(\theta) = 0$ on $[0,\theta_0]$. The maximum of $Q_n$ is achieved at $\theta_0$ for all $n$. Despite the uniform convergence, we have 
 \begin{align*}
@@ -200,7 +286,7 @@ $$ \sup_{\theta \in [0,1]}\abs{\theta/n - 0} = 1/n \to 0,$$ so $Q_n(\theta)$ con
 
 We need to rule out situations where the limit of $Q_n$ does not have a unique maximum, or that unique maximum is not achieved at the true value $\thet_0$. Finally, consider a third example.
 
-:::{.example}
+:::{#exm-}
 Suppose $\Theta = [-2,1]$ and $\theta_0 = -1$. Define 
 $$Q_n(\theta) = \begin{cases}(1-2^{1-n})\theta + 2 - 2^{2-n} & -2\le \theta\le -1
 \\(2^{1-n}-1)\theta & -1 < \theta \le 0 \\ \frac{2^{n+1}-2}{2^{n+1}-1}\theta & 0  < \theta\le 1-2^{1-n}\\ \frac{2^{n+1}-2}{2^{n+1}-1}\theta + 2 - 2^{2-n} & 1-2^{1-n}\le \theta < 1\\0 & \theta = 1\end{cases}$$.
@@ -252,7 +338,10 @@ This final examples shows that things can go wrong when our function $Q_0$ is no
 We now have all the building blocks required to show that $\EE$ is consistent: continuity of $Q_0$,^[Assuming $Q_n\pto Q_0$ uniformly, we could also have that $Q_n$ is continuous for all $n$, as the uniform limit of continuous functions is continuous.] $Q_n \pto Q_0$ uniformly, $\Thet$ compact, and $Q_0(\thet)$ is uniquely maximized at $\Thet_0$. There are a few ways to prove this result, but I'll follow @takeshi1985advanced. The first proof seems to be due to @amemiya1973regression. Other great proofs are given by econometrician Xiaoxia Shi in [these notes](https://www.ssc.wisc.edu/~xshi/econ715/Lecture_3_consistency.pdf), and by @newey1994large.
 
 
-:::{.theorem name="Consistency of Extremum Estimators I" #excon}
+:::{#thm-excon}
+
+## Consistency of Extremum Estimators I
+
 Suppose there exists some (non-stochastic) function $Q_0(\thet)$ such that:
 
 1. $\thet_0 = \argmax_{\thet \in \Thet}Q_0(\thet)$;
@@ -305,7 +394,10 @@ This theorem applies to any metric space $\Thet$, not just subsets of Euclidean 
 
 Actually applying Theorem, which we would like to do \@ref(thm:excon) in Section \@ref(generalized-method-of-moments) and Section \@ref(maximum-likelihood-estimation), can be a bit tricky. On particular problem comes with the assumption that $\Thet$ is compact. This will not hold whenever $\Thet = \mathbb R^k$, which is the cases we've been most concerned with. Realistically, we could restrict our attention to some closed subset $\Thet' \subset \mathbb R^k$ in most applications. For example, if we're estimating a linear model where we want to estimate the returns of schooling to log earnings $\beta$, we can confidently assume $\beta \in [0, 10]$. There are situations where we cannot do this though, so we need a second consistency result holds in the absence of compactness.  
 
-:::{.theorem name="Consistency of Extremum Estimators II" #excon2}
+:::{#thm-excon2}
+
+## Consistency of Extremum Estimators II
+
 Suppose there exists some (non-stochastic) function $Q_0(\thet)$ such that:
 
 1. $\thet_0 = \argmax_{\thet \in \Thet}Q_0(\thet)$;
@@ -347,7 +439,7 @@ Suppose we have a model $\mathcal P$ with a parameterization $\mu : \Thet \to \m
 $$ \phi^{-1}(P) = \argmax_{\thet \in \Thet}Q_0(P, \thet).$$ If we wanted to reparameterize $\mathcal P$ with $\phi$ and maintain identification, then what conditions would $Q_0$ need to satisfy? It would need to be the case that $Q_0$ has a unique maximum (otherwise $\phi$ would assign multiple parameters to $P$ and we would not have identification), *and* that unique maximization needs to occur at true parameter $\theta = \mu^{-1}(P)$ associated with $P$:
 $$ \mu^{-1}(P) = \argmax_{\thet \in \Thet}Q_0(P, \thet).$$ This is precisely the first condition required for consistency! For more details about this, see @davidson1993estimation and @lewbel2019identification, the latter of which coined the term "extremum identification". A concrete example may illuminate the link between identification and $Q_0$ achieving a unique maximum at $\thet_0$
 
-:::{.example #olsEX}
+:::{#exm- #olsEX}
 Return to the classic linear model $\mathcal P_\text{LM}$ and the estimator $\OLS$. 
 $$ \OLS = \argmin_{\mathbf b} \sum_{i=1}^n(Y_i-\X_i\mathbf b)^2 = \argmax_{\mathbf b}\underbrace{ -\frac{1}{n}\sum_{i=1}^n(Y_i-\X_i\mathbf b)^2}_{Q_n}.$$
 By the law of large numbers $$ \underbrace{ -\frac{1}{n}\sum_{i=1}^n(Y_i-\X_i\mathbf b)^2}_{Q_n}\pto \underbrace{-\E{(Y - \X\mathbf b)^2}}_{Q_0}$$
@@ -360,14 +452,14 @@ Under what conditions is $Q_0$ uniquely maximized at the true parameter value $\
 Therefore $Q_0$ is uniquely maximized at the true parameter value $\bet$ when $\E{\X'\ep}=0$ and $\E{\X'\X}$ is invertible. These are precisely the same conditions which we determined identified $\mathcal P_\text{LM}$.
 :::
 
-:::{.example}
+:::{#exm-}
 Consider the linear projection model $\mathcal P_\text{LP}$ where $\bet$ was defined as 
 $$\bet =\argmax_{\mathbf b}-\E{(Y - \X\mathbf b)^2}$$ to begin with (opposed to $\bet$ having a structural interpretation like in $\mathcal P_\text{LM}$). The parameterization is already given by a maximization problem here! In this special case, we can think of an extremum estimator as originating from the analog principle, because $\OLS$ (when written as the solution to the maximization problem) is the sample analog to $\bet$. This model is identified when $\text{rank}\left(\E{\X'\X}\right) = K$, which has the roll of insuring that the maximization problem which defines $\bet$ has a unique solution. Once again, this is condition 1 in \@ref(thm:excon). 
 :::
 
 
 ::: {.hypothesis name="Consistency and Identification"}
-In general, consistency and identification are inherently related. Consider the classical linear model $\mathcal P_\text{LM}$ where $\bet = \E{\X'\X}^{-1}\E{\X'Y}$. The model is identified, so $\bet$ is unique to $P_{\bet, \sigma^2}\in\mathcal P$. Heuristically, we can think of identification as the ability to estimate the parameter perfectly at the population level with an infinite amount of data. If given an infinite amount of data, we could calculate the moments  $\E{\X'Y}$ and $\E{\X'\X}$, enabling us to calculate $\bet$.^[This is why @wooldridge2010econometric define parameterization in the context of linear models as "[the parameter] can be written in terms of population moments in observable variables".] We will never have infinite data, so the best we can do is define the sample analog of $\bet$ and $\OLS$, and appeal to the fact that as our sample size grows and approaches infinity, our estimates become arbitrarily better. This just happens to be consistency.  Formally, suppose under an assumed model value $P\in\mathcal P$ we have an estimator $\hat{\thet}$ with a unique limit in probability $\plim \hat{\thet}$. If we define the parameterization $\thet \mapsto P_{\thet}$ as $\thet = \plim \hat{\thet}$, then we've leveraged consistency such that  our model is identified by construction.
+In general, consistency and identification are inherently related. Consider the classic linear model $\mathcal P_\text{LM}$ where $\bet = \E{\X'\X}^{-1}\E{\X'Y}$. The model is identified, so $\bet$ is unique to $P_{\bet, \sigma^2}\in\mathcal P$. Heuristically, we can think of identification as the ability to estimate the parameter perfectly at the population level with an infinite amount of data. If given an infinite amount of data, we could calculate the moments  $\E{\X'Y}$ and $\E{\X'\X}$, enabling us to calculate $\bet$.^[This is why @wooldridge2010econometric define parameterization in the context of linear models as "[the parameter] can be written in terms of population moments in observable variables".] We will never have infinite data, so the best we can do is define the sample analog of $\bet$ and $\OLS$, and appeal to the fact that as our sample size grows and approaches infinity, our estimates become arbitrarily better. This just happens to be consistency.  Formally, suppose under an assumed model value $P\in\mathcal P$ we have an estimator $\hat{\thet}$ with a unique limit in probability $\plim \hat{\thet}$. If we define the parameterization $\thet \mapsto P_{\thet}$ as $\thet = \plim \hat{\thet}$, then we've leveraged consistency such that  our model is identified by construction.
 :::
 
 ## Asymptotic Normality 
@@ -376,7 +468,10 @@ Our next technical result is that $\EE$ happens to be root-n CAN under certain c
 $$ \frac{\partial Q_n}{\partial \mathbf b} = 2\Xm'(\Y -\Xm \mathbf b).$$ Once we move beyond linear models, it may be the case that the first order condition $\frac{\partial Q_n}{\partial \thet}$ is nonlinear and cannot be solved explicitly for $\EE$, even if we assume the first order condition has a unique root. The easiest way to handle this is using the mean value theorem to approximate the first order condition linearly (i.e a first order Taylor expansion). Doing this requires additional assumptions about $Q_n$, in particular assumptions about the existence of derivatives. Using the mean value theorem require continuous differentiability, but in our case we're going to apply it to the derivative $\frac{\partial Q_n}{\partial \thet}$, so we will need $Q_n$ to be twice continuous differentiability. This means our theorem will involve the hessian $\mathbf H(\thet)$ of $Q_n$.    
 
 
-:::{.theorem name="Asymptotic Normality of Extremum Estimators" #exasy}
+:::{#thm-exasy}
+
+## Asymptotic Normality of Extremum Estimators
+
 Suppose that:
 
 1. $\frac{\partial Q_n(\EE)}{\partial \thet} = o_p(n^{-1/2})$ (the FOC holds as $n\to\infty$);
@@ -496,7 +591,7 @@ Under $H_0$ we have $\nabla_\thet Q_n(\EER) = \zer$. Combining this with \@ref(e
 $$ n\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE})'\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\boldsymbol \Omega  \mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\right]^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE})'.$$
 In practice, we only know $H_0:\mathbf h(\thet) = \thet_0$, $Q_n$, and $\EER$, so we need to estimate $\boldsymbol \Omega$ and $\mathbf H(\thet_0)$. Once we substitute in suitable estimators, we have our Wald statistic for $H_0:\boldsymbol \lambda = \zer$, which is usually considered it's own seperate test statistic. 
 
-:::{.definition}
+:::{#def-}
 Suppose $\EE$ is an extremum estimator for which $\sqrt n \frac{\partial Q_n}{\partial \thet}(\thet_0) \dto N(\zer, \boldsymbol \Omega)$, and $\frac{\partial^2 Q_n}{\partial \thet\partial\thet'}(\thet_0) \pto \mathbf H(\thet_0)$.  If a null hypothesis $H_0$ is summarized by some (possibly nonlinear) function $\mathbf h(\thet) = \zer$ the <span style="color:red">**_Lagrange multiplier statistic_**</span> is defined as 
 $$ LM = n\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE})' \hat{\mathbf H}(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\hat{\mathbf H}(\thet_0)^{-1}\hat{\boldsymbol \Omega}\hat{\mathbf H}(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\right]^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\hat{\mathbf H}(\thet_0)^{-1}\frac{\partial Q_n}{\partial \thet}(\bar{\thet}_\text{EE}),$$ where $\EER$ is the extremum estimator subject to $H_0$.  The statistic is also known as the <span style="color:red">**_Rao test statistic_**</span> or <span style="color:red">**_score test statistic_**</span>
 :::
@@ -534,7 +629,7 @@ The limiting distribution is a quadratic form of normally distributed variables,
 $$\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1} \boldsymbol \Omega \mathbf H(\thet_0)^{-1} \frac{\partial \mathbf h}{\partial \thet}(\thet_0)' \neq  \frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'$$
 For this relation to hold with equality, we need to make an assumption about the relationship between $\mathbf H(\thet_0)$ and $\boldsymbol \Omega$. 
 
-:::{.definition}
+:::{#def-}
 Suppose $\EE$ is an extremum estimator for which $\sqrt n \frac{\partial Q_n}{\partial \thet}(\thet_0) \dto N(\zer, \boldsymbol \Omega)$, and $\frac{\partial^2 Q_n}{\partial \thet\partial\thet'}(\thet_0) \pto \mathbf H(\thet_0)$. In addition assume that there exists some scalar $c\in \mathbb R$ such that
 $$\boldsymbol \Omega = c \mathbf H(\thet_0),$$ giving and $\boldsymbol \Omega \propto \mathbf H(\thet_0)$. The equality associated with this assumption is the 
 <span style="color:red">**_generalized information matrix equality_**</span>. 
@@ -549,14 +644,17 @@ If we assume the generalized information matrix equality holds, then
 All we need to do is divide our statistic by $c$ to account for the proportionality. 
 $$\frac{2n}{c}[Q_n(\EE) - Q_n(\EER)]\dto N\left(\zer,\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}  \frac{\partial \mathbf h}{\partial \thet}(\thet_0)' \right)' \left[\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1}\frac{\partial \mathbf h}{\partial \thet}(\thet_0)'\right]^{-1} N\left(\zer,\frac{\partial \mathbf h}{\partial \thet}(\thet_0)\mathbf H(\thet_0)^{-1} \frac{\partial \mathbf h}{\partial \thet}(\thet_0)' \right) = \chi_q^2.$$
 
-:::{.definition}
+:::{#def-}
 Suppose $\EE$ is an extremum estimator for which $\sqrt n \frac{\partial Q_n}{\partial \thet}(\thet_0) \dto N(\zer, \boldsymbol \Omega)$, and $\frac{\partial^2 Q_n}{\partial \thet\partial\thet'}(\thet_0) \pto \mathbf H(\thet_0)$, and $\boldsymbol \Omega = c \mathbf H(\thet_0)$ for some $c < 0$. The <span style="color:red">**_distance metric statistic_**</span> for the null hypothesis $H_0$ is 
 $$DM = \frac{2n}{\hat c}[Q_n(\EE) - Q_n(\EER)],$$ where $\EER$ is the extremum estimator subject to $H_0$.
 :::
 
 Now we can formalize things into a theorem.
 
-:::{.theorem name="Equivelence of Testing Trinity" #trintest}
+:::{#thm-trintest}
+
+## Equivelence of Testing Trinity
+
 Let $H_0:\mathbf h(\thet) = \zer$ be some hypothesis where $\mathbf h:\Thet \to \mathbb R^q$ ($q \le \dim(\Thet) = K$), $\EE$ be an extremum estimator for $\thet$, and $\bar{\thet}_\text{EE}$ be the restricted extremum estimator for $\thet$ under $H_0$. Suppose:
 
 a. The function $\mathbf h(\thet)$ is continuously differentiable in a neighborhood of $\thet_0$;
@@ -631,7 +729,7 @@ Despite our trio of our test statistics being asymptotically equivalent, there a
 
 A particular class of extremum estimators that we will work with often define $Q_n$ to be a sample average of some function of the data.
 
-:::{.definition}
+:::{#def-}
 Suppose $\Wm = [\W_1,\ldots, \W_n]' \sim P_\thet$ where $P_\thet\in\mathcal P$ for a known model $\mathcal P$. An <span style="color:red">**_M-estimator_**</span> $\ME:\mathcal W\to \Thet$ is an extremum estimator where 
 \begin{align*}
  Q_n(\thet) &= \frac{1}{n}\sum_{i=1}^n m(\thet,\W_i),\\
@@ -697,7 +795,10 @@ If the LLN holds for these random quantities, then
 \end{align*}
 because $\ME \pto \thet_0$. The matrices of constants $\boldsymbol \Omega$ and $\mathbf H$ from Theorem \@ref(thm:exasy) now correspond to the variance of the mean-zero random vector $\mathbf S$ and expectation of random matrix $\Hm$, respectively. 
 
-:::{.theorem name="Estimating Asymptotic Variance for M-Estimators"}
+:::{#thm-}
+
+## Estimating Asymptotic Variance for M-Estimators
+
 Suppose $\ME$ is an M-estimator, and define 
 $$ \widehat{\text{Avar}}(\ME) = \frac{1}{n}\widehat{\E{\Hm}}^{-1}\widehat{\E{\mathbf S\mathbf S'}}\widehat{\E{\Hm}}^{-1} = \left[\sum_{i=1}^n {\Hm}_i(\ME, \W_i)\right]^{-1}\left[\sum_{i=1}^n {\mathbf S}_i(\ME, \W_i){\mathbf S}_i(\ME, \W_i)'\right]\left[\sum_{i=1}^n {\Hm}_i(\ME, \W_i)\right]^{-1}.$$ Then $\widehat{\text{Avar}}(\ME) \pto \avar{\ME}$.
 :::
@@ -706,8 +807,8 @@ $$ \widehat{\text{Avar}}(\ME) = \frac{1}{n}\widehat{\E{\Hm}}^{-1}\widehat{\E{\ma
 The consistency follows from the above derivation. If you factor out the $n$ terms from $\widehat{\E{\Hm}}^{-1}$ and $\widehat{\E{\mathbf S\mathbf S'}}$, they (including the $1/n$) will all cancel. 
 :::
 
-:::{.example name="OLS as an M-estimator"}
-Suppose we are estimating the classical linear model $\mathcal P_\text{LM}$ with $\OLS$. In this case we can partition the random vector $\W_i$ into $(\varepsilon_i,\X_i)$, where the model defines $Y_i = \X_i\bet + \varepsilon_i$. This is an M-estimator where 
+:::{#exm- name="OLS as an M-estimator"}
+Suppose we are estimating the classic linear model $\mathcal P_\text{LM}$ with $\OLS$. In this case we can partition the random vector $\W_i$ into $(\varepsilon_i,\X_i)$, where the model defines $Y_i = \X_i\bet + \varepsilon_i$. This is an M-estimator where 
 $$m(\bet, Y_i, \X_i) = -(Y_i - \X_i\bet)^2.$$
 We have 
 \begin{align*}
@@ -749,8 +850,8 @@ In the generalized information inequality holds when calculating $LM$, we have
 $$ LM = n\widehat{\E{\mathbf S(\bar{\thet}_\text{M})}}'\widehat{\text{E}}{[\mathbf S(\bar{\thet}_\text{M})\mathbf S(\bar{\thet}_\text{M})']}^{-1} \widehat{\E{\mathbf S(\bar{\thet}_\text{M})}}$$
 :::
 
-:::{.example #olstests}
-Let's employ our tests in the context of the classical linear model. In this case, let 
+:::{#exm- #olstests}
+Let's employ our tests in the context of the classic linear model. In this case, let 
 $$m_i(\bet, Y_i, \X_i) = -\frac{1}{2} \sum_{i=1}^n (Y_i - \X_i\bet)^2,$$ such that the 2s are eliminated when differentiating $m_i(\bet, Y_i, \X_i)$.
 
 First, let's confirm the generalized information inequality holds and that we can use the distance metric statistic. 
@@ -842,7 +943,7 @@ c(W, LM, DM)
 
 ### Nonlinear Least Squares
 
-We've generalized the classical linear model $\mathcal P_\text{LM}$ several ways. Section \@ref(endogeniety-i-iv-and-2sls) dropped the assumption $\E{\X'\ep}=\zer$ and introduced the model $\mathcal P_\text{IV}$. Section \@ref(generalized-least-squares) dropped the assumption $\E{\ep'\ep} =\sigma^2 \mathbf I$ and introduced the general linear regression model $\mathcal P_\text{GLRM}$. Section \@ref(endogeniety-ii-simultaneous-equation-models) extended the linear model by allowing for multiple "seemingly unrelated" linear models, $\mathcal P_\text{SUR}$. In each of these case, we assumed the structural relationship between the dependent variable and regressors was linear. Let's now drop this assumptions. 
+We've generalized the classic linear model $\mathcal P_\text{LM}$ several ways. Section \@ref(endogeniety-i-iv-and-2sls) dropped the assumption $\E{\X'\ep}=\zer$ and introduced the model $\mathcal P_\text{IV}$. Section \@ref(generalized-least-squares) dropped the assumption $\E{\ep'\ep} =\sigma^2 \mathbf I$ and introduced the general linear regression model $\mathcal P_\text{GLRM}$. Section \@ref(endogeniety-ii-simultaneous-equation-models) extended the linear model by allowing for multiple "seemingly unrelated" linear models, $\mathcal P_\text{SUR}$. In each of these case, we assumed the structural relationship between the dependent variable and regressors was linear. Let's now drop this assumptions. 
 
 Suppose we posit that $Y$ is related to regressors $\X$ and parameters $\bet$ through some deterministic relationship given by a function $f(\X, \bet)$. We can add a structural error such that $Y_i = g(\X_i,\bet) + \varepsilon_i$, or $$ \Y = \mathbf g(\Xm,\bet) + \ep$$ where $\mathbf g$ is a vector-valued function of $n$ copies of $f$. An element of our model $\mathcal P$ will contain elements $P$ which are collections of joint distributions $F_{\Xm,\ep}$ satisfying some common conditions. We also want our model to reduce to $\mathcal P_\text{LM}$ in the event that $\mathbf g(\Xm,\bet) = \Xm\bet$. Two of the assumptions of the $\mathcal P_\text{LM}$ are pretty easy as we can replace $\Xm$ with $\mathbf g(\Xm,\bet) $:
 
@@ -851,8 +952,8 @@ Suppose we posit that $Y$ is related to regressors $\X$ and parameters $\bet$ th
 
 The one assumption of $\mathcal P_\text{LM}$ that takes some thought to generalize is $\text{rank}\left(\E{\X'\X}\right) = K$. What role did this assumption play in the linear model? It made sure that $\bet \neq \bet'$ whenever $\X\bet \neq \X\bet'$, as $\bet$ satisfies $\E{\X'\ep} = \bet \E{\X'\X}$ in this case. In the event $g(\X_i,\bet) = \X_i\bet$ for $i = 1,\ldots,n$, then this condition ensures that $\bet \neq \bet'$ implies $g(\X_i,\bet) \neq g(\X_i,\bet')$ for all $i$. This will be the analogous condition -- $\bet \neq \bet'$ implies $g(\X_i,\bet) \neq g(\X_i,\bet')$. 
 
-:::{.definition}
-The <span style="color:red">**_(classical) nonlinear model_**</span> is defined as $\mathcal P_\text{NLM} = \{P_{\bet,\sigma^2} \mid \bet \in \mathbb R^{K}, \sigma^2\in\mathbb R\}$, where 
+:::{#def-}
+The <span style="color:red">**_(classic) nonlinear model_**</span> is defined as $\mathcal P_\text{NLM} = \{P_{\bet,\sigma^2} \mid \bet \in \mathbb R^{K}, \sigma^2\in\mathbb R\}$, where 
 \begin{align*}
 P_{\bet,\sigma^2} &= \{F_{\Xm,\ep} \mid \Y = \mathbf g(\Xm,\bet) + \ep, \ \E{\ep'\ep\mid \mathbf g(\Xm,\bet)}=\sigma^2\mathbf I, \ f_{\Xm}=\textstyle\prod_{i=1}^n f_{\X_i}, \bet\neq\bet' \implies \mathbf g(\Xm,\bet) \neq \mathbf g(\Xm,\bet'),\ \E{\ep \mid \mathbf g(\Xm,\bet)} = \zer\},\\
 \Xm & = [\X_1, \cdots, \X_j, \cdots \X_K] = [\X_1, \cdots, \X_i, \cdots \X_n]',\\
@@ -863,19 +964,52 @@ for a known function $\mathbf g(\Xm, \bet)$.
 
 This definition of the model assumes that we've correctly specified $\mathbf g(\Xm, \bet)$, just like how the linear model assumed that the relationship between $\Y$ and $\Xm$ was actually $\Y = \Xm\bet + \ep$. For $\mathcal P_\text{NLM}$ this assumption is much stronger. We are not only assuming that the model contains the correct independent variables, but we are also assuming the relationship $\mathbf g(\Xm, \bet)$ is correct. The natural estimator for the nonlinear model is nonlinear least squares. 
 
-:::{.definition}
+:::{#def-}
 The <span style="color:red">**_nonlinear least squares estimator_**</span> is defined as 
 $$ \NLS(\Xm, \Y) = \argmin_\bet\frac{1}{n}\sum_{i=1}^n(Y_i - g(\X_i,\bet))^2 $$
 :::
 
-This estimator is an M-estimator where $m(\bet, Y_i, \X_i) = -\(Y_i - g(\X_i,\bet))^2$, and $$Q_0 = \plim -\frac{1}{n}\sum_{i=1}^n(Y_i - g(\X_i,\bet))^2= - \E{Y - g(\X, \bet)}$$
+This estimator is an M-estimator where $m(\bet, Y_i, \X_i) = -(Y_i - g(\X_i,\bet))^2$, and $$Q_0 = \plim -\frac{1}{n}\sum_{i=1}^n(Y_i - g(\X_i,\bet))^2= - \E{Y - g(\X, \bet)}$$
 
+
+:::{#exm-}
+
+$$ g(x_i, \bet) = \beta_1 + \tanh(x^{\beta_2})\sin(\beta_3x) $$
+$$ \frac{\partial g}{\partial \bet} = \begin{bmatrix} 1\\x^{\beta_2}\ln(x)\sech^2(x^{\beta_2})\sin(\beta_3x) \\ \tanh(x^{\beta_2})\cos(\beta_3x) \end{bmatrix}$$
+
+```{r}
+n <- 1000
+x <- runif(n, -5, 5)
+e <- rnorm(n, 0, 1)
+beta <- c(2, 10)
+g <- function(beta, x){
+  beta[1]*tanh(beta[2]*x)
+}
+y <- g(beta, x) + e
+```
+
+```{r}
+tibble(y, x) %>% 
+  ggplot(aes(x, y)) +
+  geom_point(size = 0.5) +
+  geom_function(fun = g, args = list(beta = beta), color = "red") + 
+  theme_minimal()
+```
+
+
+```{r}
+model <- nls(y ~ a*tanh(b*x), start = c(a = 1, b = 1), control = list(maxiter = 500, tol = 1e-7))
+predict(model)
+```
+
+
+:::
 
 ### Least Absolute Deviations
 
 ## Minimum Distance Estimators
 
-:::{.definition}
+:::{#def-}
 Suppose $\Wm = [\W_1,\ldots, \W_n]' \sim P_\thet$ where $P_\thet\in\mathcal P$ for a known model $\mathcal P$. A <span style="color:red">**_minimum distance estimator_**</span> $\MDE:\mathcal W\to \Thet$ is an extremum estimator where 
 \begin{align*}
 Q_n(\thet) &= -[\hat {\boldsymbol \pi} - \mathbf g(\thet)]'\boldsymbol \Phi [\hat {\boldsymbol \pi}- \mathbf g(\thet)],\\
@@ -887,6 +1021,47 @@ for some sample statistic $\hat {\boldsymbol \pi}$ satisfying $\hat {\boldsymbol
 ## Recap
 
 ## Example/Replication 
+
+Based on Example 7.6 of @greene2003econometric.
+
+
+```{r}
+df <- read_csv("data/nonlinear_consumption.csv", show_col_types = FALSE)
+C = df$REALCONS
+Y = df$REALDPI
+
+linear <- lm(C ~ Y) %>% 
+  summary()
+
+theta_start <- c(
+  α = linear$coefficients[1,1], 
+  β = linear$coefficients[2,1], 
+  γ = 1
+)
+
+nonlinear <- nls(C ~ α + β*Y^γ,
+  start = theta_start,
+  control = list(maxiter = 500, tol = 1e-7)
+)
+```
+
+```{r}
+nls_function <- function(x){
+  coef(nonlinear)[1] + coef(nonlinear)[2]*x^coef(nonlinear)[3]
+}
+
+df %>% 
+  ggplot(aes(REALDPI, REALCONS)) +
+  geom_smooth(method = lm, se = F, size = 0.5, aes(color = "Linear Model")) +
+  stat_function(fun = nls_function, size = 0.5, aes(color = "Nonlinear Model")) + 
+  geom_point(size = 0.5) +
+  theme_minimal() +
+  scale_color_manual(name = "", values=c("red", "blue")) +
+  labs(x = "Y, Income", y = "C, Consumption") + 
+  theme(legend.position = "bottom")
+```
+
+
 
 ## Futher Reading
 

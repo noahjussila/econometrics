@@ -74,6 +74,7 @@
 library(tidyverse)
 library(mvtnorm)
 library(numDeriv)
+library(gganimate)
 ```
 
 Until now, we've focused on point estimation, but that's only half the picture when it comes to statistics. The other half is inference. How do we test hypotheses about the true $\thet_0$, and make inferences about the underling data generating process $P_{\thet_0}\in \mathcal P$? An exhaustive treatment of inference is due to @lehmann2005testing, while @bickel2015mathematical offer an equally technical, yet briefer, treatment. 
@@ -117,7 +118,7 @@ Suppose $\mathcal P$ is the collection of normal distributions with known varian
 H_0:&\mu \le \mu_0\\
 H_1:&\mu > \mu_0
 \end{align*} In this case, the null hypothesis is often abbreviated as $H_0: \mu = \mu_0$. Our hypothesis has partitions our parameter space $\Theta = \mathbb R$ into $\Theta_0 = (-\infty,\mu_0]$ and $\Theta_1 = (\mu_0,\infty)$. Define a statistic $$T(\X) = \frac{\bar X - \mu_0}{\sigma/\sqrt n} = \frac{\frac{1}{n}\sum_{i=1}^nX_i - \mu_0}{\sigma/\sqrt n},$$ and a critical region $C = [1.645,\infty)$. Our decision rule $\delta$ takes the form 
-$$\delta(\X) = \begin{cases} (-\infty,\mu_0] & T(\X) < 1.645 \\ (\mu_0,\infty) & T(\X) \ge 1.645 \end{cases},$$ which is  written succinctly as $\delta(\X) = 1[T(\X) \ge 1.645 ]$ if we take $\mathcal A = \{0,1\}$
+$$\delta(\X) = \begin{cases} (-\infty,\mu_0] & T(\X) < 1.645 \\ (\mu_0,\infty) & T(\X) \ge 1.645 \end{cases},$$ which is  written succinctly as $\delta(\X) = I[T(\X) \ge 1.645 ]$ if we take $\mathcal A = \{0,1\}$
 ::: 
 
 
@@ -247,35 +248,115 @@ tibble(
   scale_color_manual(values = c("red", "green", "black")) + 
   theme(legend.position = "bottom")
 ```
-To make this more concrete, we can perform a Monte Carlo simulation for fixed values of $\mu_0$, $\mu$, $\sigma^2$, and $n$. For all simulations, let's fix $\mu_0 = 2$, $n = 100$ and $\sigma^2 =1$. First, assume $\mu = \mu_0 = 2$, and record $\delta(\X)$ for 100,000 simulations. In this case we should expect to make the correct decision (fail to reject the null hypothesis) about 5% of the time, as the size of our test is $\alpha = 0.05$ which corresponds to the maximum level which occurs at $\mu = \mu_0$. 
+To make this more concrete, we can perform a Monte Carlo simulation for fixed values of $\mu_0$, $\mu$, $\sigma^2$, and $n$. For all simulations, let's fix $\mu_0 = 2$, $n = 100$ and $\sigma^2 =1$. First, assume $\mu = \mu_0 = 2$, and record $\delta(\X)$ for 100,000 simulations. In this case we should expect to make the correct decision (fail to reject the null hypothesis) about 95% of the time, as the size of our test is $\alpha = 0.05$ which corresponds to the maximum level which occurs at $\mu = \mu_0$. 
 
 ```{r}
-N_sim <- 1e5
-mu_0 <- 2
-n <- 100
-sigma <- 1
-
-test_stat <- function(X){
-  (mean(X)-mu_0)/(sigma/sqrt(n))
-}
-decision <- function(X){
-  test_stat(X) >= 1.645
+test_stat <- function(X, mu_0, sigma){
+  n <- length(X)
+  output <- (mean(X)-mu_0)/(sigma/sqrt(n))
+  return(output)
 }
 
-mu <- 2
-simulated_decisions <- sapply(1:N_sim, FUN = function(k){decision(rnorm(n, mu, sigma))}) 
-table(simulated_decisions)
-mean(simulated_decisions)
+# Supply critical region as a list of bounds, ex: list(c(-Inf, -3), c(0, 1), c(3, Inf))
+delta <- function(test_stat, critical_region, X, mu_0, sigma){
+  stat <- test_stat(X, mu_0, sigma)
+  # determine if the test stat falls within any of the interval comprising the critical region
+  decision <- critical_region %>% 
+    map_lgl(\(bounds) between(stat, bounds[1], bounds[2])) %>% 
+    sum() %>% 
+    as.logical()
+  
+  output <- tibble(
+    stat = stat,
+    decision = decision,
+    H_0 = mu_0
+  )
+  return(output)
+}
+
+test_iter <- function(delta, test_stat, critical_region, mu_0, sigma, n, dist, dist_params, s){
+  X <- do.call(dist, append(n, dist_params))
+  output <- delta(test_stat, critical_region, X, mu_0, sigma) %>% 
+    mutate(iter = s)
+  return(output)
+}
+
+test_sim <- function(N, delta, test_stat, critical_region, mu_0, sigma, n, dist, dist_params){
+  output <- 1:N %>% 
+    map(
+      test_iter, 
+      delta = delta, 
+      test_stat = test_stat, 
+      critical_region = critical_region, 
+      mu_0 = mu_0, 
+      sigma = sigma,
+      n = n, 
+      dist = dist, 
+      dist_params = dist_params
+    ) %>% 
+    bind_rows()
+  return(output)
+}
+
+results <- test_sim(
+  N = 1e3, ## update to 1e5
+  delta = delta, 
+  test_stat = test_stat, 
+  critical_region = list(c(1.645, Inf)), 
+  mu_0 = 2, 
+  sigma = 1, 
+  n = 100, 
+  dist = rnorm, 
+  dist_params = list(2, 1)
+)
+
+results %>% 
+  group_by(decision) %>% 
+  count()
+
+mean(results$decision)
 ```
 
 This simulation calculated the power of our test given $\mu$. Let's define the power function using this simulation, and calculate the power for $\mu\in[1.8,2.4]$
 
 ```{r}
-power <- function(mu){
-  simulated_decisions <- sapply(1:N_sim, FUN = function(k){decision(rnorm(n, mu, sigma))})
-  mean(simulated_decisions)
+# This function assumes dist = rnorm and dist_params = list(mu, 1)
+power <- function(mu, N, delta, test_stat, critical_region, mu_0, sigma, n){
+  dist <- rnorm
+  dist_params <- list(mu, sigma)
+  output <- test_sim(N, delta, test_stat, critical_region, mu_0, sigma, n, dist, dist_params) %>% 
+    summarize(
+      simulated_power = mean(decision),
+      t = mu
+    )
 }
-power_curve <- sapply(seq(1.8, 2.4, length = 25), power)
+
+power_curve <- function(domain, N, delta, test_stat, critical_region, mu_0, sigma, n){
+  output <- domain %>% 
+    map(
+      power,
+      N = N,
+      delta = delta,
+      test_stat = test_stat,
+      critical_region = critical_region,
+      mu_0 = mu_0,
+      sigma = sigma,
+      n = n
+    ) %>% 
+    bind_rows()
+  return(output)
+}
+
+results <- power_curve(
+  domain = seq(1.8, 2.4, length = 25), 
+  N = 1e2, ## update to 1e4
+  delta = delta, 
+  test_stat = test_stat, 
+  critical_region = list(c(1.645, Inf)), 
+  mu_0 = 2, 
+  sigma = 1, 
+  n = 100
+)
 ```
 
 We can plot this simulated power curve over the theoretical curve we calculated for a general $\mu_0$ (see @fig-power).^[This requires us to reparameterize the domain of the theoretical curve in terms of $\mu$ instead of $t$.]
@@ -288,9 +369,11 @@ We can plot this simulated power curve over the theoretical curve we calculated 
 #| fig-width: 8
 #| fig-cap: "Simulated power function on the interval [1.8, 2.4] using 10,000 simulations for each point."
 #| code-summary: "Show code which generates figure"
-df <- tibble(t = seq(1.8, 2.4, length = 25),
-                 y = power_curve,
-                 group = "Simulated Power")
+df <- results %>% 
+  mutate(
+    y = simulated_power,
+    group = "Simulated Power",
+  ) 
 
 tibble(
   t = seq(1.8, 2.4, length = 1000),
@@ -299,7 +382,7 @@ tibble(
   mutate(y = pnorm(-1.645 + (t-2)/(1/10) )) %>%
   bind_rows(data.frame(t =c(1.8,2), y = c(0,0), group = "H0 True, μ < μ0")) %>%
   bind_rows(data.frame(t =c(2,2.4), y = c(0,0), group = "H1 True, μ > μ0")) %>%
-  ggplot(aes(t,y, color = group)) +
+  ggplot(aes(t, y, color = group)) +
   geom_line() +
   geom_point(data = df, size = 1.5) +
   theme_minimal() +
@@ -521,7 +604,7 @@ So how large does this ratio need to be such that we reject the null hypothesis?
 
 Let's see the Neyman-Pearson Lemma in action. 
 
-:::{#exm- #npnorm}
+:::{#exm-npnorm}
 Suppose $X_i \iid N(\mu,\sigma^2)$ for a known $\sigma^2$, and 
 \begin{align*}
 H_0:\mu=\mu_0,\\
@@ -568,29 +651,24 @@ This gives the decision rule
 To confirm these three test are equivalent, let's simulate the decision rule for $H_0:\mu = 0$ versus $H_1: \mu = 3$, where $\sigma^2 = 1$, $n = 100$, $\alpha = 0.05$, and null hypothesis $\mu = 0$ is true. Not only should the tests agree for each simulation, but we should also see that we reject the null hypothesis (commit a type I error) with probability $\alpha$.
 
 ```{r}
-N_sim <- 100000
-mu0 <- 0
-mu1 <- 3
-mu <- 0
-n <- 100
-sigma <- 1
-alpha = 0.05
-
-sample_mean_test <- function(X){
+sample_mean_test <- function(X, mu0, alpha, sigma){
+  n <- length(X)
   test_stat <- function(X) {
     mean(X)
   }
   test_stat(X) > mu0 + qnorm(1-alpha)*(sigma/sqrt(n))    
 }
 
-z_score_test <- function(X){
+z_score_test <- function(X, mu0, alpha, sigma){
+  n <- length(X)
   test_stat <- function(X) {
     (mean(X) - mu0)/(sigma/sqrt(n))
   }
   test_stat(X) > qnorm(1-alpha)   
 }
 
-likelihood_ratio_test <- function(X){
+likelihood_ratio_test <- function(X, mu0, mu1, alpha, sigma){
+  n <- length(X)
   test_stat <- function(X) {
     prod(dnorm(X, mu1, sigma)) / prod(dnorm(X, mu0, sigma))
   }
@@ -598,23 +676,41 @@ likelihood_ratio_test <- function(X){
   test_stat(X) > eta
 }
 
-mean_decisions <- vector("numeric", N_sim)
-z_decisions <- vector("numeric", N_sim)
-likelihood_decisions <- vector("numeric", N_sim)
-
-for (k in 1:N_sim) {
-  X <- rnorm(n, mu, sigma)
-  mean_decisions[k] <- sample_mean_test(X)
-  z_decisions[k] <- z_score_test(X)
-  likelihood_decisions[k] <- likelihood_ratio_test(X)
+iter <- function(mu0, mu1, alpha, sigma, n, dist, dist_params, s){
+  X <- do.call(dist, append(n, dist_params))
+  output <- tibble(
+    smt = sample_mean_test(X, mu0, alpha, sigma),
+    zst = z_score_test(X, mu0, alpha, sigma),
+    lrt = likelihood_ratio_test(X, mu0, mu1, alpha, sigma),
+    iter_num = s
+  )
+  return(output)
 }
 
+sim <- function(N, mu0, mu1, alpha, sigma, n, dist, dist_params){
+  output <- 1:N %>% 
+    map(
+      iter, 
+      mu0 = mu0, 
+      mu1 = mu1, 
+      alpha = alpha, 
+      sigma = sigma, 
+      n = n, 
+      dist = dist, 
+      dist_params = dist_params
+    ) %>% 
+    bind_rows()
+  return(output)
+}
+
+results <- sim(1e5, 0, 3, 0.05, 1, 100, rnorm, list(0,1))
+
 #If all decisions were the same, this should be 1
-mean(z_decisions == mean_decisions)
-mean(z_decisions == likelihood_decisions)
+results %>% 
+  summarize(prob = mean(smt == zst & zst == lrt))
 
 #Check number of rejections of the true null hypothesis
-mean(z_decisions)
+mean(results$smt)
 ```
 This example is particularly special, because we were able to write the most powerful test in a form that did not depend on $\mu_1$:
 $$\delta(\X) =\begin{cases}\mu_0 & \frac{\bar X - \mu_0}{\sigma/\sqrt n} > \Phi^{-1}(1-\alpha) \\ \mu_1 & \frac{\bar X - \mu_0}{\sigma/\sqrt n} < \Phi^{-1}(1-\alpha) \end{cases}$$ The test statistic and critical region do not depend on $\mu_1$, so this test is the most powerful test for any alternative $\mu_1 > \mu_0$. This means that this test is the most powerful test for any hypothesis of the form $H_0:\mu = \mu_0$ versus $\mu \ge \mu_0$. In fact, we can even go one step further -- this test is the most powerful test for any hypotheses of the form $H_0:\mu\le \mu_0$ versus $H_1:\mu > \mu_0$! Consider testing $H_0:\mu = \mu_0$ versus $H_1:\mu \ge \mu_0$, and testing the modified hypothesis $H_0':\mu = \mu_0'$ versus $H_1':\mu \ge \mu_0'$, where $\mu_0'<\mu_0$.
@@ -644,37 +740,29 @@ The power of the tests are
 Both tests have the same power, and same size, so $\delta$ is the most powerful test for any $H_0':\mu \neq \mu_0'$ versus $H_1':\mu > \mu_0'$ where $\mu_0'<\mu_0$. We can confirm this with simulations:
 
 ```{r}
-N_sim <- 100000
-mu0 <- 3
-mu0_prime <- 2.7
-n <- 100
-sigma <- 1
-alpha <- 0.05
-c <- (mu0_prime - mu0)/(sigma / sqrt(100)) - qnorm(alpha)
-c_prime <- -qnorm(alpha)
+curve <- power_curve(
+  domain = seq(2.6, 3.3, length = 10), ## update to 40
+  N = 1e3, ## update to 1e4
+  delta = delta, 
+  test_stat = test_stat,
+  critical_region = list(c(-qnorm(0.05), Inf)),
+  mu_0 = 2.7,
+  sigma = 1, 
+  n = 100
+) %>% 
+  mutate(decision = "δ")
 
-delta <- function(X){
-  (mean(X)-mu0)/(sigma/sqrt(n)) > c
-}
-delta_prime <- function(X){
-  (mean(X)-mu0_prime)/(sigma/sqrt(n)) > c_prime
-}
-
-#Verify that alpha < alpha' by simulating at mu = mu0'
-decisions <- sapply(1:N_sim, function(t) delta(rnorm(n, mu0_prime, sigma)))
-decisions_prime <- sapply(1:N_sim, function(t) delta_prime(rnorm(n, mu0_prime, sigma)))
-
-mean(decisions_prime) #should be ≈ alpha'
-mean(decisions) #should be ≈ alpha
-
-N_sim <- 10000
-
-power <- function(mu, decision_rule){
-  simulated_decisions <- sapply(1:N_sim, FUN = function(k){decision_rule(rnorm(n, mu, sigma))})
-  mean(simulated_decisions)
-}
-power_curve <- sapply(seq(2.6, 3.3, length = 40), power, decision_rule = delta)
-power_curve_prime <- sapply(seq(2.6, 3.3, length = 40), power, decision_rule = delta_prime)
+curve_prime <- power_curve(
+  domain = seq(2.6, 3.3, length = 10), ## update to 40
+  N = 1e3 , ## update to 1e4
+  delta = delta, 
+  test_stat = test_stat,
+  critical_region = list(c((2.7 - 3)/(1 / sqrt(100)) - qnorm(0.05), Inf)),
+  mu_0 = 3,
+  sigma = 1, 
+  n = 100
+) %>% 
+  mutate(decision = "δ'")
 ```
 
 ```{r}
@@ -685,17 +773,14 @@ power_curve_prime <- sapply(seq(2.6, 3.3, length = 40), power, decision_rule = d
 #| fig-width: 8
 #| fig-cap: "Simulated power curve for the two null hypotheses"
 #| code-summary: "Show code which generates figure"
-tibble(
-  x = rep(seq(2.6, 3.3, length = 40), 2),
-  y = c(power_curve, power_curve_prime), 
-  decision = c(rep("δ", 40), rep("δ'", 40))
-) %>% 
-  ggplot(aes(x, y, color = decision)) + 
-  geom_line() + 
+curve %>% 
+  bind_rows(curve_prime) %>% 
+  ggplot(aes(t, simulated_power, color = decision)) +
+  geom_line() +
   scale_color_manual(values = c("blue", "red")) +
   theme_minimal() +
   labs(x = "μ", y = "Simulated Power", color = "") +
-  theme(legend.position = "bottom") 
+  theme(legend.position = "bottom")
 ```
 
 
@@ -870,22 +955,87 @@ $$\delta(\X) = \begin{cases} \sigma^2 < \sigma_0^2 & \sum_{i=1}^n\left(\frac{X_i
 \end{cases}$$
 
 ```{r}
-N_sim <- 10000
-mu <- 0
-n <- 100
-sigma0 <- 1
-alpha <- 0.05
-c <- qchisq(alpha, n)
-
-delta <- function(X){
-  sum(((X - mu)/sigma0)^2) < c
+test_stat <- function(X, mu, sigma_0){
+  sum(((X - mu)/sigma_0)^2)
 }
 
-power <- function(sigma, decision_rule){
-  simulated_decisions <- sapply(1:N_sim, FUN = function(k){decision_rule(rnorm(n, mu, sigma))})
-  mean(simulated_decisions)
+delta <- function(test_stat, critical_region, X, mu, sigma_0){
+  stat <- test_stat(X, mu, sigma_0)
+  decision <- critical_region %>% 
+    map_lgl(\(bounds) between(stat, bounds[1], bounds[2])) %>% 
+    sum() %>% 
+    as.logical()
+  
+  output <- tibble(
+    stat = stat,
+    decision = decision,
+    H_0 = sigma_0
+  )
+  return(output)
 }
-power_curve <- sapply(seq(0.65, 1.2, length = 40), power, decision_rule = delta)
+
+test_iter <- function(delta, test_stat, critical_region, mu, sigma_0, n, dist, dist_params, s){
+  X <- do.call(dist, append(n, dist_params))
+  output <- delta(test_stat, critical_region, X, mu, sigma_0) %>% 
+    mutate(iter = s)
+  return(output)
+}
+
+test_sim <- function(N, delta, test_stat, critical_region, mu, sigma_0, n, dist, dist_params){
+  output <- 1:N %>% 
+    map(
+      test_iter, 
+      delta = delta, 
+      test_stat = test_stat, 
+      critical_region = critical_region, 
+      mu = mu, 
+      sigma_0 = sigma_0,
+      n = n, 
+      dist = dist, 
+      dist_params = dist_params
+    ) %>% 
+    bind_rows()
+  return(output)
+}
+
+# This function assumes dist = rnorm and dist_params = list(0, sigma)
+power <- function(sigma, N, delta, test_stat, critical_region, mu, sigma_0, n){
+  dist <- rnorm
+  dist_params <- list(mu, sigma)
+  output <- test_sim(N, delta, test_stat, critical_region, mu, sigma_0, n, dist, dist_params) %>% 
+    summarize(
+      simulated_power = mean(decision),
+      t = sigma
+    )
+  return(output)
+}
+
+power_curve <- function(domain, N, delta, test_stat, critical_region, mu, sigma_0, n){
+  output <- domain %>% 
+    map(
+      power,
+      N = N,
+      delta = delta,
+      test_stat = test_stat,
+      critical_region = critical_region,
+      mu = mu,
+      sigma_0 = sigma_0,
+      n = n
+    ) %>% 
+    bind_rows()
+  return(output)
+}
+
+results <- power_curve(
+  domain = seq(0.65, 1.2, length = 10), ## change length to 40
+  N = 1e3, ## change to 1e4
+  delta = delta,
+  test_stat = test_stat,
+  critical_region = list(c(0, qchisq(0.05, 100))),
+  mu = 0,
+  sigma_0 = 1,
+  n = 100
+)
 ```
 
 ```{r}
@@ -896,11 +1046,8 @@ power_curve <- sapply(seq(0.65, 1.2, length = 40), power, decision_rule = delta)
 #| fig-width: 8
 #| fig-cap: "Power curve associated with the liklihood ratio for variance"
 #| code-summary: "Show code which generates figure"
-tibble(
-  x = seq(0.65, 1.2, length = 40), 
-  y = power_curve
-) %>% 
-  ggplot(aes(x,y)) +
+results %>% 
+  ggplot(aes(t, simulated_power)) + 
   geom_line() +
   theme_minimal() +
   labs(x = "Alternate σ", y = "Power")
@@ -965,43 +1112,48 @@ $$T(\X) = \frac{\bar X - \mu_0}{s/\sqrt n}$$
 By replacing $\sigma$ with $s$, we now have $T(\X)\not\sim N(0,1)$, so we can no longer define the critical region using $\Phi^{-1}$. Instead we have $T(\X)\sim t_{n-1}$,^[This follows from the definition of the student's $t$-distribution.] so we can still test $H_0$ versus $H_1$. This new test is the classic **_(student's) $t-$test_**, and we usually write the test statistic as $t = T(\X)$. 
 $$\delta(\X) = \begin{cases} \mu \neq \mu_0& \abs{\frac{\bar X - \mu_0}{s/\sqrt n}} \ge t_{n-1}^{-1}(1-\alpha/2)\\ \mu = \mu_0 & \abs{\frac{\bar X - \mu_0}{s/\sqrt n}} < t_{n-1}^{-1}(1-\alpha/2)\end{cases} $$
 
-But does this difference in distribution really matter? In Section \@ref(asymptotic-properties-of-estimators), one example highlighted that if $Y \sim t_{n}$, then $Y\dto N(0,1)$. This means that $t\dto Z$, and the $t-$test is asymptotically equivalent to the $z-$test. To illustrate this, suppose $X_i \sim N(4,1)$, $H_0:\mu = 2$, and $H_1:\mu \neq 2$. For $\alpha = 0.01$, we can compare the results of the two tests as $n$ increases.
+But does this difference in distribution really matter? In Section \@ref(asymptotic-properties-of-estimators), one example highlighted that if $Y \sim t_{n}$, then $Y\dto N(0,1)$. This means that $t\dto Z$, and the $t-$test is asymptotically equivalent to the $z-$test. To illustrate this, suppose $X_i \iid N(4,1)$, $H_0:\mu = 2$, and $H_1:\mu \neq 2$. For $\alpha = 0.01$, we can compare the results of the two tests as $n$ increases.
 
 ```{r}
-N_sim <- 10000
-mu_0 <- 2
-mu <- 4
-sigma <- 1
-alpha <- 0.01
-
 #Define t-test
-t_test <- function(X){
+t_test <- function(X, mu_0, alpha){
   n <- length(X)
   T_stat <- (mean(X) - mu_0)/(sd(X)/sqrt(n))
   abs(T_stat) > qt(1 - alpha/2, df = n - 1)
 }
 
 #Define an "incorrect" z-test using the sample standard deviation
-z_test <- function(X){
+z_test <- function(X, mu_0, alpha){
   n <- length(X)
   Z <- (mean(X) - mu_0)/(sd(X)/sqrt(n))
   abs(Z) > qnorm(1 - alpha/2)
 }
 
-#Define a function which compares the two decision rules for a sample size n over 10000 simulations
-compare_tests <- function(n){
-  output <- vector("numeric", N_sim)
-  for (k in 1:N_sim) {
-    X <- rnorm(n, mu, sigma)
-    #Do the tests agree?
-    output[k] <- t_test(X) == z_test(X)
-  }
-  #Return the % of simulations where the tests agreed
-  mean(output)
+iter <- function(alpha, mu_0, n, mu, sigma, t){
+  X <- rnorm(n, mu, sigma)
+  output <- tibble(
+    iter_num = t,
+    agree = (t_test(X, mu_0, alpha) == z_test(X, mu_0, alpha))
+  )
+  return(output)
 }
 
-#Compare the tests for various choices of sample size
-results <- sapply(2:15, compare_tests)
+sim <- function(N, alpha, mu_0, n, mu, sigma){
+  output <- 1:N %>% 
+    map(iter, alpha = alpha, mu_0 = mu_0, n = n, mu = mu, sigma = sigma) %>% 
+    bind_rows() %>% 
+    mutate(sample_size = n)
+  return(output)
+}
+
+outer_sim <- function(n_vals, N, alpha, mu_0, mu, sigma){
+  output <- n_vals %>% 
+    map(sim, N = N, alpha = alpha, mu_0 = mu_0, mu = mu, sigma = sigma) %>% 
+    bind_rows()
+  return(output)
+}
+
+results <- outer_sim(2:15, 1e4, 0.01, 2, 4, 1)
 ```
 
 
@@ -1013,11 +1165,10 @@ results <- sapply(2:15, compare_tests)
 #| fig-width: 8
 #| fig-cap: "As the sample size increases, the frequency at which the Z-test and t-test agree increase"
 #| code-summary: "Show code which generates figure"
-tibble(
-  x = 2:15, 
-  y = results
-) %>% 
-  ggplot(aes(x,y)) +
+results %>% 
+  group_by(sample_size) %>% 
+  summarize(prop = sum(agree)/n()) %>% 
+  ggplot(aes(sample_size, prop)) +
   geom_point() +
   theme_minimal() +
   labs(x = "Sample Size, n", y = "Frequency of Tests Agreeing over 10000 Simulations")
@@ -1036,21 +1187,40 @@ $$P_\mu = \left\{f_\X(\x)\ \Bigg|\ f_\X(\x) = \prod_{i=1}^n f_{X_i}(x) \text{ an
 $$ t = \frac{(\bar X - \mu_0)}{S/\sqrt{n}} = \frac{\sqrt{n}(\bar X - \mu_0)}{S}  \dto  \frac{N(0,\sigma^2)}{S} = t_{n-1}.$$ Even though we do not know the actual distribution of $T$, we know the asymptotic distribution, and can calculate critical regions when $n$ is sufficiently large. To demonstrate this, let's simulate $\Pr(T\in C\mid \mu=\mu_0)$ for $$\delta(\X) = \begin{cases} \mu \neq \mu_0& \abs{\frac{\bar X - \mu_0}{s/\sqrt n}} \ge t_{n-1}^{-1}(1-\alpha/2)\\ \mu = \mu_0 & \abs{\frac{\bar X - \mu_0}{s/\sqrt n}} < t_{n-1}^{-1}(1-\alpha/2)\end{cases}$$ when $X_i \iid \text{Exp}(1/\mu)$ (such that $\E{X_i}=\mu$). As $n\to\infty$, we should see $\Pr(T\in C\mid \mu=\mu_0)\to \alpha$, indicating that $t_{n-1}$ does indeed provide a sufficient approximation to calculate critical values. We will test $H_0:\mu=2$ versus $H_0:\mu=8$ where $\alpha = 0.05$.
 
 ```{r}
-N_sim <- 10000
-mu_0 <- 2
-mu <- 8
-alpha <- 0.05
-
-t_test <- function(X){
-  n <- length(X)
-  T_stat <- (mean(X) - mu_0)/(sd(X)/sqrt(n))
-  abs(T_stat) > qt(1 - alpha/2, df = n - 1)
+simulate_test <- function(alpha, mu_0, n, dist, dist_params, t){
+  X <- do.call(dist, append(n, dist_params))
+  output <- tibble(
+    decision = t_test(X, mu_0, alpha),
+    iter_num = t
+  )
 }
 
-simulate_alpha <- function(n){
-  mean(sapply(1:N_sim, FUN = function(t){t_test(rexp(n , 1/mu_0))}))
+simulate_alpha_at_n <- function(N, alpha, mu_0, n, dist, dist_params){
+  output <- 1:N %>% 
+    map(simulate_test, alpha = alpha, mu_0 = mu_0, n = n, dist = dist, dist_params = dist_params) %>% 
+    bind_rows() %>% 
+    summarize(
+      alpha = mean(decision),
+      sample_size = n
+    )
+  return(output)
 }
-alpha_n <- sapply((1:100)*20, simulate_alpha)
+
+simulate_alpha_over_n <- function(n_vals, N, alpha, mu_0, dist, dist_params){
+  output <- n_vals %>% 
+    map(simulate_alpha_at_n, N = N, alpha = alpha, mu_0 = mu_0, dist = dist, dist_params) %>% 
+    bind_rows()
+  return(output)
+}
+
+results <- simulate_alpha_over_n(
+  n_vals = (1:50)*10, 
+  N = 1e2,  # increase to 1e5
+  alpha = 0.05, 
+  mu_0 = 2, 
+  dist = rexp, 
+  dist_params = list(1/2)
+)
 ```
 
 
@@ -1062,11 +1232,9 @@ alpha_n <- sapply((1:100)*20, simulate_alpha)
 #| fig-width: 8
 #| fig-cap: "Despite our data being drawn from an exponential distribution, the test statistic is asympotically distributed according to the t-distribution, so the simulated size approaches the theoretical size of 0.05"
 #| code-summary: "Show code which generates figure"
-tibble(
-  x = (1:100)*20, 
-  y = alpha_n
-) %>% 
-  ggplot(aes(x,y)) +
+
+results %>% 
+  ggplot(aes(sample_size, alpha)) +
   geom_point() +
   theme_minimal() +
   labs(x = "Sample Size, n", y = "Simulated α") +
@@ -1098,18 +1266,20 @@ mu_0 <- 2
 sigma <- 1
 expand_grid(
   mu = seq(1.8, 2.2, length = 1000), 
-  n = c(5,10,25,100,1000, 10000)
+  n = c((1:9)*10, (1:9)*100, (1:9)*1000, (1:9)*10000)
 ) %>% 
   mutate(power = pnorm(-1.645 + (mu - mu_0)/(sigma/sqrt(n)))) %>% 
-  ggplot(aes(mu, power, color = as.factor(n))) +
+  ggplot(aes(mu, power)) +
   geom_line() +
   theme_minimal() +
-  geom_segment(aes(x = 1.8, y = 0, xend = 2, yend = 0), color = "black") +
-  geom_segment(aes(x = 2, y = 1, xend = 2.2, yend = 1), color = "black") +
-  geom_segment(aes(x = 2, y = 0, xend = 2, yend = 1), color = "black", linetype = "dashed") +
+  geom_segment(aes(x = 1.8, y = 0, xend = 2, yend = 0), color = "red") +
+  geom_segment(aes(x = 2, y = 1, xend = 2.2, yend = 1), color = "red") +
+  geom_segment(aes(x = 2, y = 0, xend = 2, yend = 1), color = "red", linetype = "dashed") +
   theme(legend.position = "bottom") +
   labs(x = "Alternate μ", y = "Power", color = "Sample Size") +
-  guides(colour = guide_legend(nrow = 1))
+  guides(colour = guide_legend(nrow = 1)) +
+  transition_states(n) + 
+  labs(title = 'n = {closest_state}')
 ```
 :::
 
@@ -1152,23 +1322,28 @@ $$ \left[ \bar X - (t_{n-1}^{-1}(1-\alpha/2))\frac{s}{\sqrt{n}} , \bar X + (t_{n
 If we let $\alpha = 0.05$, $\mu = 0$, $\sigma = 1$, and $n = 10$, we can generate confidence intervals for a large number of simulated samples. About 95% of the constructed intervals will contain the true mean $\mu = 0$. 
 
 ```{r}
-N_sim <- 10000
-n <- 10
-sigma <- 1
-mu <- 0
-alpha <- 0.05
-
-lower <- vector("numeric", N_sim)
-upper <- vector("numeric", N_sim)
-contain <- vector("numeric", N_sim)
-for (k in 1:N_sim) {
-  X <- rnorm(n, mu, sigma)
-  lower[k] <- mean(X) - qt(0.975, n-1)*(sd(X)/sqrt(n))
-  upper[k] <- mean(X) + qt(0.975, n-1)*(sd(X)/sqrt(n))
-  contain[k] <- (lower[k] < 0)*(upper[k] > 0)
+confidence_interval <- function(alpha, n, dist, dist_params, t){
+  X <- do.call(dist, append(n, dist_params))
+  output <- tibble(
+    lower = mean(X) - qt(0.975, n-1)*(sd(X)/sqrt(n)),
+    upper = mean(X) + qt(0.975, n-1)*(sd(X)/sqrt(n)),
+    alpha = alpha,
+    iter_num = t
+  )
+  return(output)
 }
 
-mean(contain)
+draw_confidence_intervals <- function(N, alpha, n, dist, dist_params){
+  output <- 1:N %>% 
+    map(confidence_interval, alpha = alpha, n = n, dist = dist, dist_params = dist_params) %>% 
+    bind_rows()
+  return(output)
+}
+
+results <- draw_confidence_intervals(1e5, 0.05, 10, rnorm, list(0, 1))
+
+results %>% 
+  summarize(prob_contains = mean((lower <= 0)*(0 <= upper)))
 ```
 
 Let's plot 100 of our constructed 95% confidence intervals (drawn at random).
@@ -1181,19 +1356,11 @@ Let's plot 100 of our constructed 95% confidence intervals (drawn at random).
 #| fig-width: 8
 #| fig-cap: "100 of the 10,000 simulated confidence intervals drawn at random. Approximately 5% of the 100 do not contain the true parameter value"
 #| code-summary: "Show code which generates figure"
-tibble(
-  lower, 
-  upper, 
-  contain, 
-  x = 0
-) %>% 
-  slice_sample(n = 100) %>% 
-  mutate(
-    n = row_number(),
-    contain = as.logical(contain)
-  ) %>% 
-  ggplot(aes(n, color = as.factor(contain))) +
-  geom_hline(yintercept = 0, linetype = "dashed") +
+
+results %>% 
+  slice(1:100) %>% 
+  mutate(contains = (lower <= 0)*(0 <= upper)) %>% 
+  ggplot(aes(iter_num, color = as.factor(contains))) +
   geom_linerange(aes(ymin = lower, ymax = upper)) +
   labs(color = "Interval Contains   μ = 0:", x = "Sample", y = "Parameter Space") +
   scale_color_manual(values = c("red", "green")) +
@@ -1341,22 +1508,24 @@ The intuition behind the Wald test is identical to that of the $z-$test, the $t$
 :::{#exm-}
 We can write a simple function which implements the Wald test.
 ```{r}
-Wald_test <- function(alpha, h, X, theta_hat, V_hat){
+Wald_test <- function(alpha, h, n, theta_hat, V_hat){
   #Calculate test stat
-  n <- nrow(X)
   h_prime <- jacobian(h, theta_hat)
-  W <- t(h(theta_hat)) %*% solve(h_prime %*% (V_hat/n) %*% t(h_prime)) %*% h(theta_hat)
+  W <- as.numeric(t(h(theta_hat)) %*% solve(h_prime %*% (V_hat/n) %*% t(h_prime)) %*% h(theta_hat))
   
   #determine if we reject
   dof <- length(h(theta_hat))
   c <- qchisq(1 - alpha, dof)
-  decision <- (W >= c)
+  reject <- (W >= c)
   
   #Output information
-  return_list <- c("Statistic" = W, 
-                   "Critical Value" = c, 
-                   "Reject Null Hypothesis" = decision)
-  return(return_list)
+  output <- tibble(
+    statistic = W,
+    critical_value = c,
+    decision = reject
+  )
+  
+  return(output)
 }
 ```
 
@@ -1369,35 +1538,41 @@ The sample mean satisfies $\sqrt{n}(\bar {\X} - \boldsymbol\mu)\dto N(\zer, \mat
 $$ \mathbf h(\boldsymbol\mu) = \begin{bmatrix} \mu_1 - 2\\ \mu_2 -2\\\mu_3-2\end{bmatrix}.$$ We do need a consistent estimate of $\mathbf V = \boldsymbol \Sigma$, but the most intuitive candidate will do. The sample covariance, calculated using `cov()`, of our observed data is a consistent estimator of  $\boldsymbol \Sigma$ just as the sample variance is a consistent estimator of the actual variance. 
 
 ```{r}
-N_sim <- 10000
-mu0 <- c(2,2,2)
-n <- 100
-Sigma <- matrix(c(1,.4,.2,.4,2,.1,.2,.1,1), nrow = 3, ncol = 3)
-alpha <- 0.05
+sim_wald <- function(alpha, h, n, dist, dist_params, t){
+  X <- do.call(dist, append(n, dist_params))
+  output <- Wald_test(alpha, h, n, colMeans(X), cov(X)) %>% 
+    mutate(iter_num = t)
+  return(output)
+}
+
+draw_N_wald <- function(N, alpha, h, n, dist, dist_params){
+  output <- 1:N %>% 
+    map(sim_wald, alpha = alpha, h = h, n = n, dist = dist, dist_params = dist_params) %>% 
+    bind_rows()
+  return(output)
+}
 
 #Define hypothesis
 h <- function(t){
-  c(t[1], t[2], t[3]) - mu0
+  c(t[1], t[2], t[3]) - c(2, 2, 2)
 }
 
-#Create vectors to store results
-decisions <- vector("numeric", N_sim)
-test_stats <- vector("numeric", N_sim) 
+results <- draw_N_wald(
+  N = 1e5,
+  alpha = 0.05, 
+  h = h,
+  n = 1e3, 
+  dist = rmvnorm,
+  dist_params = list(
+      c(2, 2, 2), 
+      matrix(c(1,.4,.2,.4,2,.1,.2,.1,1), nrow = 3, ncol = 3)
+  )
+)
 
-for (k in 1:N_sim) {
-  #Draw random sample where H0 is true,
-  X <- rmvnorm(n, mu0, Sigma)
-  #Estimate mean and covariance
-  theta_hat <- colMeans(X)
-  V_hat <- cov(X)
-  #Perform test and store results
-  test_results <- Wald_test(alpha, h, X, theta_hat, V_hat)
-  decisions[k] <- test_results[3]
-  test_stats[k] <- test_results[1]
-}
 
-#Should be ≈0.05
-mean(decisions)
+#Should be ≈ 0.05
+results %>% 
+  summarize(prob_reject = mean(decision))
 ```
 
 If we plot the test statistics from our 10,000 simulations, we can illustrate that $W\asim \chi_3^2$. 
@@ -1411,10 +1586,11 @@ If we plot the test statistics from our 10,000 simulations, we can illustrate th
 #| fig-width: 8
 #| fig-cap: "The hisotrgram of simulated wald test statistics (calculated using a sample size of 100) coincides with the asymptotic distribution given in Theorem 3.2"
 #| code-summary: "Show code which generates figure"
-tibble(x = test_stats) %>% 
-  ggplot(aes(x)) +
+
+results %>% 
+  ggplot(aes(statistic)) + 
   geom_histogram(aes(y = ..density..), colour = 1, fill = "white", bins = 50) +
-  xlab("Simulated Wald Test Statistics") +
+    xlab("Simulated Wald Test Statistics") +
   theme_minimal() +
   stat_function(fun = dchisq, args = list(df = 3), color = "red") +
   xlim(0,15)
@@ -1439,22 +1615,24 @@ Considering the $t-$test in the broader context of the Wald test highlights an i
 We will start by writing a function which performs the $t-$test just like we did with the Wald test.
 
 ```{r}
-t_test <- function(alpha, theta0, X, theta_hat, se_hat){
+t_test <- function(alpha, theta0, n, theta_hat, se_hat){
   #calculate test stat
-  n <- nrow(X)
   t <- (theta_hat - theta0)/se_hat
   
   #determine if we reject
   dof <- n - 1
   c <- qt(1 - alpha/2, dof)
-  decision <- (abs(t) >= c)
-  decision
+  reject <- (abs(t) >= c)
+  
   #Output information
-  return_list <- c("Statistic" = t, 
-                   "Critical Value" = c, 
-                   "Reject Null Hypothesis" = decision
-                   )
-  return(return_list)
+  output <- tibble(
+    parameter = paste0("θ", 1:length(t)),
+    statistic = t,
+    critical_value = c,
+    decision = reject
+  ) 
+  
+  return(output)
 }
 ```
 
@@ -1462,40 +1640,58 @@ As defined, the function is able to perform multiple $t-$tests simultaneously. I
 
 To compare `t_test()` and `Wald_test()`, suppose $\X \iid N(\boldsymbol\mu, \boldsymbol\Sigma)$ for 
 \begin{align*}
-\boldsymbol\mu &= \begin{bmatrix}0&0.5\end{bmatrix}',\\
+\boldsymbol\mu &=/ \begin{bmatrix}0&0.5\end{bmatrix}',\\
 \boldsymbol\Sigma&= \begin{bmatrix}1&0\\0&2 \end{bmatrix},
 \end{align*}
 and $n=2$. We will test $H_0:\boldsymbol\mu = \zer$ with `Wald_test()` and the separate hypotheses $H_0:\mu_1 = 0$ (which is true) and $H_0:\mu_2 = 0$, all with $\alpha = 0.05$. We should reject $\mu_1 = 0$ with an approximate probability $\alpha$.
 
 ```{r}
-N_sim <- 10000
-mu0 <- c(0,0)
-mu <- c(0,0.5)
-Sigma <- matrix(c(1,0,0,2), nrow = 2, ncol = 2)
-alpha <- 0.05
-n <- 100
+wald_vs_t <- function(alpha, h, mu0, n, dist, dist_params, t){
+  X <- do.call(dist, append(n, dist_params))
+  t_test_results <- t_test(alpha, mu0, n, colMeans(X), sqrt(diag(var(X)/n))) %>% 
+    mutate(test = "t-test")
+  wald_test_results <- Wald_test(alpha, h, n, colMeans(X), cov(X)) %>% 
+    mutate(
+      parameter = "θ",
+      test = "Wald test"
+    )
+  output <- t_test_results %>% 
+    bind_rows(wald_test_results) %>% 
+    mutate(iter_num = t)
+  return(output)
+}
+
+draw_N_wald_vs_t <- function(N, alpha, h, mu0, n, dist, dist_params){
+  output <- 1:N %>% 
+    map(wald_vs_t, alpha = alpha, h = h, mu0 = mu0, n = n, dist = dist, dist_params = dist_params) %>% 
+    bind_rows() 
+  return(output)
+}
+
 h <- function(t){
-  c(t[1], t[2]) - mu0
+  c(t[1], t[2]) - c(0, 0)
 }
 
-t_decision_1 <- vector("numeric", N_sim)
-t_decision_2 <- vector("numeric", N_sim)
-wald_decision <- vector("numeric", N_sim)
-for (j in 1:N_sim) {
-  X <- rmvnorm(n, mu, Sigma)
-  se_hat <- sqrt(diag(var(X)/n))
-  t_results <-  t_test(alpha, mu0, X, colMeans(X), se_hat)
-  wald_results <- Wald_test(alpha, h, X, colMeans(X), cov(X))
-  
-  t_decision_1[j] <- t_results[4]
-  t_decision_2[j] <- t_results[5]
-  wald_decision[j] <- wald_results[3]
-}
+results <- draw_N_wald_vs_t(
+  N = 1e5,
+  alpha = 0.05,
+  h = h,
+  mu0 = c(0, 0),
+  n = 100,
+  dist = rmvnorm,
+  dist_params = list(
+    mean = c(0, 0.5),
+    sigma = matrix(c(1,0,0,2), nrow = 2, ncol = 2)
+  )
+)
 
-c(mean(t_decision_1), mean(t_decision_2), mean(wald_decision))
+results %>% 
+  group_by(test, parameter) %>% 
+  summarize(prob_reject = mean(decision)) %>% 
+  knitr::kable()
 ```
 
-We end up rejecting the null hypothesis $H_0:\boldsymbol\mu = \zer$ more than the null hypothesis $H_0:\mu_2 = 0$, as the Wald test also must incorporate evidence about $\mu_1$ in the form of $\bar X_1$. A large value of $\bar X_2$ (which is sufficient to reject $H_0:\mu_2 = 0$ with the $t-$test), is only one part of the story for the Wald test, as it also must consider $\bar X_1$. That being said, $\bar X_2$ is usually *so large* that the Wald test will still reject $H_0:\boldsymbol\mu = \zer$ even if $\bar X_1$ is not large enough for the $t-$test to reject $H_0:\mu_1= 0$. To see this, we can breakdown the simulated probabilities that we reject $H_0:\mu_1= 0$ and/or $H_0:\mu_2 = 0$.  
+We end up rejecting the null hypothesis $H_0:\boldsymbol\mu = \zer$ less than the null hypothesis $H_0:\mu_2 = 0$, as the Wald test also must incorporate evidence about $\mu_1$ in the form of $\bar X_1$. A large value of $\bar X_2$ (which is sufficient to reject $H_0:\mu_2 = 0$ with the $t-$test), is only one part of the story for the Wald test, as it also must consider $\bar X_1$. That being said, $\bar X_2$ is usually *so large* that the Wald test will still reject $H_0:\boldsymbol\mu = \zer$ even if $\bar X_1$ is not large enough for the $t-$test to reject $H_0:\mu_1= 0$. To see this, we can breakdown the simulated probabilities that we reject $H_0:\mu_1= 0$ and/or $H_0:\mu_2 = 0$.  
 
 ```{r}
 #| code-fold: true
@@ -1504,20 +1700,33 @@ We end up rejecting the null hypothesis $H_0:\boldsymbol\mu = \zer$ more than th
 #| fig-width: 8
 #| fig-cap: "The QQ-plot for the simulated distribution of the adjusted sample mean"
 #| code-summary: "Show code which generates figure"
-
-test <- matrix(c(
-  mean(t_decision_1*t_decision_2),
-  mean(t_decision_1*(1-t_decision_2)),
-  mean(t_decision_2*(1-t_decision_1)),
-  mean((1-t_decision_1)*(1-t_decision_2))
-), nrow = 2)
-
-colnames(test) <- c("Reject μ2 = 0", "Fail to Reject μ2 = 0")
-rownames(test) <- c("Reject μ1 = 0", "Fail to Reject μ1 = 0")
-print(test)
+results %>%
+  filter(test == "t-test") %>% 
+  select(
+    parameter,
+    decision,
+    iter_num
+  ) %>% 
+  group_by(iter_num) %>% 
+  pivot_wider(names_from = parameter, values_from = decision) %>% 
+  ungroup() %>% 
+  add_count() %>% 
+  group_by(θ1, θ2) %>% 
+  summarize(prob = n()/max(n)) %>% 
+  group_by(θ1) %>% 
+  pivot_wider(names_from = θ2, values_from = prob) %>% 
+  rename(
+    ` ` = 1,
+    `Fail to Reject θ2 = 0` = 2,
+    `Reject θ2 = 0` = 3
+  ) %>% 
+  mutate(
+    ` ` = ifelse(` `, "Reject θ1 = 0", "Fail to Reject θ1 = 0")
+  ) %>% 
+  knitr::kable()
 ```
 
-We fail to reject $H_0:\mu_1= 0$ and $H_0:\mu_2 = 0$ (simultaneously) with an approximate probability of $0.047$, far less than that calculated using the Wald test. Why does this happen? For our example, we reject $H_0:\boldsymbol\mu = \zer$ if $W \ge (\chi_2^2)^{-1}(1-0.5) \approx 6$. We reject $H_0:\mu_1 = 0$ if $|t_1| \ge  1.98$ and $H_0:\mu_2 = 0$ if $|t_2| \ge  1.98$. In terms of $\bar X$, we reject $H_0:\mu_1 = 0$ if $$\abs{\bar X_1} \ge 0 + 1.98\cdot\widehat{\text{se}}(\bar X_1) \approx 1.98\cdot\text{se}(\bar X_1) = 1.98\cdot(1/\sqrt{ 100}) = 0.198,$$ and we reject $H_0:\mu_2 = 0$ if $$\abs{\bar X_2} \ge 0 + 1.98\cdot\widehat{\text{se}}(\bar X_2) \approx 1.98\cdot\text{se}(\bar X_1) = 1.98\cdot(2/\sqrt{ 100}) \approx 0.28.$$ Because the Wald statistic is a function of $\bar X_1$ and $\bar X_2$, we can plot the values of $W$ over values of $\{\bar X_1,\bar X_2\}$ and compare this value to the rejection regions of the $t-$tests.
+We reject $H_0:\mu_1= 0$ and $H_0:\mu_2 = 0$ (simultaneously) with an approximate probability of $0.047$, far less than that calculated using the Wald test. Why does this happen? For our example, we reject $H_0:\boldsymbol\mu = \zer$ if $W \ge (\chi_2^2)^{-1}(1-0.05) \approx 6$. We reject $H_0:\mu_1 = 0$ if $|t_1| \ge  1.98$ and $H_0:\mu_2 = 0$ if $|t_2| \ge  1.98$. In terms of $\bar X$, we reject $H_0:\mu_1 = 0$ if $$\abs{\bar X_1} \ge 0 + 1.98\cdot\widehat{\text{se}}(\bar X_1) \approx 1.98\cdot\text{se}(\bar X_1) = 1.98\cdot(1/\sqrt{ 100}) = 0.198,$$ and we reject $H_0:\mu_2 = 0$ if $$\abs{\bar X_2} \ge 0 + 1.98\cdot\widehat{\text{se}}(\bar X_2) \approx 1.98\cdot\text{se}(\bar X_1) = 1.98\cdot(2/\sqrt{ 100}) \approx 0.28.$$ Because the Wald statistic is a function of $\bar X_1$ and $\bar X_2$, we can plot the values of $W$ over values of $\{\bar X_1,\bar X_2\}$ and compare this value to the rejection regions of the $t-$tests.
 
 
 ```{r}
@@ -1529,32 +1738,31 @@ We fail to reject $H_0:\mu_1= 0$ and $H_0:\mu_2 = 0$ (simultaneously) with an ap
 #| fig-cap: "The values of the Wald test statistic in relation to the decisions seperate t-tests make regarding the null hypotheses when considering each in one dimmension"
 #| code-summary: "Show code which generates figure"
 expand_grid(
-  x = (-40:40)/100,
-  y = (-40:40)/100
-) %>% 
-  rowwise() %>% 
-  mutate(
-    W = Wald_test(alpha, h, X, c(x,y), Sigma)[1],
-    reject = (W > 5.991465)
+  x = seq(-.40, .40, length = 500),
+  y = seq(-.40, .40, length = 500)
   ) %>% 
-  ggplot(aes(x,y, fill = W)) +
-    geom_tile() +
-    scale_fill_gradient2(low = "red", mid = "white", high = "green", midpoint = 5.991465) +
-    labs(x = "Estimate of μ1", y = "Estimate of μ2", fill = "Wald Statistic") +
-    theme_minimal() +
-    geom_vline(xintercept = c(-.198,.198), linetype = "dashed", size = 0.1) +
-    geom_hline(yintercept = c(-(sqrt(2)/10)*1.98,(sqrt(2)/10)*1.98), linetype = "dashed", size = 0.1) +
-    theme(legend.position = "bottom") +
-    annotate("text", x = 0, y = 0, label = "Don't Reject μ1 = 0, Don't Reject μ2 = 0", size = 2.5) +
-    annotate("text", x = -.3, y = 0, label = "Reject μ1 = 0, Don't Reject μ2 = 0", size = 2.5) +
-    annotate("text", x = .3, y = 0, label = "Reject μ1 = 0, Don't Reject μ2 = 0", size = 2.5) +
-    annotate("text", x = 0, y = .35, label = "Don't Reject μ1 = 0, Reject μ2 = 0", size = 2.5) +
-    annotate("text", x = 0, y = -.35, label = "Don't Reject μ1 = 0, Reject μ2 = 0", size = 2.5) +
-    annotate("text", x = -.3, y = -.35, label = "Reject μ1 = 0, Reject μ2 = 0", size = 2.5) +
-    annotate("text", x = .3, y = .35, label = "Reject μ1 = 0, Reject μ2 = 0", size = 2.5) +
-    annotate("text", x = -.3, y = .35, label = "Reject μ1 = 0, Reject μ2 = 0", size = 2.5) +
-    annotate("text", x = .3, y = -.35, label = "Reject μ1 = 0, Reject μ2 = 0", size = 2.5)
-  
+  mutate(
+    map2_vec(x, y, \(x, y) Wald_test(alpha = 0.5, h = h, n = 100, theta_hat = c(x, y), V_hat = matrix(c(1,0,0,2), nrow = 2, ncol = 2)))
+  )  %>% 
+  ggplot(aes(x, y, fill = statistic)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "red", mid = "white", high = "green", midpoint = 5.991465) +
+  labs(x = "Estimate of μ1", y = "Estimate of μ2", fill = "Wald Statistic") +
+  theme_classic() +
+  geom_vline(xintercept = c(-.198,.198), linetype = "dashed", size = 0.1) +
+  geom_hline(yintercept = c(-(sqrt(2)/10)*1.98,(sqrt(2)/10)*1.98), linetype = "dashed", size = 0.1) +
+  theme(legend.position = "bottom") +
+  annotate("text", x = 0, y = 0, label = "Don't Reject μ1 = 0, Don't Reject μ2 = 0", size = 2.5) +
+  annotate("text", x = -.3, y = 0, label = "Reject μ1 = 0, Don't Reject μ2 = 0", size = 2.5) +
+  annotate("text", x = .3, y = 0, label = "Reject μ1 = 0, Don't Reject μ2 = 0", size = 2.5) +
+  annotate("text", x = 0, y = .35, label = "Don't Reject μ1 = 0, Reject μ2 = 0", size = 2.5) +
+  annotate("text", x = 0, y = -.35, label = "Don't Reject μ1 = 0, Reject μ2 = 0", size = 2.5) +
+  annotate("text", x = -.3, y = -.35, label = "Reject μ1 = 0, Reject μ2 = 0", size = 2.5) +
+  annotate("text", x = .3, y = .35, label = "Reject μ1 = 0, Reject μ2 = 0", size = 2.5) +
+  annotate("text", x = -.3, y = .35, label = "Reject μ1 = 0, Reject μ2 = 0", size = 2.5) +
+  annotate("text", x = .3, y = -.35, label = "Reject μ1 = 0, Reject μ2 = 0", size = 2.5) +
+  scale_y_continuous(breaks = (-4:4)/10, expand = c(0,0)) +
+  scale_x_continuous(breaks = (-4:4)/10, expand = c(0,0))
 ```
 
 This illustrates that it's possible to reject $H_0:\boldsymbol\mu = \zer$ using the Wald test while not rejecting $H_0:\mu_1 = 0$ or not rejecting $H_1:\mu_1 = 0$. On the other hand, if we reject $H_0:\mu_1 = 0$ and $H_1:\mu_1 = 0$ using separate $t-$tests, we are guaranteed to reject $H_0:\boldsymbol\mu = \zer$ using the Wald test. This plot omits an important consideration -- the true distribution of $\{\bar X_1,\bar X_2\}$ which will determine how frequently our estimates fall in the various rejection regions. 
@@ -1567,27 +1775,26 @@ This illustrates that it's possible to reject $H_0:\boldsymbol\mu = \zer$ using 
 #| fig-width: 8
 #| fig-cap: "The joint density of the sample means"
 #| code-summary: "Show code which generates figure"
-df <- expand_grid(
-  x = (-100:100)/100,
-  y = (-40:100)/100
-  ) %>%
-  rowwise() %>%
+expand_grid(
+  x = seq(-.35, .35, length = 500),
+  y = seq(-.40, 1, length = 500)
+  ) %>% 
   mutate(
-    W = Wald_test(alpha, h, X, c(x,y), Sigma)[1],
-    reject = ifelse(W > 5.991465, "Wald Test Rejects μ = 0", "Wald Test Does Not Reject μ = 0"),
-    density = dmvnorm(c(x,y), mu, sqrt(Sigma)/10)
-  )
-
-df %>% 
-  ggplot(aes(x,y, fill = density)) +
-  geom_tile() + 
+    map2_vec(x, y, \(x, y) Wald_test(alpha = 0.05, h = h, n = 100, theta_hat = c(x, y), V_hat = matrix(c(1,0,0,2), nrow = 2, ncol = 2))),
+    density = map2_dbl(x, y, \(x, y) dmvnorm(c(x,y), c(0,0.5), sqrt(matrix(c(1,0,0,2), nrow = 2, ncol = 2))/10)),
+    decision = ifelse(decision, "Wald Test Rejects μ = 0", "Wald Test Fails to Reject μ = 0")
+  ) %>% 
+  ggplot(aes(x, y, fill = density)) +
+  geom_tile() +
   labs(x = "Estimate of μ1", y = "Estimate of μ2", fill = "Density") +
-  theme_minimal() +
-  geom_vline(xintercept = c(-.198,.198), linetype = "dashed", size = 0.2, color = "red") +
-  geom_hline(yintercept = c(-(sqrt(2)/10)*1.98,(sqrt(2)/10)*1.98), linetype = "dashed", size = 0.2, color = "red") +
-  theme(legend.position = "bottom") +
+  theme_classic() +
+  geom_vline(xintercept = c(-.198,.198), linetype = "dashed", linewidth = 0.2, color = "red") +
+  geom_hline(yintercept = c(-(sqrt(2)/10)*1.98,(sqrt(2)/10)*1.98), linetype = "dashed", linewidth = 0.2, color = "red") +
+  theme(legend.position = "bottom", panel.spacing.x = unit(2, "lines")) +
   scale_fill_gradient(low = "white", high = "black") +
-  facet_wrap(~reject)
+  facet_wrap(~decision) +
+  scale_y_continuous(breaks = (-4:10)/5, expand = c(0,0)) +
+  scale_x_continuous(breaks = (-35:35)/4, expand = c(0,0))
 ```
 The majority of the density is concentrated in a region where the Wald test rejects $H_0:\boldsymbol\mu = \zer$, the $t-$test does not reject $H_0:\mu_1 = 0$, and the $t-$test rejects $H_0:\mu_2 = 0$. This is why our Wald test rejected $H_0:\boldsymbol\mu = \zer$ so often, despite $\mu_1 = 0$ being true. Finally, note that we've assumed $\cov{X_1,X_2} = 0$. In the event that $\cov{X_1,X_2} \neq 0$, things become even more interesting, as the Wald test considers this covariance, whereas the $t-$tests do not. If you play around with this example by changing $\boldsymbol\Sigma =\var{\X}$, the elliptical rejection region of the Wald test will rotate/shrink/expand, thereby affecting how its results relate to those of the separate $t-$tests.
 :::

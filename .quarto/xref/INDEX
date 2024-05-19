@@ -31,5 +31,122 @@
   },
   "extremum.qmd": {
     "extremum.html": "33d3c165"
+  },
+  "gls.qmd": {
+    "gls.html": "50a8e42d"
+  },
+  "simul.qmd": {
+    "simul.html": "0cae0097"
+  },
+  "gmm.qmd": {
+    "gmm.html": "73f05671"
+  },
+  "mle.qmd": {
+    "mle.html": "aa18c96b"
+  },
+  "panel.qmd": {
+    "panel.html": "18bd95cb"
+  },
+  "time_series.qmd": {
+    "time_series.html": "382290d1"
+  },
+  "semipar.qmd": {
+    "semipar.html": "c5f18d28"
+  },
+  "sieve.qmd": {
+    "sieve.html": "9f37713e"
+  },
+  "adv_asymptotics.qmd": {
+    "adv_asymptotics.html": "c66dd21e"
+  },
+  "nonpar_2.qmd": {
+    "nonpar_2.html": "9d4823b3"
+  },
+  "partial_id.qmd": {
+    "partial_id.html": "f11d9e2e"
+  },
+  "endog_nonlinear.qmd": {
+    "endog_nonlinear.html": "90056927"
+  },
+  "weak_inst.qmd": {
+    "weak_inst.html": "a8a7c03f"
+  },
+  "discrete_choice.qmd": {
+    "discrete_choice.html": "8b1b8a97"
+  },
+  "tobit.qmd": {
+    "tobit.html": "e7f9228c"
+  },
+  "survival.qmd": {
+    "survival.html": "a9682cae"
+  },
+  "count.qmd": {
+    "count.html": "e6035ad4"
+  },
+  "mixed.qmd": {
+    "mixed.html": "2bd2267c"
+  },
+  "GLM.qmd": {
+    "GLM.html": "6cda739c"
+  },
+  "panel2.qmd": {
+    "panel2.html": "e538b162"
+  },
+  "time_math.qmd": {
+    "time_math.html": "21c4dfe3"
+  },
+  "causal1.qmd": {
+    "causal1.html": "5be2fe96"
+  },
+  "matching.qmd": {
+    "matching.html": "89adf04a"
+  },
+  "rdd.qmd": {
+    "rdd.html": "d49b28a4"
+  },
+  "did.qmd": {
+    "did.html": "00595fa0"
+  },
+  "LATE.qmd": {
+    "LATE.html": "e9939a3d"
+  },
+  "hetero.qmd": {
+    "hetero.html": "aea9cdea"
+  },
+  "bayes1.qmd": {
+    "bayes1.html": "0ca5dd9e"
+  },
+  "bayes2.qmd": {
+    "bayes2.html": "e7bb95a8"
+  },
+  "bayes3.qmd": {
+    "bayes3.html": "71f3241e"
+  },
+  "modelselection.qmd": {
+    "modelselection.html": "2421e7a1"
+  },
+  "robust.qmd": {
+    "robust.html": "c4d5158d"
+  },
+  "learning_theory.qmd": {
+    "learning_theory.html": "c173f0af"
+  },
+  "ML1.qmd": {
+    "ML1.html": "f4410a1e"
+  },
+  "ML2.qmd": {
+    "ML2.html": "6ff5b7b2"
+  },
+  "ML3.qmd": {
+    "ML3.html": "ffb36389"
+  },
+  "ML4.qmd": {
+    "ML4.html": "2d38a256"
+  },
+  "ML5.qmd": {
+    "ML5.html": "5be74192"
+  },
+  "stochastic.qmd": {
+    "stochastic.html": "c2f7d51c"
   }
 }

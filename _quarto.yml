@@ -1,13 +1,13 @@
 project:
   type: book
+  
   output-dir: docs
 
 book:
-  title: "Advanved Econometrics with Examples"
-  number-sections: true
+  title: "Advanced Econometrics with Examples"
   search: True
   author: "Noah Jussila"
-  date: "10/29/2022"
+  date: "03/07/2022"
   chapters:
     - index.qmd
     - part: "Statistical Theory"
@@ -16,56 +16,69 @@ book:
       - asymptotics.qmd
       - testing.qmd
       - exp_fam.qmd
+      - stochastic.qmd
+      - adv_asymptotics.qmd
     - part: "Linear Models"
       chapters:
       - ols.qmd
       - endog.qmd
-    #- gls.qmd
-    #- simul.qmd
+      - gls.qmd
+      - simul.qmd
     - part: "Estimation Frameworks"
       chapters:
       - extremum.qmd
-    #- gmm.qmd
-    #- mle.qmd
+      - gmm.qmd
+      - mle.qmd
     - part: "Basic Microeconometrics and Time Series"
       chapters:
       - binary.qmd
-    #- panel.qmd
-    #- time_series.qmd
+      - panel.qmd
+      - time_series.qmd
     - part: "Advanced Topics"
       chapters:
       - nonpar.qmd
-    #- quant.qmd
-    #- semipar.qmd
-    #- sieve.qmd
-    #- partial_id.qmd
-    #- endog_nonlinear.qmd
-    #- weak_inst.qmd
-    #- discrete_choice.qmd
-    #- tobit.qmd
-    #- survival.qmd
-    #- count.qmd
-    #- GLM.qmd
-    #- panel2.qmd
-    #- mixed.qmd
-    #- time_math.qmd
-    #- causal1.qmd
-    #- matching.qmd
-    #- rdd.qmd
-    #- did.qmd
-    #- LATE.qmd
-    #- hetero.qmd
-    #- experiment.qmd
-    #- bayes1.qmd
-    #- bayes2.qmd
-    #- bayes3.qmd
-    #- modelselection.qmd
-    #- robust.md
-    #- ML1.md
-    #- ML2.md
-    #- ML3.md
-    #- ML4.md
-    - references.qmd
+      - nonpar_2.qmd
+      - semipar.qmd
+      - sieve.qmd
+      - partial_id.qmd
+      - endog_nonlinear.qmd
+      - weak_inst.qmd
+    - part: "Microeconometrics"
+      chapters:
+      - discrete_choice.qmd
+      - tobit.qmd
+      - survival.qmd
+      - count.qmd
+      - mixed.qmd
+      - GLM.qmd
+      - panel2.qmd
+    - part: "Time Series"
+      chapters:
+      - time_math.qmd
+    - part: "Causal Inference"
+      chapters:
+      - causal1.qmd
+      - matching.qmd
+      - rdd.qmd
+      - did.qmd
+      - LATE.qmd
+      - hetero.qmd
+    - part: "More Statistical Theory"
+      chapters:
+      - bayes1.qmd
+      - bayes2.qmd
+      - bayes3.qmd
+      - modelselection.qmd
+      - robust.qmd
+    - part: "Machine Learning"
+      chapters:
+      - learning_theory.qmd
+      - ML1.qmd
+      - ML2.qmd
+      - ML3.qmd
+      - ML4.qmd
+      - ML5.qmd
+      - references.qmd
     
 bibliography: references.bib
 
@@ -77,7 +90,6 @@ format:
     code-tools: true
     code-fold: false
     theme: cosmo
-    linestretch: 1.5
   pdf:
     documentclass: scrreprt
 

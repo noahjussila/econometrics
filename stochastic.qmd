@@ -1,0 +1,1266 @@
+---
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+\DeclareMathOperator{\plim}{plim}
+\DeclareMathOperator{\argmin}{argmin}
+\DeclareMathOperator{\argmax}{argmax}
+\newcommand{\var}[1]{\text{Var}\left(#1\right)}
+\newcommand{\avar}[1]{\text{Avar}\left(#1\right)}
+\newcommand{\E}[1]{\text{E}\left[#1\right]}
+\newcommand{\cov}[1]{\text{Cov}\left(#1\right)}
+\newcommand{\corr}[1]{\text{Corr}\left(#1\right)}
+\newcommand{\mse}[1]{\text{MSE}\left(#1\right)}
+\newcommand{\se}[1]{\text{se}\left(#1\right)}
+\newcommand{\limfunc}{lim} 
+\newcommand{\X}{\mathbf{X}}
+\newcommand{\Xm}{\mathbb{X}}
+\newcommand{\EER}{\bar{\thet}_\text{EE}}
+\newcommand{\NLS}{\hat{\bet}_\text{NLLS}}
+\newcommand{\z}{\mathbf{z}}
+\newcommand{\rr}{\mathbf{r}}
+\newcommand{\C}{\mathbf{C}}
+\newcommand{\Pe}{\mathbf{P}}
+\newcommand{\y}{\mathbf{y}}
+\newcommand{\Y}{\mathbf{Y}}
+\newcommand{\uu}{\mathbf{u}}
+\newcommand{\e}{\mathbf{e}}
+\newcommand{\D}{\mathbf{D}}
+\newcommand{\x}{\mathbf{x}}
+\newcommand{\xm}{\mathbb{x}}
+\newcommand{\Zm}{\mathbb{Z}}
+\newcommand{\Wm}{\mathbb{W}}
+\newcommand{\Hm}{\mathbb{H}}
+\newcommand{\W}{\mathbf{W}}
+\newcommand{\Z}{\mathbf{Z}}
+\newcommand{\Hess}{\mathbf{H}(\mathbf{\Z\mid\thet})}
+\newcommand{\Score}{\mathbf{S}(\mathbf{\Z\mid\thet})}
+\newcommand{\A}{\mathbf{A}}
+\newcommand{\h}{\mathbf{h}}
+\newcommand{\Q}{\mathbf{Q}}
+\newcommand{\F}{\mathbf{F}}
+\newcommand{\G}{\mathbf{G}}
+\newcommand{\I}{\mathbf{I}}
+\renewcommand{\D}{\mathbf{D}}
+\renewcommand{\C}{\mathbf{C}}
+\newcommand{\zer}{\mathbf{0}}
+\newcommand{\OLS}{\hat{\boldsymbol\beta}_\text{OLS} }
+\newcommand{\OLSOV}{\hat{\boldsymbol\beta}_\text{OLS,OV} }
+\newcommand{\OLSME}{\hat{\boldsymbol\beta}_\text{OLS,ME} }
+\newcommand{\EE}{\hat{\boldsymbol\theta}_\text{EX} }
+\newcommand{\ME}{\hat{\boldsymbol\theta}_\text{M} }
+\newcommand{\MDE}{\hat{\boldsymbol\theta}_\text{MDE} }
+\newcommand{\IV}{\hat{\boldsymbol\beta}_\text{IV} }
+\newcommand{\TSLS}{\hat{\boldsymbol\beta}_\text{2SLS} }
+\newcommand{\thet}{\boldsymbol{\theta}}
+\newcommand{\et}{\boldsymbol{\eta}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Sig}{\boldsymbol{\Sigma}}
+\newcommand{\ep}{\boldsymbol{\varepsilon}}
+\newcommand{\Omeg}{\boldsymbol{\Omega}}
+\newcommand{\Thet}{\boldsymbol{\Theta}}
+\newcommand{\bet}{\boldsymbol{\beta}}
+\newcommand{\rk}{rank}
+\newcommand{\tsum}{\sum}
+\newcommand{\tr}{tr}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\abs}[1]{\left\lvert#1\right\rvert}
+\newcommand{\ms}{\overset{ms}{\to}}
+\newcommand{\pto}{\overset{p}{\to}}
+\newcommand{\asto}{\overset{as}{\to}}
+\newcommand{\iid}{\overset{iid}{\sim}}
+\newcommand{\dto}{\overset{d}{\to}}
+\newcommand{\asim}{\overset{a}{\sim}}
+
+# Stochastic Processes
+
+
+```{r}
+#| echo: false
+#| output: false
+library(tidyverse)
+library(ggpubr)
+library(ggridges)
+library(gganimate)
+```
+
+## Reviewing More Probability Theory
+
+Given a probability space $(\mathcal X, \mathcal F, P)$ and a set $E$ equipped with a sigma-algebra $\mathcal E$, a random variable is some function $X:\mathcal X\to E$ such that $X^{-1}(I) \in \mathcal F$ for all $I\in \mathcal E$. Until now, we've only dealt with the case $E = \R$ and $\mathcal E = \mathcal B(\R)$, so let's look at random variables on other spaces. In particular, we're interested in random variables defined on metric spaces. 
+
+:::{#exm-}
+## Random Vectors
+We've been interpreting a random vector $\X = (X_1,\ldots,X_n)$ as a collection of $n$ random scalars $X_1:\mathcal X_1\to E_1,\ldots,X_n:\mathcal X_n\to E_n$. Alternatively, we could consider $\X$ to be a random variable mapping $\mathcal X_1\times\cdots\times \mathcal X_n$ to $E^n$.^[We're brushing over how products of sets play with sigma-algebras here, but the underlying math isn't trivial.] A special case of this is when we draw a sample of $n$ observations of $X_i \iid F_X$. If we execute ```rnorm(10)```, it will return $n$ realizations of $X:\R\to\R$ which can also be interpreted as one realization of a random vector $\X:\R^{10}\to\R^{10}$. Whether you think of the resulting data as 10 realizations of iid random variables or a single random vector will depend on the application. It's usually easier to model problems with random vectors when random scalars aren't iid. If we have $X_1 \sim N(0,1)$, $X_2 \sim N(1,2)$, and $\cov{X_1, X_2} = 1$, then all the information about $X_1$ and $X_2$ can easily be summarized by $\X = (X_1,X_2)$ where $$\X \sim N\left(\begin{bmatrix} 0\\ 1\end{bmatrix}, \begin{bmatrix} 1 & 1\\ 1 & 2\end{bmatrix}\right)$$
+:::
+
+:::{#exm-}
+## Random Matrices
+We can combine random vectors into a single random matrix just like we combined random scalars into a random vector. For the sake of ease, we'll only consider real valued random vectors here. Suppose we have $k$ random vectors $\X_1,\ldots,\X_k$, each of length $n$. We can form a $n\times k$ matrix using these vectors as column vectors. We'll denote this random matrix with $\Xm$.^[This notation is not standard, but eliminates a great deal of ambiguity when working with random matrices and vectors.] 
+
+$$\Xm = \begin{bmatrix}\X_1 & \cdots &\X_k \end{bmatrix} =  \begin{bmatrix}X_{11} & \cdots &X_{k1} \\ \vdots & \ddots & \vdots\\ X_{1n} & \cdots &X_{kn} \end{bmatrix}$$ In this case, the random variable $\Xm$ takes on a value in the set of all $n\times k$ real matrices, $\R^{n\times k}$. We could also consider $\Xm$ to be comprised of $n$ random vectors of length $k$. 
+$$ \Xm = \begin{bmatrix}\X_1\\ \vdots \\ \X_k \end{bmatrix}.$$ This interpretation is particularly important when considering regression models where we observe $n$ realizations of $k$ regressors $X_1,\ldots,X_k$.
+
+:::
+
+       A random object we've yet to talk about are stochastic processes. These will make for an excellent example in abstracting random variables beyond $\R$.
+
+:::{#def-}
+Given a probability space $(\mathcal X, \mathcal F, P)$, suppose we have a collection of random variables $\{X_t\}_{t\in T}$ indexed by some set $T$ which take on values in the measurable space $(S, \mathcal S)$. The collection $\{X_t\}_{t\in T}$ is a [***stochastic process***]{style="color:red"}. We refer to $S$ as the [***state space***]{style="color:red"} and $T$ as the [***index set***]{style="color:red"}. If $T = \mathbb N$ then $\{X_t\}_{t\in T}$ is a [***discrete-time stochastic process***]{style="color:red"}. If $T = \R^+$ [***continuous-time stochastic process***]{style="color:red"}
+:::
+
+       The index set is almost always denoted by $T$ because the main application of stochastic processes is modeling the evolution of random phenomena over time periods $t\in T$. Each value $t\in T$ is mapped to a random variable $X_t$, which takes on a realized value $X_t(\omega)\in S$ for some outcome $\omega\in\mathcal X$.^[We usually suppress the argument of a random variable, but in this case it's helpful to illustrate the additional time dimension.] Since $X_t$ is indexed by $T$, we can actually think of a stochastic process as a function $t\mapsto X_t$, and opt to write $X(t)$ or $X(t,\omega)$.^[In general, the process of translating a function of two arguments to a function that takes on values in a space of functions is called "currying". For example, define $f:\R^2\to \R$ as $f(x,y)=x+y$. We can write this as $(g(x))(y)$ where $g:\R\to \R^{\R}$. If we fix an input like $x=2$, we have $(g(2))(y)=2+y$, which is an element of $\R^{\R}$ since $g(2):\R\to \R$. This works for general sets since the set of functions from $X\times Y$ to $Z$, written as $Z^{X\times Y}$, is isomorphic to the set $(Z^Y)^X$. $$Z^{X\times Y}\cong (Z^Y)^X$$] This interpretation is how we'll be able to define a stochastic process as a random variable.
+
+:::{#exm-}
+## Stochastic Processes as RVs
+Given a state space $S$ and an index set $T$, consider the set $S^T$ of all functions mapping $T$ to $S$. A stochastic process $\{X_t\}_{t\in T}$ defined on the probability space $(\mathcal X, \mathcal F, P)$ is a random variable $X:\mathcal X\to S^T$. One realization of $X(\omega)\in S^T$ is a function from $T$ to $S$. In the event that $T =\mathbb N$, $S^\mathbb N$ is the set of sequences in $S$, as a sequence in $S$ is just a function which assigns natural numbers to the elements of $S$. This means that $X:\mathcal X\to S^{\mathbb N}$ is a random sequence. We often refer to realizations of stochastic processes as sample paths to emphasize the additional dimension given by $T$.
+:::
+
+## Examples of Stochastic Processes
+
+:::{#exm-}
+
+## IID draws
+
+Suppose we have observe $n$ values of $X_1,\ldots, X_n$ where $X_i\iid F_X$. This is a discrete time stochastic process where the index set $i=1,\ldots,n$ is the set of units for which we observe $X_i$. Whether it makes sense to interpret the $n$ realizations of $X_i$ as a stochastic process or not very much depends on the context in which we're collecting our data and the phenomena we may be trying to model. 
+
+:::
+
+:::{#exm-}
+## Simple Random Walk
+
+Suppose we have a sequence of iid random variables $Y_1,Y_2,\ldots$ defined on the sample space $\{-1,1\}$ such that $\Pr(Y_t = 1) = p$ and $\Pr(Y_t = -1) = 1-p$ for all $t$. We can think of $Y_t$ as a modified Bernoulli random variable where a "failure" corresponds to the value $-1$ instead of $0$.^[The distribution corresponding to this random variable is known as the Rademacher distribution.] Using the sequence $Y_t$ we can define a new sequence of random variables $X_t$ as 
+$$ X_t = \sum_{i=1}^t Y_i.$$ The sequence $X_n$ is a random walk. The name is due to a thought experiment corresponding to $Y_n$ and $X_n$. Suppose someone is standing at a reference point (the origin $0$) at time $t=0$. At $t=1$ they flip a coin. If the flip results in a head they will take one step forward, but if the flip results in a tail they will take a step backwards. This is repeated for $t=2,3,\ldots$. The outcome of the coin flip at time $t$ corresponds to the random variable $Y_t$. At any time $t$, the person's position relative to the reference points is given as $X_t$. Instead of considering $X_1,X_2,\ldots$ to be a sequence of separate random variables, we can think of $X=(X_1,X_2,\ldots)$ to be a single random variable defined on the space $\mathbb Z^{\mathbb N}$. Let's look at one realized value of $X$ taking $p = 1/2$,^[Rather, the first 20 terms of the random sequence.] in which case our random walk is symmetric.
+
+```{r}
+random_walk <- function(n, dist, dist_params, t){
+  X <- do.call(dist, append(n, dist_params))
+  output <- tibble(step = X) %>%
+    mutate(
+      time = row_number(),
+      position = cumsum(step),
+      iter_num = t
+    ) %>%
+    add_row(
+      time = 0,
+      position = 0,
+      iter_num = t,
+      .before = 0
+    )
+
+  return(output)
+}
+
+rredmacher <- function(n, p){
+  return(sample(c(-1,1), n, replace = TRUE, prob = c(1-p, p)))
+}
+results <- random_walk(20, rredmacher, list(0.5), 1)
+```
+
+
+```{r}
+#| code-fold: true
+#| fig-align: center
+#| label: fig-plot51
+#| fig-asp: 1
+#| warning: false
+#| fig-width: 8
+#| fig-cap: "One simulated realization of a random walk"
+#| code-summary: "Show code which generates figure"
+plot <- results %>% 
+  select(-iter_num) %>% 
+  pivot_longer(!time) %>% 
+  mutate(name = factor(name, levels = c("step", "position"), labels = c("Step Y_t", "Position X_t"))) %>% 
+  ggplot(aes(time, value)) + 
+  geom_point() + 
+  facet_wrap(~name, ncol = 1, scales = "free") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  transition_states(time, transition_length = 0) +
+  shadow_mark() +
+  labs(x = "Time, t", y = "")
+
+animate(plot, end_pause = 30)
+```
+
+Since this is just one realization, it's analogous to illustrating a random variable with a standard normal distribution with a histogram of a single value generated by `rnorm(n = 1)`. Let's look at 1,000 simulated realizations of our random walk $X=(X_1,X_2,\ldots)$.^[An interesting feature of this figure is that it emphasizes the combinatorial nature of a random walk. At time $t=20$ we've flipped the coin 20 times, with each flip having 2 outcomes. This means there are $2^{20}$ possible paths the random walk can take.] 
+
+
+```{r}
+draw_n_random_walk <- function(N, n, dist, dist_params){
+  output <- 1:N %>%  
+    map(random_walk, n = n, dist = dist, dist_params = dist_params) %>% 
+    bind_rows()
+  
+  return(output)
+}
+
+results <- draw_n_random_walk(1e3, 20, rredmacher, list(0.5))
+```
+
+```{r}
+#| code-fold: true
+#| fig-align: center
+#| label: fig-plot52
+#| fig-asp: 0.7
+#| warning: false
+#| fig-width: 8
+#| fig-cap: "1,000 simulated realizations of the random walk."
+#| code-summary: "Show code which generates figure"
+
+plot <- results %>% 
+  ggplot(aes(x = time, y = position)) +
+  geom_line(aes(group = factor(iter_num))) +
+  theme_minimal() +
+  transition_states(iter_num) +
+  shadow_mark(alpha = 0.1, size = 0.1, color = "gray") +
+  labs(title = 'Realizations Drawn: {closest_state}', x = "Time", y = "Position") 
+  
+animate(plot, end_pause = 30)
+```
+
+We can also investigate the individual terms of the random sequence $X = (X_1,X_2,\ldots)$ by treating them like their own random variables defined on $\mathbb Z$. For 100,000 simulated realizations of $X$, let's look at the distribution of the realized values of $X_1$, $X_{10}$, $X_{20}$, and $X_{30}$.
+
+```{r}
+results <- draw_n_random_walk(1e5, 30, rredmacher, list(0.5)) %>% 
+  filter(time %in% c(1, 10, 20, 30))
+```
+
+
+```{r}
+#| code-fold: true
+#| label: fig-plot53
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "Distribution of simulated positions at various times."
+#| code-summary: "Show code which generates figure"
+#| warning: false
+
+
+results %>% 
+  group_by(time, position) %>% 
+  summarize(freq = n()/1e5) %>%
+  mutate(time = factor(time, levels = c(1,10,20,30), labels = c("t = 1", "t =10", "t = 20", "t = 30"))) %>% 
+  ggplot(aes(position, freq)) +
+  geom_point() +
+  geom_segment(aes(x = position, xend = position, y = 0, yend = freq)) +
+  facet_wrap(~time) +
+  theme_minimal() +
+  labs(x = "position", y = "frequency")
+```
+
+It is no coincidence that as $t$ increases, the distribution of $X_t$ appears to resemble a normal distribution. To show this we'll need to find the probability mass function of $X_t$ which gives $\Pr(X_t = x)$ for $x\in\{-t,-t+1,\ldots,t-1,t\}\subset \mathbb Z$. First note that the probability that $k$ steps forward and $t-k$ steps backwards are taken follows a binomial distribution, since $I(Y_i = 1)\sim \text{Ber}(p)$. 
+$$ \Pr(\textstyle\sum_{i=1}^t I(Y_i = 1)) = \binom{t}{k}p^k(1-p)^{t-k}$$
+We can write the number of steps forward $k$ in position $x$ by noting that $x = k - (t-k) = 2k-t,$ so $k = (t+x)/2$.
+$$f_{X_t}(x \mid t, p) = \binom{t}{(t+x)/2}p^{(t+x)/2}(1-p)^{t-(t+x)/2}.$$
+Since $X_t$ follows a variant of the binomial distribution, as $t\to\infty$ the normal approximation of the binomial distribution holds with increasing accuracy. The parameters of this normal distribution are given by the expected value and variance of $X_t$. These are
+\begin{align*}
+\E{X_t} &= \E{\sum_{i=1}^t Y_i} \\&= \sum_{i=1}^t \E{Y_i} & (\E{\cdot}\text{ linear})\\ &= t\left[p\cdot 1 + (1-p)(-1) \right] & (Y_i\text{ iid})\\ & = t(2p-1)\\
+\var{X_t} &= \var{\sum_{i=1}^t Y_i}\\
+        & = \sum_{i=1}^t \var{Y_i} & (Y_i\text{ iid})\\
+        & = t\left[\E{Y_i^2} - \E{Y_i}^2\right] \\ 
+        & = t[1 - (2p-1)^2] & (Y_i^2 = 1)\\
+        & = 4tp(1-p)
+\end{align*}
+If $p = 1/2$ and $t = 100$, we should expect that the distribution of $X_t$ resembles $N(0,100)$. 
+
+```{r}
+results <- draw_n_random_walk(1e5, 100, rredmacher, list(0.5)) %>% 
+  filter(time == 100)
+```
+
+```{r}
+#| code-fold: true
+#| label: fig-plot54
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "Position of random walk at time t=100 for 100,000 simulations with a normal distribution with µ=0 and σ=10 overlaid."
+#| code-summary: "Show code which generates figure"
+#| warning: false
+
+t <- 100
+p <- 1/2
+  
+results %>% 
+  ggplot(aes(position)) +
+  geom_histogram(aes(y = ..density..), colour = 1, fill = "white", binwidth = 2) +
+  theme_minimal() +
+  stat_function(fun = dnorm, args = list(mean = t*(2*p - 1), sd = sqrt(4*t*p*(1-p))), color = "red") +
+  labs(y = "Density", x = "Random Walk Position at t=100")
+```
+This entire examples happens to be just one very stylized example of a random walk. There exists numerous interesting extensions with valuable applications.
+:::
+
+:::{#exm-}
+## Wiener Process
+
+One of the most famous random function is the the Wiener process. This continuous-time stochastic process plays a key role in physics as it's a mathematical formalization of Brownian motion.^[The term "Brownian motion" is often used in place of "Wiener process".] Brownian motion refers to the behavior of particles that are continuously moving randomly about. For instance, gas molecules move rapidly about colliding with other molecules, resulting in seemingly random movement. Formally, the Weiner process $W = \{W_t\}_{t\in \R^+}$ is a random variable $W:\mathcal X\to C( \R^+)$ for some probability space $(\mathcal X, \mathcal F, P)$ where $C( \R^+)$ is the set of all real continuous functions defined on the unit interval $ \R^+$.\The process $\{W_t\}_{t\in \R^+}$ satisfies:
+
+1. $W_0 = 0$. The process' initial value at time $t=0$ is always $0$.
+2. For all $t\in \R^+$, $W_{t+u} - W_t \perp W_s$ for $u \ge 0$ and $s < t$. The process has independent increments. In other words, the "movement" of the process between times $t$ and $t+u$ is independent of the processes location prior to $t$ (at time $s$). Another way to think of this property is that the process is "memoryless" in the sense that future movement of the process only depends on its current position and not how it got to that position.
+3. For all $t\in \R^+$, $W_{t+u}-W_t\sim N(0,u)$ for $u \ge 0$. This is equivalent to $W_t - W_s \sim N(0,t-s)$ for $s\le t$, which can also be written as $W_t-W_s\sim \sqrt{t-s}\cdot N(0,1)$
+
+A fourth property that we've implicitly assumed by defining $W$ to be a $C( \R^+)$-valued random variable is that $W$ is continuous. *A priori*, it isn't obvious that there exists a process which satisfies all of these properties, but we will take its existence as given.^[See Section 37 of @billingsley2008probability for a proof.] 
+
+One of the limitations of turning to simulations to illlustrate $W$ is that we aren't able to graph a truly continuous (non-linear) function on a computer.^[If we wanted to graph $f(x) = \sqrt x$ on $[0,1]$, we would need to evaluate $f(x)$ at many points in $[0,1]$ and then plot the results. *Technically* we're approximating the graph of $f(x)$ via linear interpolation between the points at which we evaluated $f$ using `geom_line()`. It just happens that it's easy to pick such a sufficiently large number of points to evaluate $f$ at that we get the desired graph of $f$.] You may be thinking" "well no duh, this is obvious! Why are you bringing up something so basic and trivial?" It's worth emphasizing because this entire example is meant to illustrate a continuous stochastic process, which unfortunately we need to do by simulating a discrete analog. Suppose we have $N$ evenly spaced points in $[0,1]$, such that time increments are $dt = 1/N$. We have 
+\begin{align*}
+W_0 & = 0,\\
+W_j & = W_{j-1} + dW_{j}, & (j = 1,\ldots, N)\\
+dW_j & \iid N(0, dt).
+\end{align*}
+We'll set $N = 1\times10^7$, which is such a large value that we'll be able to just treat $W$ as if it was truly continuous. Let's simulate a single realization of $W$.
+
+```{r}
+# draw one realization of wiener process
+#   N = number of discrete points to calculate process at
+#   T_max = maximum time value to calculate process at
+#   s = parameter to iterate over if we want to draw multiple realizations
+wiener <- function(N, T_max, s){
+  dt <- T_max/N
+  output <- tibble(
+    dW = rnorm(N, sd = sqrt(dt)),
+    time = seq(dt, T_max, dt),
+    iter_num = s
+  ) %>% 
+    mutate(value = cumsum(dW)) %>% 
+    add_row(value = 0, time = 0, iter_num = s, .before = 0)
+  return(output)
+}
+
+results <- wiener(1e5, 1, 1)
+```
+
+```{r}
+#| code-fold: true
+#| label: fig-plot55
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "One realization of the Wiener process on the unit interval [0,1]."
+#| code-summary: "Show code which generates figure"
+#| warning: false
+results %>% 
+  ggplot(aes(time, value)) +
+  geom_line(size = 0.1) +
+  theme_minimal() +
+  labs(x = "Time t", y = "Value of W at t") 
+```
+
+Since $W$ is continuous it's defined for all values in the interval $[0,1]$, so we can "zoom" in on increasingly small subsets of $[0,1]$, and $W$ will still be defined for all $t$.^[Of course as we look at smaller and smaller intervals, the number of discrete points used to visualize the process will shrink, so the path may not appear quite as "jagged".]  
+
+```{r}
+#| code-fold: true
+#| label: fig-plot56
+#| fig-align: center
+#| fig-asp: 1
+#| fig-width: 8
+#| fig-cap: "``Zooming in'' on the Wiener process."
+#| code-summary: "Show code which generates figure"
+#| warning: false
+
+zoom_in <- function(W, t){
+  output <- W %>% 
+    filter(time <= t) %>% 
+    mutate(
+      max_time = t,
+      zoom_factor = 1/t
+    )
+  return(output)
+}
+
+plot <- (1/(2^(0:6))) %>% 
+  map(zoom_in, W = results) %>% 
+  bind_rows() %>% 
+  ggplot(aes(time, value)) + 
+  geom_line(size = 0.5) +  
+  transition_states(zoom_factor) +
+  view_follow() +
+  theme_minimal() +
+  labs(x = "Time t", y = "Value of W at t")
+
+animate(plot, nframes = 300)
+```
+
+Note that as we "zoom in" the sample path has the same jagged appearance of $W$ on all of $[0,1]$. This is because the Wiener process is closely linked to the idea of a fractal.^[Reference to john cook article] Another interesting feature is that $W$ is nowhere differentiable despite being continuous on account of it being comprised of an infinite number of "kinks".
+
+Now that we've seen one sample path, let's draw 100 realizations of $W$ to get a sense of the relative frequency of certain paths.
+
+```{r}
+draw_wiener <- function(M, N, T_max){
+  output <- 1:M %>% 
+    map(wiener, N = N, T_max = T_max) %>% 
+    bind_rows() 
+  return(output)
+}
+
+results <- draw_wiener(1e2, 1e4, 1)
+```
+
+```{r}
+#| code-fold: true
+#| label: fig-plot57
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "1,000 simulated realizations of the Wiener process"
+#| code-summary: "Show code which generates figure"
+#| warning: false
+plot <- results %>% 
+  ggplot(aes(time, value)) +
+  geom_line(aes(group = iter_num)) +
+  theme_minimal() +
+  transition_states(iter_num) +
+  shadow_mark(alpha = 0.2, size = 0.1) +
+  labs(title = 'Realizations Drawn: {closest_state}', x = "Time", y = "Value") 
+
+animate(plot, end_pause = 30)
+```
+
+Another way to visualize these realizations is by looking at the distribution of the simulated values of $W$ at various values of $t$. Since $W_t - W_s \sim N(0, t-s)$ and $W_0 = 0$, we should expect that $$W_t = W_t - 0  = W_t - W_0 \sim N(0,t-0) = N(0,t).$$
+
+```{r}
+# Draw one realization of wiener process at times t (approximately)
+wiener_t <- function(N, T_max, t, s){ 
+  
+  W <- wiener(N, T_max, s)
+
+  # Pick the values where W_t is calculated that are closest to the times of interest
+  t_filter <- W %>% 
+    select(time) %>% 
+    expand_grid(given_t = t) %>% 
+    mutate(dist = abs(time - given_t)) %>% 
+    group_by(given_t) %>% 
+    filter(dist == min(dist)) %>% 
+    ungroup() %>% 
+    select(time) %>% 
+    unlist()
+  
+  output <- W %>% 
+    filter(time %in% t_filter) %>% 
+    select(-dW)
+  
+  return(output)
+}
+
+# Draw M realizations of wiener process at vector of times t_vals
+draw_wiener_t <- function(M, t, T_max, N){
+  output <- 1:M %>% 
+    map(wiener_t, N = N, T_max = T_max, t = t) %>% 
+    bind_rows()
+  return(output)
+}
+
+results <- draw_wiener_t(1e5, (1:10)/10, 1, 1e3)
+```
+
+```{r}
+#| code-fold: true
+#| label: fig-plot58
+#| fig-align: center
+#| fig-asp: 1
+#| fig-width: 8
+#| fig-cap: "The top panel shows the density of the Wiener process at 10 fixed times calculated using 100,000 simulations. The bottom panel shows the sample analogs of expectation and variance for the process calculated at the fixed times, along with the theoretical values for comparison."
+#| code-summary: "Show code which generates figure"
+#| warning: false
+
+p1 <- results %>% 
+  ggplot(aes(x = value, y = time, group = time)) +
+  geom_density_ridges2(scale = 5, alpha = .8, rel_min_height = 0.007) +
+  xlim(-3,3) +
+  scale_y_continuous(breaks = (1:10)/10) +
+  theme_minimal() + 
+  labs(x = "W_t", y = "Time t")
+
+
+p2 <- results %>% 
+  group_by(time) %>% 
+  summarize(
+    'Sample Mean' = mean(value),
+    'Sample Variance' = var(value)
+  ) %>% 
+  pivot_longer(!time) %>% 
+  ggplot(aes(time, value, color = name)) +
+  geom_abline(size = 0.3) +
+  geom_hline(yintercept = 0, size = 0.3) +
+  geom_point() +
+  scale_y_continuous(breaks = (1:10)/10) + 
+  scale_x_continuous(breaks = (1:10)/10) + 
+  theme_minimal() +
+  annotate("text", x=0.7, y = 0.6, label= "Var(W_t) = t") +
+  annotate("text", x=0.7, y = 0.05, label= "E[W_t] = 0") +
+  theme(legend.position = "bottom") +
+  labs(x = "Time t", y = "", color = "") +
+  scale_color_manual(values = c("red","blue")) 
+
+
+ggarrange(p1, p2, ncol = 1)
+```
+
+For further confirmation that $W_t - W_s \sim N(0, t-s)$, let's calculate the sample variance associated with our realizations of $W_t - W_s$ for all $s,t\in[0.1, 0.2,\ldots,0.9,1]$ satisfying $s \le t$.
+
+```{r}
+# For a grid of time values, calculate var_st at each point {(s,t) ∈ t_grid² | s ≤ t} over M simulations
+sim <- function(M, t_grid, T_max, N){
+  
+  # define function to calculate variance
+  var_st <- function(W, s, t){
+    if(t == s){
+      return(0)
+    } else{
+      output <- W %>% 
+        filter(time %in% c(s,t)) %>% 
+        group_by(iter_num) %>% 
+        mutate(diff = value - lag(value, order_by = time)) %>% 
+        ungroup() %>% 
+        summarize(var(diff, na.rm = T)) %>% 
+        as.numeric()
+      
+      return(output)
+    }
+  }
+  
+  # draw M realizations of W at grid of times
+  W <- draw_wiener_t(M, t_grid, T_max, N)
+  
+  # Apply var_st to all combinations of times
+  output <- expand_grid(
+    s = unique(W$time),
+    t = unique(W$time)
+  ) %>% 
+    filter(s <= t) %>% 
+    rowwise() %>% 
+    mutate(var = var_st(W, s, t))
+  
+  return(output)
+}
+
+results <- sim(1e5, (0:10)/10, 1, 1e3)
+```
+
+```{r}
+#| code-fold: true
+#| label: fig-plot59
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "The sample variance associated with W_t - W_s calculated using 100,000 simulations."
+#| code-summary: "Show code which generates figure"
+#| warning: false
+
+results %>% 
+  ggplot(aes(s,t, fill = var)) +
+  geom_tile(color = "white", lwd = 0.2, linetype = 1) +
+  geom_text(aes(label = round(var,3)), color = "white", size = 4) +
+  theme_minimal() +
+  scale_y_continuous(breaks = (0:10)/10, expand = c(0,0)) + 
+  scale_x_continuous(breaks = (0:10)/10, expand = c(0,0)) +
+  theme_classic() + 
+  labs(fill = "Var(W_t - W_s)") +
+  theme(legend.position = "none", axis.line = element_blank())
+```
+We have $\widehat{\text{Var}}(W_t-W_s) \approx t-s$ as anticipated! Finally, we can provide visual evidence that $W_{t+u} - W_t \perp W_s$ for $u \ge 0$ and $s < t$. We'll let $t = 0.3$, $u=0.1$, and $s = 0.2$.
+
+```{r}
+results <- draw_wiener_t(1e5, (2:4)/10, 1, 1e3)
+```
+
+```{r}
+#| code-fold: true
+#| label: fig-plot595
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "100,000 realized values of (W_4 - W_3) plotted against the corresponding 100,000 realized values of W_2."
+#| code-summary: "Show code which generates figure"
+#| warning: false
+
+tibble(
+  x = results$value[results$time == 0.4] - results$value[results$time == 0.3],
+  y = results$value[results$time == 0.2]
+) %>% 
+  ggplot(aes(x, y)) +
+  theme_minimal() +
+  geom_point(size = 0.1) +
+  labs(x = "W_4 - W_3", y = "W_2")
+```
+
+From this figure, the two random variables certainly appear to be independent. 
+
+:::
+
+       The Wiener process is just one instance of a stochastic process that "looks like" a normal distribution at specific points $t\in T$. These types of processes are so special that they are simply known as Gaussian.
+
+:::{#def-}
+Let $\{X_t\}_{t\in T}$ be a stochastic process over the state space $\R$. The process is a [***Gaussian process***]{style="color:red"} if for any finite set of indices $t_1,\ldots,t_k\in T$, the random vector $\X = (X_{t_1},\ldots, X_{t_k})$ is distributed according to a multivariate normal distribution. 
+:::
+
+       The defining properties of the Wiener process immediately establish it as a Gaussian process. To find the explicit normal distribution referenced in the definition of a Gaussian process we need to calculate the covariance of $W_t$ and $W_s$.
+\begin{align*}
+\cov{W_t,W_s} &= \begin{cases} \cov{W_t-0, W_s} & t > s\\ \cov{W_t, W_s + 0} & s\le t \end{cases} \\&= \begin{cases} \cov{W_t-W_s+W_s, W_s} & t > s\\ \cov{W_t, W_s + W_t- W_t} & s\le t\end{cases}\\
+&= \begin{cases} \cov{W_t-W_s, W_s}+\cov{W_s,W_s} & t > s\\ \cov{W_t, W_s-W_t} + \cov{W_t,W_t}& s\le t \end{cases}\\
+& = \begin{cases} 0 + \var{W_s} & t > s\\ 0 + \var{W_t}& s\le t \end{cases} & (\text{independent increments})\\
+& = \begin{cases} s & t > s\\ t& s\le t \end{cases}\\
+& = \min\{s,t\}
+\end{align*}
+Therefore, for any $\mathbf W = (W_{t_1},\ldots, W_{t_k})$ where $t_1,\ldots,t_k \in [0,T]$ we have 
+\begin{align*}
+\mathbf W &\sim N(\zer,\Sig),\\
+\Sig_{j\ell}&=\begin{cases}t_j & j = \ell \\ \min\{t_j,t_{\ell}\} & \text{otherwise} \end{cases}.
+\end{align*}
+
+Let's look at another example of a Gaussian process by tweaking the Wiener process. 
+
+:::{#exm-}
+
+## Brownian Bridge
+
+A process closely related to the Wiener Process is a Brownian bridge. For all intents and purposes, a Brownian bridge is a Wiener-like process which "bridges" two points $a,b\in \R$ on on the interval $[0,T]$. The simplest form of the Brownian bridge has $a=b=0$, and is defined via conditioning as 
+$$ B(t)  = (W(t) \mid W(T) = 0)$$ for $t\in [0,T]$. This is often called the "standard" Brownian bridge, and often has $T=1$. We can construct this process by defining $B(t)$ as 
+$$B(t) = W(t) - \frac{t}{T}W(T).$$ To bridge a general choice of $a,b\in\R$, we'll start by connecting the two points with a straight line parameterized by $t\in[0,T]$, $(1-t/T)a+(t/T)b$. To modify this line, we'll add the standard Brownian bridge $B(t)$.
+
+\begin{align*}
+B(t\mid a,b) &= \left(1-\frac{t}{T}\right)a + \frac{t}{T}b + B(t)\\
+& = \left(1-\frac{t}{T}\right)a + \frac{t}{T}b + W(t) - \frac{t}{T}W(T)
+\end{align*}
+
+```{r}
+brownian_bridge <- function(N, T_max = 1, a = 0, b = 0, s){
+  # Start by drawing standard Wiener process on [0,T]
+  output <- wiener(N, T_max, 1) %>%
+    mutate(
+      # define B(t) using W(t)
+      value = (1 - time/T_max)*a + (time/T_max)*b + value - (time/T_max)*last(value, order_by = time),
+      iter_num = s
+    )
+  return(output)
+}
+
+
+draw_brownian_bridge <- function(n, N, T_max = 1, a = 0, b = 0){
+  output <- 1:n %>%
+    map(brownian_bridge, N = N, T_max = T_max, a = a, b = b) %>%
+    bind_rows()
+  return(output)
+}
+
+results <- draw_brownian_bridge(7e3, 1e4, T_max = 2, a = 1, b = 3)
+```
+
+```{r}
+#| code-fold: true
+#| label: fig-plot5952
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "100 realizations of the standard Brownian bridge"
+#| code-summary: "Show code which generates figure"
+#| warning: false 
+plot <- results %>% 
+  filter(iter_num <= 100) %>% 
+  ggplot(aes(time, value)) + 
+  geom_line(aes(group = iter_num)) + 
+  theme_minimal() + 
+  transition_states(iter_num) +
+  shadow_mark(alpha = 0.2, size = 0.1) +
+  labs(title = 'Realizations Drawn: {closest_state}', x = "Time", y = "Value") 
+
+animate(plot, end_pause = 30)
+```
+Let's consider the random variable given by the Brownian bridge takes on at a specific point in time $t\in[t_1,t_2]$ which we will write as $B_{t\mid a,b, t_1, t_2}$. We can derive the distribution of this random variable using properties of the normal distribution and $W_t\sim N(0,t)$.
+
+\begin{align*}
+B_{t\mid a,b}& = \left(1-\frac{t}{T}\right)a + \frac{t}{T}b + W(t) - \frac{t}{T}W(T) \\
+& \sim \left(1-\frac{t}{T}\right)a + \frac{t}{T}b + N(0,t) - \frac{t}{T}N(0,T)\\
+& = \left(1-\frac{t}{T}\right)a + \frac{t}{T}b + N(0,t) - N(0,t^2/T)\\
+& = \left(1-\frac{t}{T}\right)a + \frac{t}{T}b + N(0,t(T - t)/T)\\
+& = N\left( \left(1-\frac{t}{T}\right)a + \frac{t}{T}b, \left(\frac{t(T-t)}{T}\right)\right)
+\end{align*}
+
+To calculate the covariance of the Brownian bridge at two points, we first need to calculate the covariance 
+
+\begin{align*}
+\cov{B_{t\mid a,b}, B_{s\mid a,b}} &= \cov{\left(1-\frac{t}{T}\right)a + \frac{t}{T}b + W_t - \frac{t}{T}W_T, \left(1-\frac{s}{T}\right)a + \frac{s}{T}b + W_s - \frac{s}{T}W_T}\\
+& = \cov{W_t - \frac{t}{T}W_T, W_s - \frac{s}{T}W_T} \\ 
+& = \cov{W_t, W_s} - \frac{s}{T}\cov{W_t, W_T} - \frac{t}{T}\cov{W_T, W_s} + \frac{st}{T^2}\cov{W_T, W_T}\\
+& = \min\{t,s\} - \frac{s}{T}\min\{t, T\} - \frac{t}{T}\min\{s, T\} + \frac{st}{T^2}\var{W_T}\\
+& = \min\{t,s\} - \frac{st}{T} - \frac{st}{T} - \frac{stT}{T^2}\\
+& = \min\{t,s\} - \frac{st}{T}
+\end{align*}
+
+If we combine these two calculations, we can conclude that for any $t_1,\ldots,t_k\in [0,T]$ we have 
+\begin{align*}
+\mathbf W &\sim N(\boldsymbol{\mu},\Sig),\\
+\boldsymbol{\mu}_j &= \left(1-\frac{t}{T}\right)a + \frac{t}{T}b,\\
+\Sig_{j\ell}&=\begin{cases}\frac{t_j(T-t_j)}{T} & j = \ell \\ \min\{t_j,t_{\ell}\} - \frac{t_jt_\ell}{T} & \text{otherwise} \end{cases},
+\end{align*}
+making $B(t\mid a,b)$ a Gaussian process. The Brownian bridge is an important tool and can be generalized to arbitrary intervals $[t_1,t_2]\subseteq [0,T]$. For details see pages 82-86 of @glasserman2004monte. 
+
+:::
+
+:::{#exm-}
+## Gaussian White Noise 
+
+The simplest of Gaussian processes is a discrete-time white noise process $\varepsilon$ where $\varepsilon_t \iid N(0, \sigma^2)$. 
+
+```{r}
+gaussian_wn <- function(T_max, sigma = 1, s){
+  output <- rnorm(T_max, mean = 0, sd = sigma) %>% 
+    as_tibble() %>% 
+    mutate(
+      t = row_number(),
+      iter_num = s
+    )
+  return(output)
+}
+
+draw_gaussian_wn <- function(n, T_max, sigma = 1){
+  output <- 1:n %>% 
+    map(gaussian_wn, T_max = T_max, sigma = sigma) %>% 
+    bind_rows()
+  return(output)
+}
+
+results <- draw_gaussian_wn(
+  n = 100,
+  T_max = 1e4
+)
+```
+
+
+```{r}
+#| code-fold: true
+#| label: fig-plot5953
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "100 realizations of a Gaussian white noise process."
+#| code-summary: "Show code which generates figure"
+#| warning: false 
+
+results %>% 
+  ggplot(aes(t, value)) + 
+  geom_line(aes(group = iter_num)) + 
+  theme_minimal() + 
+  transition_states(iter_num) +
+  shadow_mark(alpha = 0.2, size = 0.1) +
+  labs(title = 'Realizations Drawn: {closest_state}', x = "Time", y = "Value") 
+```
+
+:::
+
+       One last example of a stochastic process is especially important in econometrics and is much easier to think of as a random function than more traditional examples of stochastic processes which are typically given as an indexed collection of random variables. 
+
+:::{#exm-rf}
+## A Random Function
+
+Imagine we observe an iid random sample $\X = (X_1,\ldots, X_n)$ where $X_i\iid N(\mu,\sigma^2)$, and we want to measure the distance a number $t\in\R$ is from the sample $\X$. One way to do this is with the Euclidean metric. If $\mathbf e$ is the unit vector of length $n$ then the distance between $\X$ and $t$ is 
+$$ \norm{\X - t\cdot\mathbf e}_2 = \left(\textstyle\sum_{i=1}^n(X_i - t)^2\right)^{1/2}.$$ If we define $Q_t = \norm{\X - t\cdot\mathbf e}_2$, then $Q = \{Q_t\}_{t\in\R}$ is a stochastic process which maps $\R$ to functions in the space $\R^\R$ (the set of all single variable real functions). Let's look at 100 simulated values of the process $Q$ where $\mu = 0$ and $\sigma^2 = 1$.
+
+```{r}
+# define random function Q_t
+obj <- function(sample, t){
+  sqrt(sum((sample-t)^2))
+}
+
+# draw n values and calculate Q_t on a given domain
+iter <- function(f, domain, n, dist, dist_params, s){
+  X <- do.call(dist, append(n, dist_params))
+  output <- tibble(
+    t = domain, 
+    iter_num = s,
+    Q = map_dbl(domain, f, sample = X),
+    sample_size = n
+  )
+  
+  return(output)
+}
+
+# draw N realizations of Q_t on the domain
+sim <- function(N, f, domain, n, dist, dist_params){
+  output <- 1:N %>% 
+    map(iter, f = f, domain = domain, n = n, dist = dist, dist_params = dist_params) %>% 
+    bind_rows()
+  
+  return(output)
+}
+
+
+results <- sim(100, obj, seq(-1, 1, length = 1000), 100, rnorm, list(0,1))
+```
+
+```{r}
+#| code-fold: true
+#| label: fig-plot510
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "100 realizations of an aggregated distance of a real number from a random sample calculated using the Euclidean metric."
+#| code-summary: "Show code which generates figure"
+#| warning: false 
+plot <- results %>% 
+  ggplot(aes(t, Q)) +
+  geom_line(aes(group = iter_num)) +
+  theme_minimal() +
+  labs(y = 'Objective Function', x = 't') +
+  transition_states(iter_num) +
+  shadow_mark(alpha = 0.2, size = 0.1) +
+  labs(title = 'Realizations Drawn: {closest_state}', x = "Time", y = "Value") 
+
+animate(plot, end_pause = 30)
+```
+
+In each case the realized value of $Q$ is a parabola which happens to be continuously differentiable, so $Q:\R\to C^2(\R)$. We could also define $Q$ using the the norm $\norm{\cdot}_1$ (giving the taxi-cab metric) or $\norm{\cdot}_\infty$ (giving the supremum metric).
+\begin{align*}
+\norm{\X - t\cdot\mathbf e}_1 &= \left(\textstyle\sum_{i=1}^n\abs{X_i - t}\right)\\
+\norm{\X - t\cdot\mathbf e}_\infty & = \max_{i}\abs{X_i-t}
+\end{align*}
+
+In both these cases, the realized value of $Q$ will not be differentiable on all of $\R$ since $\abs{x_i - t}$ is not differentiable at the point $t=x_i$.
+
+```{r}
+obj <- function(sample,t){
+  sum(abs(sample-t))
+}
+
+results <- sim(100, obj, seq(-1, 1, length = 1000), 100, rnorm, list(0,1))
+```
+
+```{r}
+#| code-fold: true
+#| label: fig-plot511
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "100 realizations of an aggregated distance of a real number from a random sample calculated using the taxi-cab metric. While the realization of the stochastic process appears smooth, it has slight kinks at which it is not differentiable."
+#| code-summary: "Show code which generates figure"
+#| warning: false 
+#| 
+plot <- results %>% 
+  ggplot(aes(t, Q)) +
+  geom_line(aes(group = iter_num)) +
+  theme_minimal() +
+  labs(y = 'Objective Function', x = 't') +
+  transition_states(iter_num) +
+  shadow_mark(alpha = 0.2, size = 0.1) +
+  labs(title = 'Realizations Drawn: {closest_state}', x = "Time", y = "Value") 
+
+animate(plot, end_pause = 30)
+```
+
+```{r}
+obj <- function(sample,t){
+  max(abs(sample-t))
+}
+
+results <- sim(100, obj, seq(-1, 1, length = 1000), 100, rnorm, list(0,1))
+```
+
+```{r}
+#| code-fold: true
+#| label: fig-plot512
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "100 realizations of an aggregated distance of a real number from a random sample calculated using the supremum metric."
+#| code-summary: "Show code which generates figure"
+#| warning: false 
+
+plot <- results %>% 
+  ggplot(aes(t, Q)) +
+  geom_line(aes(group = iter_num)) +
+  theme_minimal() +
+  labs(y = 'Objective Function', x = 't') +
+  transition_states(iter_num) +
+  shadow_mark(alpha = 0.2, size = 0.1) +
+  labs(title = 'Realizations Drawn: {closest_state}', x = "Time", y = "Value") 
+
+animate(plot, end_pause = 30)
+```
+
+:::
+
+## Moments
+
+In some of our examples we saw that if we fix some arbitrary time $t$, we can think of the stochastic process $X(t)\in S^T$ as a random variable $X_t \in S$. We can consider the expected value $\E{X_t}$ and variance $\var{X_t}$ of this random variable $X_t$ like we would any other random variable we're more familiar with. The only thing that is a bit different is that $\E{X_t}$ and $\var{X_t}$ may be functions of $t.$ In the case of the expected value, this function has a specific name.
+
+:::{#def-}
+Let $X = \{X_t\}_{t\in \mathbb N}$ be a stochastic process over the state space $\R$. The [***mean-function***]{style="color:red"} $\mu(t):T\to \R$ for the process $X$ is defined as $\mu(t) = \E{X_t}$.
+:::
+
+We also have a special name for the covariance between two random variables in the event that both are given by the same stochastic process evaluated at two different points in $T$.
+
+:::{#def-}
+Let $X = \{X_t\}_{t\in  T}$ be a stochastic process over the state space $\R$ where $T\subseteq \R$. The [***$j$th autocovariance***]{style="color:red"} of $X_t$ is defined as 
+$$\gamma_{jt} = \cov{X_{t}, X_{t-j}} = \E{ (X_{t}-\mu(t)) (X_{t-j}-\mu(t-j))} = \E{X_tX_{t-j}} - \mu(t)\mu(t-j)$$ for some time $t$ and increment $j$. For a finite collection of increments $j = 1,\ldots,t$ we can define the [***autocovariance matrix***]{style="color:red"} $\boldsymbol \Gamma$ as 
+\begin{align*}
+\boldsymbol \Gamma &= \var{[X_t, X_{t-1}, \ldots, X_{t-j}]'},\\
+& = \begin{bmatrix}\cov{X_t, X_t} & \cov{X_t, X_{t-1}} & \cdots & \cov{X_t, X_{t-j}}\\ 
+\cov{X_{t-1}, X_{t}} & \cov{X_{t-1}, X_{t-1}} & \cdots & \cov{X_{t-1}, X_{t-1}}\\ \vdots & \vdots & \ddots &\vdots \\
+\cov{X_{t-j}, X_{t}} & \cov{X_{t-j}, X_{t-1}} & \cdots & \cov{X_{t-j}, X_{t-j}}\end{bmatrix},\\
+& = \begin{bmatrix}
+\gamma_{0t} & \gamma_{1t} & \gamma_{2t} & \cdots & \gamma_{jt}\\
+\gamma_{1t} & \gamma_{0(t-1)} & \gamma_{1(t-1)} & \cdots & \gamma_{(j-1)(t-1)}\\
+\gamma_{2t} & \gamma_{1(t-1)} & \gamma_{0(t-2)} & \cdots & \gamma_{(j-2)(t-2)}\\
+\vdots & \vdots & \vdots & \ddots & \vdots \\ 
+\gamma_{jt} & \gamma_{(j-1)(t-1)} & \gamma_{(j-2)(t-2)} & \cdots & \gamma_{0(t-j)}
+\end{bmatrix}.
+\end{align*}
+The [***$j$th autocorrelation***]{style="color:red"} of $X_t$ is defined as 
+$$\rho_{jt} = \corr{X_{t}, X_{t-j}} = \frac{\gamma_{jt}}{\sqrt{\gamma_{0t}}\sqrt{\gamma_{0(t-j)}}}.$$
+The [***autocorrelation matrix***]{style="color:red"} $\mathbf R$ is 
+$$\mathbf R = \begin{bmatrix}
+\rho_{0t} & \rho_{1t} & \rho_{2t} & \cdots & \rho_{jt}\\
+\rho_{1t} & \rho_{0(t-1)} & \rho_{1(t-1)} & \cdots & \rho_{(j-1)(t-1)}\\
+\rho_{2t} & \rho_{1(t-1)} & \rho_{0(t-2)} & \cdots & \rho_{(j-2)(t-2)}\\
+\vdots & \vdots & \vdots & \ddots & \vdots \\ 
+\rho_{jt} & \rho_{(j-1)(t-1)} & \rho_{(j-2)(t-2)} & \cdots & \rho_{0(t-j)}
+\end{bmatrix}.$$
+:::
+
+As the name implies, autocovariance captures how a stochastic function varies with *itself* (or rather the random variables that arise from fixing a finite collection of elements in $T$).
+
+
+:::{#exm-}
+
+## Gaussian White Noise 
+
+If the process $\varepsilon$ is defined at $\varepsilon_t\sim N(0,\sigma^2)$ for $T=\R$, then $\boldsymbol \Gamma = \sigma^2\mathbf I$ and $\mathbf R = \mathbf I$.
+
+:::
+
+:::{#exm-}
+
+## Random Walk 
+
+Let $X$ be a random walk defined by $X_t = \sum_{i=1}^t Y_i$ for $Y_i \iid F_Y$ where $\mu = \E{Y}$ and $\sigma^2 = \var{Y}$. When $\mu \neq 0$ we have a random walk *with drift*, and $X_t$ can be rewritten as 
+$$X_t =  X_{t-1} + \mu + Y_t^*$$ where $Y_t^* = Y_t - \mu$ is shifted such that $\E{Y_t^*} = 0$. The expected value and variance of $X_t$ are
+\begin{align*}
+\E{X_t} &= \E{\textstyle \sum_{i=1}^t Y_i}= \sum_{i=1}^t \E{Y_i} = \sum_{i=1}^t \mu = t\mu,\\
+\var{X_t} &= \var{\textstyle \sum_{i=1}^t Y_i}= \sum_{i=1}^t \var{Y_i} = \sum_{i=1}^t \sigma^2 = t\sigma^2, 
+\end{align*}
+since $Y_i$ are IID. We can use these two facts to calculate the autocovariance of $X$.^[We'll calculate the autocovariance in a more "direct" fashion, but there are a few tricks that can employed such that things fall into place much quicker.]
+
+\begin{align*}
+\cov{X_t, X_{t-j}} & = \E{X_tX_{t-j}} - \E{X_t}\E{X_{t-j}}\\
+  & = \E{\left(\textstyle\sum_{i=1}^t Y_i \right)X_{t-j}} - (t\mu)[(t-j)\mu]\\
+  & = \E{\left(\textstyle\sum_{i=1}^{t-j} Y_i + \textstyle\sum_{i=t-j+1}^{t} Y_i \right)X_{t-j}} - (t\mu)[(t-j)\mu]2\\
+  & = \E{\left(X_{t-j} + \textstyle\sum_{i=t-j+1}^{t} Y_i \right)X_{t-j}} - (t\mu)[(t-j)\mu]\\
+  & = \E{X_{t-j}^2 + X_{t-j}\textstyle\sum_{i=t-j+1}^{t} Y_i} - (t\mu)[(t-j)\mu]\\
+  & = \E{X_{t-j}^2} + \E{X_{t-j}\textstyle\sum_{i=t-j+1}^{t} Y_i}- (t\mu)[(t-j)\mu]\\
+  & = \left(\var{X_{t-j}} + \E{X_{t-j}}^2\right) + \E{X_{t-j}}\textstyle\sum_{i=t-j+1}^{t} \E{Y_i}- (t\mu)[(t-j)\mu]\\
+  & = [(t-j)\sigma^2 + (t\mu)^2] + t\mu\textstyle\sum_{i=t-j+1}^{t} \E{Y_i} - (t\mu)[(t-j)\mu]\\
+  & = (t-j)\sigma^2 + t^2\mu^2 + t\mu\textstyle\sum_{i=t-j+1}^{t} \mu - t^2\mu^2 -tj\mu^2\\
+  & = (t-j)\sigma^2 + t^2\mu^2 - t^2\mu^2 + t\mu(j\mu)  -tj\mu^2\\
+  & = (t-j)\sigma^2 + \underbrace{t^2\mu^2 - t^2\mu^2}_0 + \underbrace{tj\mu^2  -tj\mu^2}_0\\
+  & = (t-j)\sigma^2
+\end{align*}
+
+Let's confirm our calculation by simulating 100,000 realizations of a random walk where $Y_i \sim N(1, 1)$ and $T=\{1,\cdots,5\}$. In this case the true autocovariance matrix is 
+$$ \boldsymbol\Gamma = \begin{bmatrix} 1 & 1 & 1 & 1 & 1\\
+1 & 2 & 2 & 2 & 2\\
+1 &2 & 3 & 3 &3 \\
+1 & 2 &3 &4 & 4\\
+1 & 2 & 3&4&5
+\end{bmatrix}.$$
+
+```{r}
+results <- draw_n_random_walk(
+  N = 1e5, 
+  n = 5, 
+  dist = rnorm, 
+  dist_params = list(
+    mean = 1, 
+    sd = 1
+  )
+)
+```
+
+Now let's calculate the sample autocovariance matrix using our simulated values.
+
+```{r}
+#| code-fold: true
+#| code-summary: "Show code which generates table"
+table <- results %>% 
+  select(-step) %>% 
+  pivot_wider(values_from = position, names_from = time) %>% 
+  select(
+    -iter_num,
+    -2
+  ) %>% 
+  cov() %>% 
+  round(2)
+
+colnames(table) <- paste0("X", 1:5)
+rownames(table) <- paste0("X", 1:5)
+
+table %>% knitr::kable()
+```
+:::
+
+:::{#exm-}
+
+## Wiener Process
+
+If $W$ is a Wiener process, we've already shown that $$\cov{W_t, W_s} = \min\{s,t\}.$$ In the event we have $s\le t$ and write $s=t-j$ for some $j\in \R$, then $\min\{t, t-j\} = t - j$, giving 
+$$ \cov{W_t, W_{t-j}} = t-j.$$ Note that this is identical to the autocovariance of a random walk with unit variance. This is not at all a coincidence, and we'll return to this when considering asymptotics in the context of stochastic processes.
+
+:::
+
+## Stationarity 
+
+Many phenomenon in the world can be modeled with stochastic processes, so they arise in statistics quite often (whether explicitly or implicitly). Unfortunately, in many of these settings we face a fundamental "missing data" problem. It's often *impossible* to observe more than one realization of a stochastic process. For example, we may think of the price of gas over time as a stochastic process $P$. We can collect data for gas prices over time, giving $P_1, P_2,\ldots$, but we're really observing the same realization of a stochastic process evaluated at different points in time. The only way we could observe another realization of $P$ is if we had access to a multidimensional universe where we could look at the progression of gas prices over time in many different universes! How can we possibly hope do anything useful with data if we have a sample size of 1? The solution comes in the form of assuming a stochastic process exhibits certain convenient properties. The first of these is stationary. 
+
+       As the name implies, stationary essentially means that a stochastic process "stays in one place" over the course of time. We can formalize this by appealing to the joint distribution of a process evaluated at multiple points in time. 
+
+:::{#def-}
+Let $X = \{X_t\}_{t\in  T}$ be a stochastic process over the state space $\R$ where $T\subseteq \R$. The process $X$ is [***strictly stationary***]{style="color:red"} if 
+$$ F_{(X_{t_1},\ldots,X_{t_n})}(x_{t_1},\ldots,x_{t_n}) = F_{(X_{t_1}+ \tau,\ldots,X_{t_n}+ \tau)}(x_{t_1} + \tau,\ldots,x_{t_n}+ \tau)$$ for all $t_{1},\ldots, t_n\in T$ and $\tau \in \R$.
+:::
+
+Strict stationarity says that the distribution of $X$ evaluated at a finite collection of times only depends on the relative position of the times. If we were to translate $t_1,\ldots,t_n$ by some $\tau$, we would end up with the same distribution!
+
+:::{#exm-}
+
+## Process of IID Variables
+
+Suppose we have some process $X(t)$ defined as $X_t\iid F_X$. Since the process is defined via an IID sequence of random variables it is strictly stationary. 
+
+:::
+
+
+:::{#exm-}
+
+## Gaussian White Noise
+
+The process $\varepsilon$ defined by $\varepsilon_t\sim N(0,\sigma^2)$ is strictly stationary by virtue of it being an IID sequence of random variables. 
+
+:::
+
+Strict stationarity is a very strong condition since it requires a distribution itself to obey a specific property. It can be weakened by appealing only to the moments of a distribution (which still have some bearing on the "shape" and "evolution" of a process).  
+
+:::{#def-}
+Let $X = \{X_t\}_{t\in  T}$ be a stochastic process over the state space $\R$ where $T\subseteq \R$. The process $X$ is [***covariance/weakly stationary***]{style="color:red"} if 
+\begin{align*}
+\E{X_t} &= \mu & \forall t \in T,\\
+\cov{X_t, X_{t-j}} & = \gamma_j &\forall t,t-j\in T.
+\end{align*}
+In other words, neither the expected value nor the autocovariance depend on the time $t$, and the latter is only a function of $j$. 
+:::
+
+The key property of a covariance stationary process involves the autocovariance. The particular time $t$ is completely moot. The only thing that has any bearing on the autocovariance is the relative distance $j$ between two time intervals. This also simplifies the notation around autocovariance a great deal as we can eliminate any reference to $t$. 
+\begin{align*}
+\boldsymbol \Gamma &= \begin{bmatrix}
+\gamma_{0} & \gamma_{1} & \gamma_{2} & \cdots & \gamma_{j}\\
+\gamma_{1} & \gamma_{0} & \gamma_{1} & \cdots & \gamma_{j-1}\\
+\gamma_{2} & \gamma_{1} & \gamma_{0} & \cdots & \gamma_{j-2}\\
+\vdots & \vdots & \vdots & \ddots & \vdots \\ 
+\gamma_{j} & \gamma_{j-1} & \gamma_{j-2} & \cdots & \gamma_{0}
+\end{bmatrix}
+\end{align*}
+Another useful equality that arises from covariance stationarity is $\gamma_{-j}=\gamma_j$ since 
+\begin{align*}
+\gamma_j = \cov{X_t, X_{t-j}} = \cov{X_{t-j}, X_t} = \cov{X_{t-j + j}, X_{t+j}} = \cov{X_{t}, X_{t-(-j)}} = \gamma_{-j}. 
+\end{align*}
+The definition of autocorrelation also simplifies to 
+$$ \rho_j = \frac{\gamma_j}{\sqrt{\gamma_0}\sqrt{\gamma_0}} = \frac{\gamma_j}{\gamma_0}.$$ Furhtermore, the autocorrelation matrix simplifies to $\mathbf R = \gamma_0\boldsymbol\Gamma$.
+
+:::{#prp-}
+
+## Strictly Stationarity Implies Weak Stationarity
+
+Let $X = \{X_t\}_{t\in  T}$ be a stochastic process over the state space $\R$ where $T\subseteq \R$. If $X$ is strictly stationary, then it is weakly stationary
+
+:::
+
+:::{.proof}
+For any $t,t-j\in T$ we have $F_{X_t}(x_t) = F_{X_{t-j}}(x_{t-j})$, giving $\E{X_t} = \E{X_{t-j}}$. Since $T\subseteq \R$, we can write any $s\in T$ as $s=t-j$ for some $j\in \R$. This gives $\E{X_t} = \E{X_s}$ for all $s,t\in T$, so $\E{X_t}$ has a common value $\mu$ for all $t\in T$. By strict stationarity we have $$F_{(X_{t+\tau}, X_{t-j+\tau})}=F_{(X_{t}, X_{t-j})} $$ for all $\tau\in \R$, so $\cov{X_{t}, X_{t-j}} = \cov{X_{t+\tau}, X_{(t+\tau) - j}}$ for all $\tau \in \R$. Again, since we can write any element of $T$ in the form $t-j$, we have the desired result.
+:::
+
+:::{#exm-}
+
+## Random Walk is Not Covariance Stationary
+
+We showed that a random walk with drift has an autocovariance function of $\gamma_{tj} = (t-j)\sigma^2$. This is a function of $t$, so the process is not covariance stationary.
+
+:::
+
+
+:::{#exm-}
+
+## Wiener Process is Not Covariance Stationary
+
+Similar to the random walk, the Wiener process is not covariance stationary because $\gamma_{tj} = (t-j)\sigma^2$. What *are* stationary are the increments $W_{t}-W_{t-j}$ since $W_{t}-W_{t-j}\iid N(0,j)$. These increments happen to be strictly stationary and Gaussian.  
+
+:::
+
+:::{#exm-}
+
+## AR1 Process 
+
+Let's look at a classic stationary process that will play a very important role when we start talking about time series. We'll start with some Gaussian white noise $\varepsilon_t \sim N(0,\sigma^2)$ and two constants $c$ and $\phi$. We can use these to define the process $X_t$ recursively:
+$$ X_t = c + \phi X_{t-1} + \varepsilon_t.$$ We refer to this process as an autoregressive process of order one (AR1), since the definition of $X_t$ resembles a regression equation with $X_t$ as the dependent variable and the lagged $X_{t-1}$ as the independent variable. Intuitively, the process $X$ has some "memory", as the value at $t$ is the previous value scaled with some white noise added. The definition of $X_t$ is also a difference equation that we can solve given the initial value of the process $X_0$. 
+
+\begin{align*}
+ X_t &= c + \phi X_{t-1} + \varepsilon_t\\
+  &= c + \phi (c + \phi X_{t-2} + \varepsilon_{t-1}) + \varepsilon_{t} & (X_{t-1} &= c + \phi X_{t-2} + \varepsilon_{t-1})\\
+  & = (c+\varepsilon_t) + \phi(c + \varepsilon_{t-1}) + \phi^2 X_{t-2}\\
+  & =(c+\varepsilon_t) + \phi(c + \varepsilon_{t-1}) + \phi^2(c + \phi X_{t-3} + \varepsilon_{t-2}) & (X_{t-2} &= c + \phi X_{t-3} + \varepsilon_{t-2})\\
+  & = (c+\varepsilon_t) + \phi(c + \varepsilon_{t-1}) + \phi^2(c + \varepsilon_{t-2}) + \phi^3 X_{t-3} \\
+  & = \ldots \\
+  & = (c+\varepsilon_t) + \phi(c + \varepsilon_{t-1}) + \phi^2(c + \varepsilon_{t-2}) + \phi^3(c + \varepsilon_{t-3}) + \ldots + \phi^{t-1}(c + \phi +X_0 + \varepsilon_1 ) \\
+  & = \phi^tX_0 + c\sum_{j=0}^{t-1}\phi^j + \sum_{j=0}^{t-1}\phi^j\varepsilon_{t-j}
+\end{align*}
+
+```{r}
+ar1 <- function(t, phi, c, sigma, initial_condition, s){
+  u <- rnorm(t, mean = 0, sd = sigma)
+  output <- tibble(
+    time = 1:t,
+    value = accumulate(1:t, ~ c + phi * .x + u[.y], .init = initial_condition),
+    iter_num = s,
+    sigma = sigma,
+    phi = phi,
+    c = c
+  )
+  return(output)
+}
+
+ar1_over_phi <- function(phi_vals, t, c, sigma){
+  output <- phi_vals %>% 
+    map(ar1, t = t, c = c, sigma = sigma, s = 1) %>% 
+    bind_rows()
+  return(output)
+}
+```
+
+If we assume that $T$ is infinite, then we have 
+$$ X_t = \phi^tX_0 + c\sum_{j=0}^{\infty}\phi^j + \sum_{j=0}^{\infty}\phi^j\varepsilon_{t-j}.$$ At this point the behavior of $\phi$ becomes *very* important. If $|\phi|<1$ then the middle term (which is a geometric series) will converge to $c[1/(1-\phi)]$ and $\phi^tX_0 \to 0$ giving
+$$X_t = \frac{c}{1-\phi} + \sum_{j=0}^{\infty}\phi^j\varepsilon_{t-j}.$$ In the event $|\phi|<1$ we will have the following moments:^[When calculating these moments we'll appeal a key equalities:
+\begin{align*}
+ \E{\textstyle\sum_{j=0}^{\infty}\phi^j\varepsilon_{t-j}} &= \sum_{j=0}^{\infty} \E{\phi^j\varepsilon_{t-j}}\\
+  \var{\textstyle\sum_{j=0}^{\infty}\phi^j\varepsilon_{t-j}} &= \sum_{j=0}^{\infty} \var{\phi^j\varepsilon_{t-j}}\\
+\end{align*} For fans of real analysis, these equalities should raise eyebrows, as we're really interchanging the order of an infinite series and an integral. The monotone convergence theorem and dominated convergence theorem outline conditions under which this is permissible.]
+
+\begin{align*}
+\E{X_t} &= \E{\frac{c}{1-\phi} + \sum_{j=0}^{\infty}\phi^j\varepsilon_{t-j}} \\
+& = \frac{c}{1-\phi} + \sum_{j=0}^{\infty}\phi^j\E{\varepsilon_{t-j}} \\
+& = \frac{c}{1-\phi} + \sum_{j=0}^{\infty}\phi^j 0 \\
+& = \frac{c}{1-\phi} \\
+\var{X_t} & = \var{ \frac{c}{1-\phi} + \sum_{j=0}^{\infty}\phi^j\varepsilon_{t-j}}\\
+& = \var{\sum_{j=0}^{\infty}\phi^j\varepsilon_{t-j}}\\ 
+& = \sum_{j=0}^{\infty}\var{\phi^j\varepsilon_{t-j}}\\
+& = \sum_{j=0}^{\infty}\phi^{2j}\var{\varepsilon_{t-j}}\\
+& = \sum_{j=0}^{\infty}(\phi^{2})^j\sigma^2\\
+& = \frac{\sigma^2}{1-\phi^2}\\
+\cov{X_t, X_{t-j}} &=  \cov{(c + \phi c + \cdots + \phi^jc) + (\varepsilon_t + \phi\varepsilon_{t-1} + \cdots + \phi^j\varepsilon_{t-j}) + \phi^j X_{t-j}  ,X_{t-j}} \\
+&=  \cov{(\varepsilon_t + \phi\varepsilon_{t-1} + \cdots + \phi^j\varepsilon_{t-j}) + \phi^j X_{t-j}  ,X_{t-j}} & (\textstyle\sum_{k=0}^j \phi^kc\text{ constant})\\
+& = \cov{\phi^j X_{t-j}, X_{t-j}} + \cov{ \varepsilon_t + \phi\varepsilon_{t-1} + \cdots + \phi^j\varepsilon_{t-j},  X_{t-j}}\\ 
+& = \cov{\phi^j X_{t-j}, X_{t-j}} & (\textstyle\sum_{k=0}^j \phi^k\varepsilon_{t-k}\perp X_{t-j})\\
+& = \phi^j \cov{X_{t-j}, X_{t-j}} \\
+& = \phi^j \var{X_{t-j}}\\
+& = \frac{\phi^j\sigma^2}{1-\phi^2}
+\end{align*}
+
+Since $\cov{X_t, X_{t-j}}$ only depends on $j$ (oppossed to $t$ and $j$), and $\E{X_t}$ is constant over $t$, $X$ is covariance stationary. 
+\begin{align*}
+\mu &= \frac{c}{1-\phi}\\
+\gamma_j & = \frac{\phi^j\sigma^2}{1-\phi^2}
+\end{align*}
+The autocorrelation of $X$ is 
+$$ \rho_j = \frac{\frac{\phi^j\sigma^2}{1-\phi^2}}{\frac{\sigma^2}{1-\phi^2}} = \phi^j.$$
+
+
+
+
+:::
+
+## Ergodicity 
+
+A second property that makes stochastic processes much easier to work with in statistical applications is ergodicity. Fully defining ergodicity, let alone understanding it fully, requires diving into the bowels of measure theory. 
+
+```{r}
+ar1 <- function(n, phi, t){
+  u <- rnorm(n)
+  accumulate(2:n, ~ phi * .x + u[.y], .init = u[1])
+  output <- tibble(
+    time = 1:n,
+    value = accumulate(2:n, ~ phi * .x + u[.y], .init = u[1]),
+    iter_num = t
+  )
+  return(output)
+}
+
+draw_N_ar1 <- function(N, n, phi){
+  output <- 1:N %>% 
+    map(ar1, n = n, phi = phi) %>% 
+    bind_rows()
+  return(output)
+}
+
+results <- draw_N_ar1(N = 5e3, n = 5e3, phi = 0.5)
+```
+
+
+```{r}
+#| fig-asp: 1
+#| fig-width: 8
+fixed_i <- results %>% 
+  filter(iter_num ==3 ) %>% 
+  mutate(
+    g = "t_to_infty",
+    index = time
+  )
+
+fixed_t <- results %>% 
+  filter(time == 2.5e3) %>% 
+  mutate(
+    g = "n_to_infty",
+    index = iter_num
+  )
+
+plot1 <- fixed_i %>% 
+  ggplot(aes(time, value)) + 
+  geom_line(size = 0.2, color = "red") +
+  geom_point(data = fixed_t, size = 0.3, alpha = 0.3, color = "blue") + 
+  theme_minimal()
+  
+plot2 <- fixed_i %>% 
+  ggplot(aes(value, after_stat(density)))+
+  geom_histogram(bins = 20, color = "black", fill = "#4280FC") +
+  theme_minimal() + 
+  labs(x = "Realizations of X_i(t) for Fixed t = 500", y = "Density")
+
+plot3 <- fixed_t %>% 
+  ggplot(aes(value, after_stat(density)))+
+  geom_histogram(bins = 20, color = "black", fill = "#FC4242") +
+  theme_minimal() + 
+  labs(x = "Realizations of X_i(t) for Fixed i = 1", y = "")
+
+ggarrange(
+  plot1,
+  ggarrange(plot2, plot3, ncol = 2), 
+  nrow = 2
+)
+```
+
+```{r}
+#| fig-asp: 0.7
+#| fig-width: 8
+
+fixed_i %>% 
+  bind_rows(fixed_t) %>% 
+  group_by(g) %>% 
+  arrange(index) %>% 
+  mutate(value = cummean(value)) %>% 
+  ggplot(aes(index, value, color = g)) + 
+  geom_line() + 
+  scale_color_manual(values = c("blue", "red")) + 
+  theme_minimal()
+```
+
+## Martingales
+
+## Central Limit Theorems 

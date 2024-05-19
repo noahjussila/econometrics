@@ -1,0 +1,32 @@
+# The Generalized Method of Moments
+
+
+```{r}
+library(pracma)
+
+beta <- c(2,4)
+n <- 1e5
+k <- 2
+
+x1 <- runif(n, 0, 10)
+e <- runif(n, -5, 5)
+X <- cbind(1, x1)
+y <- X %*% beta + e
+
+# method of moments 
+g <- function(beta){
+  (1/n) * t(X) %*% (y - X%*% beta)
+}
+
+MM <- fsolve(g, c(1,1), tol = 1e-8)$x
+print(MM)
+
+GMM_objective <- function(beta, Ω){
+  t(g(beta)) %*% Ω %*% g(beta)
+}
+
+# GMM
+GMM <- optim(c(1,1), GMM_objective, Ω = eye(k))$par
+print(GMM)
+```
+

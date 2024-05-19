@@ -5,6 +5,8 @@
 ```{r}
 
 library(tidyverse)
+library(pracma)
+library(EnvStats)
 
 tibble(
   x = seq(-2, 2, length = 1000),
@@ -18,7 +20,8 @@ tibble(
   theme_minimal() +
   labs(x = "Xβ", y = "p = Prob(y = 1 | x)") +
   theme(legend.position = "bottom") +
-  ylim(-0.25,1.25)
+  ylim(-0.25,1.25) + 
+  geom_hline(yintercept = c(0,1))
 
 
 tibble(
@@ -37,7 +40,7 @@ n <- 10000
 x <- runif(n, -5, 5)
 p <- plogis(0.1 + 0.2*x)
 X <- cbind(1, x)
-y <- sapply(p, rbinom, size = 1, n = 1)
+y <- sapply(p, function(p) sample(0:1, 1, prob = c(1-p, p)) )
 
 binary_choice_MLE <- function(y, X, Fun){
   K <- ncol(X)
@@ -78,3 +81,110 @@ binary_choice_MLE(y, X, plogis)
 glm(y ~ x, family = "binomial") %>% summary()
 lm(y ~ x)
 ```
+
+
+
+```{r}
+tibble(x = seq(-2.5, 7, length = 1000)) %>% 
+  mutate(prob = devd(x)) %>% 
+  ggplot(aes(x, prob)) + 
+  geom_line() +
+  theme_minimal()
+```
+
+If $\varepsilon_1 \sim \text{EV1}$ and $\varepsilon_2 \sim \text{EV2}$, then $\varepsilon_1 - \varepsilon_2$ is logistically distributed. 
+
+\begin{align*}
+f_{\varepsilon}(t) = f_{\varepsilon_1 - \varepsilon_2}(t)\\
+& = 
+\end{align*}
+
+```{r}
+n <- 1e6
+tibble(x = revd(n) - revd(n)) %>% 
+  ggplot(aes(x)) + 
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white", bins = 75) +
+  geom_function(fun = dlogis, color = "red") +
+  xlim(-7,7) +
+  theme_minimal()
+```
+
+
+```{r}
+Nldata <- read.table("~/Documents/GitHub/advanced_econometrics_examples/data/Nldata.asc", quote="\"", comment.char="")
+df <- Nldata %>% 
+  mutate(i = ceiling(row_number()/4)) %>% 
+  group_by(i) %>% 
+  mutate(row = row_number()) %>% 
+  pivot_wider(names_from = row, values_from = c(1, 2, 3, 4))  %>%
+  select(
+    i,
+    mode = 2,
+    price = 6,
+    crate = 10,
+    beach = 14,
+    pier = 3,
+    private = 7,
+    charter = 11,
+    price_beach = 15,
+    price_pier = 4,
+    price_private = 8,
+    price_charter = 12,
+    qbeach = 16,
+    qpier = 5,
+    qprivate = 9,
+    qcharter =13,
+    income = 17
+  ) %>% 
+  ungroup()
+
+
+
+binary_df <- df %>% 
+  filter(charter + pier == 1) %>% 
+  mutate(
+    log_repl = log(price_charter / price_pier),
+    N = n()
+  ) %>% 
+  select(
+    y = charter,
+    log_repl,
+    N,
+    price_charter,
+    price_pier
+  )
+```
+
+```{r}
+binary_df %>% 
+  mutate(group = ifelse(y == 1, "Charter", "Pier")) %>% 
+  bind_rows(
+    mutate(binary_df, group = "Full Sample")
+  ) %>% 
+  group_by(group) %>%
+  summarize(
+    `Price Charter ($)` = round(mean(price_charter)),
+    `Price Pier ($)` = round(mean(price_pier)),
+    `ln relp` = round(mean(log_repl),3),
+    `Sample Probability` = n()/first(N),
+    Observations = n()
+  ) %>% 
+  pivot_longer(!group) %>% 
+  pivot_wider(names_from = group, values_from = value) %>% 
+  select(
+    Variable = name,
+    `Charter`,
+    `Pier`,
+    `Full Sample`
+  )
+```
+
+
+
+```{r}
+lm(y ~ log_repl, binary_df) %>% summary()
+glm(y ~ log_repl, binary_df, family = "binomial")  %>% summary()
+glm(y ~ log_repl, binary_df, family = binomial(link = "probit"))  %>% summary()
+```
+
+
