@@ -1128,7 +1128,7 @@ sim <- function(N, n, beta, dist_X, dist_X_params, mu){
 
 results <- sim(1e4, 100, c(2,4), runif, list(0, 10), rep(0,100))
 
-# actual  var(β) = (X'X)⁻¹X'ΣX(X'X)⁻¹
+# actual  var(β | X) = (X'X)⁻¹X'ΣX(X'X)⁻¹
 solve(t(results$X) %*% results$X) %*% t(results$X) %*% results$Sigma %*% results$X %*% solve(t(results$X) %*% results$X)
 
 # calculate sample covariance matrix of estimates
@@ -1528,7 +1528,7 @@ $$ \OLS \asim N\left(\bet,\sigma^2\E{\Xm'\Xm}^{-1}\right) = N\left(\bet, \frac{\
 We have stated the asymptotic distribution without conditioning on $\Xm$, so $\avar{\OLS}$ will be in terms of the expectation of $\Xm$ opposed to some fixed $\Xm$. We only appealed to the assumption $\E{\ep\ep'} = \sigma^2\mathbf I$ to simplify the asymptotic variance, so in the event $\E{\ep\ep'} \neq \sigma^2\mathbf I$, our estimator will still be root-n CAN, albeit with a different asymptotic variance (we will show this in Section \@ref(generalized-least-squares)). Depending on the level of technical rigor the assumptions which give this result may differ. I followed the derivation provided by  @wooldridge2010econometric, but others will delineate regularity conditions on $\Xm$ so it is "well-behaved", or impose assumptions about the behavior of errors as a martingale. These assumptions tend to be rather weak and will hold in many practical applications. We also could extend this result to data which are not independent using the Lindeberg-Feller CLT.     
 
 :::{#exm-}
-Consider the case where $\beta = 2$, $\varepsilon_i \iid \text{Uni}(-1,1)$, $X \sim \text{Uni}(-5,5)$, $\varepsilon\perp X$, and $Y= 2X + \varepsilon$. By properties of the uniform distribution, 
+Consider the case where $\beta = 2$, $\varepsilon_i \iid \text{Uni}(-1,1)$, $X \sim \text{Uni}(-5,5)$, $\varepsilon\perp X$, and $Y= 2X + \varepsilon$. By properties of the uniform distribution,^[For $A \sim \text{Uni}(a,b)$, we have $\var{A} = (b-a)^2/12$ and $\E{A} = (b-a)/2$. By the definition of variance we have $\E{A^2} = \var{A} + \E{A}^2 = (b-a)^2/12 + \left[(b+a)/2\right]^2 = (a^2+ab+b^2)/3.$ ] 
 \begin{align*}
 \sigma^2 &= \frac{1}{3},\\
 \E{X^2} & = \frac{25}{3}.

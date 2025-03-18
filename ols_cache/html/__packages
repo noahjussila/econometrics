@@ -1,0 +1,17 @@
+ggplot2
+ggpubr
+tidyverse
+tibble
+tidyr
+readr
+purrr
+dplyr
+stringr
+forcats
+lubridate
+mvtnorm
+Matrix
+vctrs
+broom
+carData
+car

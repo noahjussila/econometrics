@@ -1113,12 +1113,13 @@ $$ X_t = c + \phi X_{t-1} + \varepsilon_t.$$ We refer to this process as an auto
   & = (c+\varepsilon_t) + \phi(c + \varepsilon_{t-1}) + \phi^2(c + \varepsilon_{t-2}) + \phi^3(c + \varepsilon_{t-3}) + \ldots + \phi^{t-1}(c + \phi +X_0 + \varepsilon_1 ) \\
   & = \phi^tX_0 + c\sum_{j=0}^{t-1}\phi^j + \sum_{j=0}^{t-1}\phi^j\varepsilon_{t-j}
 \end{align*}
+Let's simulate some realizations of $X$ for $\phi = 0.5$, $c = 0$, $\sigma = 1$, and $X_0 = 0$.
 
 ```{r}
 ar1 <- function(t, phi, c, sigma, initial_condition, s){
   u <- rnorm(t, mean = 0, sd = sigma)
   output <- tibble(
-    time = 1:t,
+    time = 0:t,
     value = accumulate(1:t, ~ c + phi * .x + u[.y], .init = initial_condition),
     iter_num = s,
     sigma = sigma,
@@ -1128,12 +1129,42 @@ ar1 <- function(t, phi, c, sigma, initial_condition, s){
   return(output)
 }
 
-ar1_over_phi <- function(phi_vals, t, c, sigma){
-  output <- phi_vals %>% 
-    map(ar1, t = t, c = c, sigma = sigma, s = 1) %>% 
+draw_N_ar1 <- function(N, t, phi, c, sigma, initial_condition){
+  output <- 1:N %>% 
+    map(ar1, t = t, phi = phi, c = c, sigma = sigma, initial_condition = initial_condition) %>% 
     bind_rows()
   return(output)
 }
+
+results <- draw_N_ar1(
+  N = 100,
+  phi = 0.5,
+  t = 100, 
+  c = 0, 
+  sigma = 1, 
+  initial_condition = 0
+) 
+```
+
+```{r}
+#| code-fold: true
+#| label: fig-plot513
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "100 realizations of an AR1 process."
+#| code-summary: "Show code which generates figure"
+#| warning: false 
+
+plot <- results %>% 
+  ggplot(aes(time, value)) +
+  geom_line(aes(group = iter_num)) +
+  theme_minimal() +
+  transition_states(iter_num) + 
+  shadow_mark(alpha = 0.2, size = 0.1) +
+  labs(title = 'Realizations Drawn: {closest_state}', x = "Time", y = "Value")
+
+animate(plot, end_pause = 30)
 ```
 
 If we assume that $T$ is infinite, then we have 
@@ -1172,19 +1203,84 @@ Since $\cov{X_t, X_{t-j}}$ only depends on $j$ (oppossed to $t$ and $j$), and $\
 The autocorrelation of $X$ is 
 $$ \rho_j = \frac{\frac{\phi^j\sigma^2}{1-\phi^2}}{\frac{\sigma^2}{1-\phi^2}} = \phi^j.$$
 
+The autocorrelation will decay geometrically as $j$ increases. This is evident by looking at the $\rho_j$ for various values of $\phi$. These types of figures are known as correlograms.
 
+```{r}
+#| code-fold: true
+#| label: fig-plot514
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "."
+#| code-summary: "Show code which generates figure"
+#| warning: false 
 
+expand_grid(
+  phi = c(-0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75),
+  j = 0:10
+) %>% 
+  mutate(
+    rho = phi^j,
+    phi_neg = ifelse(phi < 0, "φ < 0", "φ >= 0"),
+  ) %>% 
+  ggplot(aes(j, rho, color = as.factor(phi))) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~phi_neg, ncol = 1) +
+  labs(x = "Relative Time, j", y = "Autocorrelation, ρ", color = "φ") +
+  theme(legend.position = "bottom") +
+  theme_minimal() 
+  
+```
+The stationarity of $X$ hinges on the crucial assumption that $\abs{\phi} <1$, otherwise the geometric series $\sum_{j=0}^{\infty}\phi^j$ diverges and we have an "explosive" AR1 process. 
 
+```{r}
+results <- draw_N_ar1(
+  N = 100,
+  phi = 1.1,
+  t = 1e2, 
+  c = 0, 
+  sigma = 1, 
+  initial_condition = 0
+) 
+```
+
+```{r}
+#| code-fold: true
+#| label: fig-plot515
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: "100 realizations of an explosive AR1 process with φ = 1.1."
+#| code-summary: "Show code which generates figure"
+#| warning: false 
+
+plot <- results %>% 
+  ggplot(aes(time, value)) +
+  geom_line(aes(group = iter_num)) +
+  theme_minimal() +
+  transition_states(iter_num) + 
+  shadow_mark(alpha = 0.2, size = 0.1) +
+  labs(title = 'Realizations Drawn: {closest_state}', x = "Time", y = "Value")
+
+animate(plot, end_pause = 30)
+```
+
+Two special cases of the AR1 process worth mentioning arise when $\phi \in\{-1, 0, 1\}$. If $\phi = 0$ then 
+$$ X_t = c + 0\cdot X_{t-1} + \varepsilon_t = c + \varepsilon_t$$ which leaves us with Gaussian white noise shifted by some constant $c$. If $\phi = 1$, then the process actually becomes a random walk with drift. 
+$$X_t = \phi^tX_0 + c\sum_{j=0}^{t-1}\phi^j + \sum_{j=0}^{t-1}\phi^j\varepsilon_{t-j}
+ = X_0 + c\cdot\frac{t(t+1)}{2} + \sum_{j=0}^{t-1}\varepsilon_{t-j}$$
+
+Since $\varepsilon_t\iid N(0, \sigma^2)$, we have a random walk with Gaussian steps. A similar result arises where $\phi = -1$, but the signs differ slightly. The key takeaway from these two special cases is that they are consistent with the fact that $X$ is covariance stationary when $\abs{\phi}<1$, since Gaussian white noise is covariance stationary, and random walks are not.  
 :::
 
 ## Ergodicity 
 
-A second property that makes stochastic processes much easier to work with in statistical applications is ergodicity. Fully defining ergodicity, let alone understanding it fully, requires diving into the bowels of measure theory. 
+A second property that makes stochastic processes much easier to work with in statistical applications is ergodicity. Fully defining ergodicity, let alone understanding it fully, requires diving into the bowels of measure theory. Loosely speaking, ergodicity means that a stochastic process never gets "stuck" in one place and 
 
 ```{r}
 ar1 <- function(n, phi, t){
   u <- rnorm(n)
-  accumulate(2:n, ~ phi * .x + u[.y], .init = u[1])
   output <- tibble(
     time = 1:n,
     value = accumulate(2:n, ~ phi * .x + u[.y], .init = u[1]),
@@ -1260,7 +1356,3 @@ fixed_i %>%
   scale_color_manual(values = c("blue", "red")) + 
   theme_minimal()
 ```
-
-## Martingales
-
-## Central Limit Theorems 

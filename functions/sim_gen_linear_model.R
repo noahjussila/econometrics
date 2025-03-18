@@ -22,9 +22,9 @@ sim_gen_linear_model <- function(beta, n, mu_X, mu_e = 0, cov_Xe, cov_e = NULL, 
   }
   
   # Do errors exhibit any heteroskedasticity
-  if(is.null(cov_e) & is.null(sked_fun)){
+  if(missing(cov_e) & missing(sked_fun)){
     het <- FALSE
-  } else if(is.null(sked_fun)){
+  } else if(missing(sked_fun)){
     het <- (diag(cov_e) != 1) %>% 
       sum() %>% 
       as.logical()
@@ -70,7 +70,7 @@ sim_gen_linear_model <- function(beta, n, mu_X, mu_e = 0, cov_Xe, cov_e = NULL, 
     X <- rmvn(n, mu_X, cov_Xe[-1,-1])
     e <- rmvn(1, rep(mu_e, n), cov_e)[1,]
     Xe <- cbind(X, e)
-    colnames(Xe)[1:(K-1)] <- paste0("x", 2:K)
+    colnames(Xe)[1:(K-1)] <- paste0("x", 2:(K+1))
     drawn <- Xe %>% 
       as_tibble() %>% 
       add_column("x1" = 1, .before = "x2")

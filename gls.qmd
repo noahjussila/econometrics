@@ -72,6 +72,7 @@
 #| echo: false
 #| output: false
 library(tidyverse)
+library(magrittr)
 library(sandwich)
 source("functions/sim_gen_linear_model.r")
 ```
@@ -83,38 +84,410 @@ source("functions/sim_gen_linear_model.r")
 Before we jump into possible solutions for non-spherical errors, we need to assess the impact they have on out OLS estimator. From @sec-ols we know that in the absence of spherical errors: $\bet$ is identified, $\OLS$ is consistent, $\OLS$ is unbiased, and $$\var{\OLS \mid \Xm} = (\Xm'\Xm)^{-1}\Xm'\Sig\Xm(\Xm'\Xm)^{-1}.$$ Right off the bat, we're in a much better position than when we dropped our assumption that $\X$ and $\ep$ were orthogonal, since that resulted in $\bet$ not even being identified. Recall that in the presence of spherical errors, @cor-olsvar2 gave us $\var{\OLS\mid\Xm} = \sigma^2(\Xm'\Xm)^{-1}$. This looks similar to the asymptotic variance we arrived at when concluding
 $$ \OLS \asim N\left(\bet, \sigma^2 \E{\Xm'\Xm}^{-1}\right).$$ Could it be that $\bet$ is still root-n CAN in the presence of spherical errors albeit with an asymptotic variance analog to $(\Xm'\Xm)^{-1}\Xm'\Sig\Xm(\Xm'\Xm)^{-1}$? Proving @thm-asymols came down to applying Slutsky's theorem, the LLN, and the CLT to $\sqrt{n}(\OLS - \bet)$ written as 
 $$ \sqrt{n}(\OLS - \bet) = \left(\frac{1}{n}\sum_{i=1}^n\X_i'\X_i\right)^{-1}\left(\frac{1}{\sqrt n}\sum_{i=1}^n\X_i'\varepsilon_i\right).$$ Like before the first term will converge in probability to $\E{\X'\X}^{-1}$. When it comes to applying the CLT to the right term, which can be expanded as
-$$\frac{1}{\sqrt n}\sum_{i=1}^n\X_i'\varepsilon_i = \sqrt n \left(\frac{1}{ n}\sum_{i=1}^n\X_i'\varepsilon_i - \E{\X_i'\varepsilon_i}\right),$$ we begin to deviate from the case of sperhical errors on account of the $\E{\X_i'\varepsilon_i}$ term. In the event that $\ep$ only exhibits heteroskedasticity, $(\X_i, \varepsilon_i)$ are still IID. 
+$$\frac{1}{\sqrt n}\sum_{i=1}^n\X_i'\varepsilon_i = \sqrt n \left(\frac{1}{ n}\sum_{i=1}^n\X_i'\varepsilon_i - \E{\X_i'\varepsilon_i}\right),$$ we begin to deviate from the case of spherical errors on account of the $\E{\X_i'\varepsilon_i}$ term. In the event that $\ep$ only exhibits heteroskedasticity, $(\X_i, \varepsilon_i)$ are still IID. 
+
+### Heteroskedasticity-Consistent (HC) SEs
+
+
+::: {#exm-}
+a
 
 ```{r}
 model <- sim_gen_linear_model(
-  beta = c(2, 3),
+  beta = c(1, 1),
   n = 1e3,
-  mu_X = 5,
-  cov_Xe = matrix(c(3, 0, 0, 1), nrow = 2),
+  mu_X = 0,
+  cov_Xe = matrix(c(1, 0, 0, 1), nrow = 2),
   sked_fun = "u*x2"
 )
-
-# model$observed_data %>% 
-#   ggplot(aes(x2, y)) + 
-#   geom_point() + 
-#   theme_minimal()
-
-est <- lm(y ~ x2, data = model$observed_data)
-sqrt(diag(vcovHC(est)))
-sqrt(diag(vcov(est)))
-
-X <- cbind(1, (0:100)/100)
-draw_SE <- function(X, beta){
-  n <- nrow(X)
-  u <- rnorm(n)
-  e <- u*X[,2]
-  y <- X %*% beta + e
-  output <- lm(y ~ X - 1) %>% 
-    vcov() %>% 
-    diag() %>% 
-    sqrt()
-  return(output)
-}
-draw_SE(X, beta = c(1,2))
 ```
 
+
+```{r}
+#| code-fold: true
+#| label: fig-plot91
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: ""
+#| code-summary: "Show code which generates figure"
+#| warning: false
+model$observed_data %>% 
+  ggplot(aes(x2, y)) +
+  geom_point(size = .5) +
+  theme_minimal()
+```
+```{r}
+# for a given estimate of X'ΣX calculate (X'X)⁻¹X'ΣX(X'X)⁻¹
+sandwich <- function(X, meat){
+  bread <- solve(t(X) %*% X) 
+  output <- bread %*% meat %*% bread
+  return(output)
+}
+
+# calculate SE and format output as table
+HC_SE <- function(X, Sigma_hat, method){
+  K <- ncol(X)
+  n <- nrow(X)
+  # in the case of just heteroskedasticity, 
+  output <- sandwich(X, meat = t(X) %*% Sigma_hat %*% X) %>% 
+    diag() %>% 
+    sqrt() %>% 
+    as_tibble() %>% 
+    mutate(
+      parameter = paste0("β", 1:K),
+      method = method,
+      sample_size = n,
+      .before = "value"
+    ) %>% 
+    rename(std_error = value)
+  return(output)
+}
+
+# Calculate a series of SEs to account for heteroskedastic errors
+HC_SEs <- function(X, y){
+  X <- as.matrix(X)
+  n <- nrow(X)
+  K <- ncol(X)
+  res <- as.numeric(y-X %*% solve(t(X) %*% X) %*% t(X) %*% y)
+  
+  H <- diag(X %*% solve(t(X)%*%X) %*% t(X))
+  
+  Sigma_hat_list <- list(
+    "Default" = diag(as.numeric(t(res) %*% res)/(n-K), n),
+    "HC" = diag(res^2),
+    "HC1" = (n/(n-K)) * diag(res^2),
+    "HC2" = diag(res^2/(1 - H)),
+    "HC3" = diag(res^2/(1 - H)^2),
+    "HC4" = diag(res^2/(1 - H)^map_dbl(H/mean(H), \(x) min(x, 4)))
+  )
+  
+  output <- map2_df(Sigma_hat_list, names(Sigma_hat_list), \(x, y) HC_SE(X, x, y)) %>% 
+    pivot_wider(names_from = "method", values_from = std_error)
+  
+  return(output)
+}
+
+results <- HC_SEs(model$X, model$y)
+```
+
+```{r}
+#| code-fold: true
+#| label: fig-plot92
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: ""
+#| code-summary: "Show code which generates figure"
+#| warning: false
+results %>% 
+  pivot_longer(!c(parameter, sample_size), names_to = "method", values_to = "SEs") %>% 
+  ggplot(aes(method, SEs)) +
+  geom_point() +
+  facet_wrap(~parameter, scales = "free") +
+  theme_minimal() +
+  labs(x = "", y = "Standard Error")
+```
+
+$X\sim N(0,3)$, $u\sim N(0,1)$, $u\perp X$, $\varepsilon = u\cdot X$, $\E{X^4}=3$, $\E{X^2} = 1$, $\E{U^2} = 1$, $Y = 2X + \varepsilon$.
+
+\begin{align*}
+\avar{\hat{\boldsymbol\beta}_\text{OLS,2}} &= \left(\frac{1}{n}\E{\X'\X}^{-1}\E{\X'\Sig\X}\E{\X'\X}^{-1}\right)_{2,2}
+\\ & =  \frac{1}{n}\E{X^2}^{-1}\E{\varepsilon^2 X^2}\E{X^2}^{-1}
+\\ & =  \frac{1}{n}\E{X^2}^{-1}\E{(uX)^2 X^2}\E{X^2}^{-1}
+\\ & =  \frac{1}{n}\left(\frac{1}{\E{X^2}}\right)\E{(uX)^2 X^2}\left(\frac{1}{\E{X^2}}\right)
+\\ & = \frac{1}{n}\left(\frac{1}{\E{X^2}}\right)\E{u^2X^4}\left(\frac{1}{\E{X^2}}\right)
+\\ & = \frac{1}{n}\left(\frac{1}{\E{X^2}}\right)\E{u^2}\E{X^4}\left(\frac{1}{\E{X^2}}\right) & (X\perp u)
+\\ & = \frac{1}{n}\left(\frac{1}{1}\right)(1)(3)\left(\frac{1}{1}\right)
+\\ & = \frac{3}{n}
+\end{align*}
+
+```{r}
+draw_HC_SEs_over_n <- function(beta, n_max, n_vals, mu_X, cov_Xe, sked_fun, t){
+  model <- sim_gen_linear_model(
+    beta = beta,
+    n = n_max,
+    mu_X = mu_X,
+    cov_Xe = cov_Xe,
+    sked_fun = sked_fun
+  )
+  output <- n_vals %>% 
+    map_df(\(n) HC_SEs(model$X[1:n,], model$y[1:n])) %>% 
+    mutate(iter_num = t)
+  return(output)
+}
+
+draw_N_HC_SEs_over_n <- function(N, beta, n_max, n_vals, mu_X, cov_Xe, sked_fun){
+  output <- 1:N %>% 
+    map_df(\(t) draw_HC_SEs_over_n(beta, n_max, n_vals, mu_X, cov_Xe, sked_fun, t))
+  return(output)
+}
+
+results <- draw_N_HC_SEs_over_n(
+  N = 1e4,
+  beta = c(1, 1),
+  n_max = 1000,
+  n_vals = (1:20)*50,
+  mu_X = 0,
+  cov_Xe = matrix(c(1, 0, 0, 1), nrow = 2),
+  sked_fun = "u*x2"
+)
+```
+
+```{r}
+#| code-fold: true
+#| label: fig-plot93
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: ""
+#| code-summary: "Show code which generates figure"
+#| warning: false
+results %>% 
+  mutate(true_value = sqrt((1/sample_size)*(1/1)*(1*3)*(1/1))) %>% 
+  pivot_longer(!c(parameter, iter_num, sample_size, true_value)) %>% 
+  filter(parameter == 'β2') %>% 
+  ggplot(aes(sample_size, value, color = "Simulated SEs")) +
+  geom_point(size = 0.1, alpha = 0.1) +
+  facet_wrap(~name) +
+  geom_line(aes(x = sample_size, true_value, color = "Asymptotic Variance")) +
+  scale_color_manual(values = c("red", "black")) +
+  labs(color = "", x = "Sample Size", y = "") +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  scale_y_log10() 
+```
+
+```{r}
+#| code-fold: true
+#| label: fig-plot94
+#| fig-align: center
+#| fig-asp: 0.7
+#| fig-width: 8
+#| fig-cap: ""
+#| code-summary: "Show code which generates figure"
+#| warning: false
+
+results %>% 
+  mutate(true_value = sqrt((1/sample_size)*(1/1)*(1*3)*(1/1))) %>% 
+  pivot_longer(!c(parameter, iter_num, sample_size, true_value)) %>% 
+  filter(parameter == 'β2') %>% 
+  expand_grid(e = c(0.001, 0.002, 0.003)) %>% 
+  group_by(sample_size, name, e) %>% 
+  summarize(p = sum(abs(value - true_value) > e) / n()) %>% 
+  ggplot(aes(sample_size, p, color = as.factor(e))) +
+  geom_line() +
+  facet_wrap(~name) +
+  theme_minimal() +
+  theme(legend.position = "bottom") + 
+  labs(y = "Empirical Pr(|SE-Avar|>ε)", x = "Sample Size", color = "ε")
+```
+
+
+### Heteroskedasticity and Autocorreltaion-Consistent (HAC) SEs
+
+::: {#exm-}
+
+```{r}
+n <- 1000
+rho <- 0.8
+sigma <- diag(n)
+for (i in 1:n) {
+  for(j in 1:n){
+      sigma[i,j] <- ifelse(abs(i-j) <= 1, rho^abs(i-j), 0)
+  }
+}
+
+outer_iter <- function(t){
+  model <- sim_gen_linear_model(
+    beta = c(1, 1),
+    n = 1000,
+    mu_X = 2,
+    cov_Xe = matrix(c(1, 0, 0, 1), nrow = 2),
+    cov_e = sigma
+  )
+  iter <- function(i){
+    beta <- lm(model$y[1:(i*10)] ~ model$X[1:(i*10),2]) %>%
+      coef()
+    output <- tibble(
+      n = i*10,
+      beta_1 = beta[1],
+      beta_2 = beta[2]
+    )
+    return(output)
+  }
+  output <- map_df(1:100, iter) %>% 
+    mutate(iter_num = t)
+  return(output)
+}
+
+results <- map_df(1:300, outer_iter) 
+
+results %>% 
+  group_by(n) %>% 
+  summarize(
+    sd(beta_1),
+    sd(beta_2),
+    cov(beta_1, beta_2)
+  )
+
+lm(model$y ~ model$X - 1) %>% 
+  NeweyWest(lag = 2, prewhite = F) %>% 
+  diag() %>% 
+  sqrt()
+
+lm(model$y ~ model$X - 1) %>% 
+  vcov() %>% 
+  diag() %>% 
+  sqrt()
+```
+
+```{r}
+weight <- function(l, L){
+  1 - l/(L+1)
+}
+
+HAC_SE <- function(X, y, L){
+  X <- as.matrix(X)
+  n <- nrow(X)
+  K <- ncol(X)
+  res <- as.numeric(y-X %*% solve(t(X) %*% X) %*% t(X) %*% y)
+
+  first_term <- t(X) %*% diag(res^2) %*% X
+  if(L == 0){
+    second_term <- 0
+  } else{
+    second_term <- expand_grid(
+      l = 1:L,
+      i = 1:n
+    ) %>%
+    # inner summation ranges from l+1 to N
+    filter(i > l) %$%
+    # calculate the all (L/2)*(2T-L-1) terms
+    map2(l, i, \(l, i) weight(l, L)*res[i]*res[i-l]*(X[i,] %o% X[i-l,] + X[i-l,] %o% X[i,])) %>%
+    # add terms
+    reduce(`+`)
+  }
+  output <- sandwich(X, first_term + second_term) %>%
+    diag() %>%
+    sqrt() %>%
+    as_tibble() %>%
+    mutate(
+      parameter = paste0("β", 1:K),
+      method = "Newey-West (1987)",
+      sample_size = n,
+      .before = "value"
+    ) %>%
+    rename(std_error = value)
+  return(output)
+}
+
+n <- 1000
+rho <- 0.9 
+sigma <- diag(n)
+for (i in 1:n) {
+  for(j in 1:n){
+      sigma[i,j] <- rho^(abs(i-j))
+  }
+}
+
+model <- sim_gen_linear_model(
+  beta = c(2, 4),
+  n = 1000,
+  mu_X = 2,
+  cov_Xe = matrix(c(3, 0, 0, 1), nrow = 2),
+  cov_e = sigma
+)
+
+lm(y ~ x2, data = model$observed_data) %>% 
+  NeweyWest(lag = 2, prewhite = FALSE) %>% 
+  diag() %>% 
+  sqrt() 
+
+
+```
+
+```{r}
+n <- 1e3
+rho <- 0.9 
+sigma <- diag(n)
+for (i in 1:n) {
+  for(j in 1:n){
+      sigma[i,j] <- rho^(abs(i-j))
+  }
+}
+
+model <- sim_gen_linear_model(
+  beta = c(1, 1),
+  n = 1e3,
+  mu_X = 1,
+  cov_Xe = matrix(c(1, 0, 0, 1), nrow = 2),
+  cov_e = sigma
+)
+
+
+
+draw_HAC_SEs_over_n <- function(beta, n_max, n_vals, mu_X, cov_Xe, cov_e, t){
+  model <- sim_gen_linear_model(
+    beta = beta,
+    n = n_max,
+    mu_X = mu_X,
+    cov_Xe = cov_Xe,
+    cov_e = sigma
+  )
+  output <- n_vals %>%
+    map_df(\(n) HAC_SE(model$X[1:n,-1], model$y[1:n], n/2)) %>%
+    mutate(iter_num = t)
+  return(output)
+}
+
+
+draw_N_HAC_SEs_over_n <- function(N, beta, n_max, n_vals, mu_X, cov_Xe, cov_e){
+  output <- 1:N %>%
+    map_df(\(t) draw_HAC_SEs_over_n(beta, n_max, n_vals, mu_X, cov_Xe, cov_e, t))
+  return(output)
+}
+
+
+results <- draw_N_HAC_SEs_over_n(
+  N = 1e2,
+  beta = c(1, 1),
+  n_max = 1e3,
+  n_vals = (1:10)*100,
+  mu_X = 1,
+  cov_Xe = matrix(c(1, 0, 0, 1), nrow = 2),
+  cov_e = sigma
+)
+```
+
+```{r}
+# results %>% 
+#   ggplot(aes(sample_size, std_error)) + 
+#   geom_point(alpha = 0.2) +
+#   geom_function(fun = true_sd, args = list(rho = 0.9), color = "red") +
+#   labs(x = "Sample Size", y = "Newey West HAC")
+# 
+# 
+# results %>% 
+#   ggplot(aes(sample_size, Sandwich_NW)) + 
+#   geom_point(alpha = 0.2) +
+#   geom_function(fun = true_sd, args = list(rho = 0.9), color = "red")
+
+results %>% 
+  select(-parameter, -method, -true, -iter_num) %>% 
+  pivot_longer(!sample_size) %>% 
+  ggplot(aes(sample_size, value)) +
+  geom_point(alpha = 0.2) +
+  facet_wrap(~name) +
+  geom_function(fun = true_sd, args = list(rho = 0.9), color = "red")
+  
+```
+
+
+:::
+
+## Further Reading
+
+**HC Standard Errors**: @white1980heteroskedasticity, @mackinnon1985some, @long2000using,  @cribari2004asymptotic, @zeileis2004econometric, @cribari2011new
+
+**HAC Standard Errors**: @b76ccb64-7fa5-32f9-a4fe-72298146be7d, @andrews1991heteroskedasticity,  @zeileis2004econometric

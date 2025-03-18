@@ -265,10 +265,7 @@ can define a function of $(\varepsilon, \delta)$ which calculates the
 sample size required to satisfy $\Pr(|X_n - c|>\varepsilon)<\delta$.
 
 ```{r}
-mu <- 3
-sigma <- sqrt(2)
-
-n_fun <- function(delta, ep){
+n_fun <- function(delta, ep, mu, sigma){
  ceiling(((sigma*qnorm(1-delta /2))/ep)^2) 
 }
 ```
@@ -286,8 +283,8 @@ Let's plot this function for various values of $(\varepsilon, \delta)$.
 expand_grid(
   e = c(1, 0.1, 0.01, 0.001, 0.0001),
   d = 1:9999/10000
-) %>% 
-  mutate(sample = n_fun(d,e)) %>% 
+)  %>% 
+  mutate(sample = map2_dbl(d, e, n_fun, mu = 3, sigma = sqrt(2))) %>% 
   ggplot(aes(d, sample, color = as.factor(e))) +
   scale_x_reverse() +
   scale_y_log10() + 
@@ -302,7 +299,7 @@ $\lim_{n\to\infty}\Pr (|X_n - \mu| > \varepsilon) = 0$ for various
 values of $\varepsilon.$
 
 ```{r}
-prob_ep <- function(n, ep){
+prob_ep <- function(n, ep, mu, sigma){
   1 - 2*(pnorm(ep / (sigma / sqrt(n))) - 1/2)
 }
 ```
@@ -317,9 +314,9 @@ prob_ep <- function(n, ep){
 #| code-summary: "Show code which generates figure"
 expand_grid(
   e = c(1, 0.1, 0.01, 0.001, 0.0001),
-  n = 1:100
+  n = 1:1e6
 ) %>% 
-  mutate(prob = prob_ep(e,n)) %>% 
+  mutate(prob = map2_dbl(e, n, \(e, n) prob_ep(n, e, mu = 3, sigma = sqrt(3)))) %>% 
   ggplot(aes(n, prob, color = as.factor(e))) +
   geom_line() +
   scale_x_log10() +
@@ -628,11 +625,7 @@ As $n\to\infty$, this bias vanishes. To illustrate this, we can simulate
 estimates for various sample sizes, taking $X_i \sim N(0,1)$.
 
 ```{r}
-theta <- function(X){
-  sum((X - mean(X))^2)/length(X)
-}
-
-iter <- function(n, dist, dist_params, s){
+draw_estimate <- function(theta, n, dist, dist_params, s){
   X <- do.call(dist, append(n, dist_params))
   output <- tibble(
     sample_size = n,
@@ -642,20 +635,28 @@ iter <- function(n, dist, dist_params, s){
   return(output)
 }
 
-sim <- function(N, n, dist, dist_params){
+draw_N_estimates <- function(theta, N, n, dist, dist_params){
   output <- 1:N %>% 
-    map(iter, n = n, dist = dist, dist_params = dist_params) %>% 
-    bind_rows()
+    map_df(\(s) draw_estimate(theta, n, dist, dist_params, s)) 
+  return(output)
 }
 
-outer_sim <- function(N, n_vals, dist, dist_params){
+draw_N_estimates_over_n <- function(theta, N, n_vals, dist, dist_params){
   output <- n_vals %>% 
-    map(sim, N = N, dist = dist, dist_params = dist_params) %>% 
-    bind_rows()
+    map_df(\(n) draw_N_estimates(theta, N, n, dist, dist_params)) 
+  return(output)
 }
 
-results <- c(10, 25, 50, 100, 500) %>% 
-  outer_sim(1e6, ., rnorm, list(0, 1))
+results <- draw_N_estimates_over_n(
+  theta = function(X){sum((X - mean(X))^2)/length(X)},
+  N = 1e6,
+  n_vals = c(10, 25, 50, 100, 500),
+  dist = rnorm,
+  dist_params = list(
+    mean = 0,
+    sd = 1
+  )
+)
 
 #Print bias calculated over 1,000,000 simulations
 results %>% 
@@ -773,13 +774,13 @@ $$\Pr(|X - \mu| \ge k) \le \frac{\sigma^2}{k^2}.$$
 :::
 
 ::: proof
-```{=tex}
+
 \begin{align*}
 \Pr(|X - \mu| \ge k) &= \Pr((X - \mu)^2 \ge k^2)\\
 & \le \frac{\text{E}\left[(X-\mu)^2\right]}{k^2} & (\text{Markov's Inequality})\\
 & = \frac{\sigma^2}{k^2}
 \end{align*}
-```
+
 :::
 
 ::: {#thm-}
@@ -822,27 +823,24 @@ regardless of the distribution of $X_i$.
 #| fig-cap: "The sample mean of all samples converges to the population mean by the LLN"
 #| code-summary: "Show code which generates figure"
 #| warning: false
-iter <- function(n, dist, dist_params){
-  dist_string <- paste(substitute(dist))
+
+mean_n_increases <- function(n, dist, dist_label, dist_params, t){
   output <- tibble(
     sample_size = 1:n,
-    prob_dist = dist_string,
-    random_values = do.call(dist, append(n, dist_params))
-  ) %>% 
+    prob_dist = dist_label,
+    random_values = do.call(dist, append(n, dist_params)),
+    iter_num = t
+    ) %>% 
     mutate(estimate = cummean(random_values))
   return(output)
 }
 
-# can likely use pmap here
-results <- bind_rows(
-  iter(1e5, rexp, list(1/5)),
-  iter(1e5, rchisq, list(5)),
-  iter(1e5, runif, list(0, 10)),
-  iter(1e5, rgamma, list(10, 2)),
-  iter(1e5, rhyper, list(10, 20, 15))
-)
-
-results %>% 
+list(
+  list(rexp,  rchisq, runif, rgamma, rhyper),
+  list("rexp", "rchisq", "runif", "rgamma", "rhyper"),
+  list(list(1/5), list(5), list(0, 10), list(10, 2), list(10, 20, 15))
+  ) %>% 
+  pmap_df(\(dist, dist_label, dist_params) mean_n_increases(n = 1e5, dist, dist_label, dist_params, t = 1)) %>% 
   ggplot(aes(sample_size, estimate, color = prob_dist)) +
   geom_line(alpha=0.6) +
   theme_minimal() +
@@ -864,32 +862,28 @@ For the sake of an even better illustration, let's focus on the case where $X_i 
 #| code-summary: "Show code which generates figure"
 #| warning: false
 
-iter <- function(n, s, dist, dist_params){
-  output <- tibble(
-    sample_size = 1:n,
-    random_values = do.call(dist, append(n, dist_params)),
-    iter_num = s
-  ) %>% 
-    mutate(estimate = cummean(random_values))
-  return(output)
-}
-
-sim <- function(N, n, dist, dist_params){
+mean_n_increases_N_draws <- function(N, n, dist, dist_label, dist_params){
   output <- 1:N %>% 
-    map(iter, n = n, dist = dist, dist_params = dist_params) %>% 
-    bind_rows()
-  return(output)
+    map_df(\(t) mean_n_increases(n, dist, dist_label, dist_params, t))
 }
 
-results <- sim(1e4, 1e3, rexp, list(1/5))
 
-epsilon <- 0.5 
+results <- mean_n_increases_N_draws(
+  N = 1e4, 
+  n = 1e3, 
+  dist = rexp, 
+  dist_label = "rexp", 
+  dist_params = list(
+    rate = 1/5
+  )
+) 
+
 results %>% 
   ggplot(aes(x = sample_size, y = estimate)) +
   geom_line(aes(group = iter_num), alpha = 0.1, size = 0.05) +
   ylim(0, 15) + 
-  geom_hline(yintercept = 5 - epsilon, color = "red", linetype="dashed") +
-  geom_hline(yintercept = 5 + epsilon, color = "red", linetype="dashed") +
+  geom_hline(yintercept = 5 - 0.5, color = "red", linetype="dashed") +
+  geom_hline(yintercept = 5 + 0.5, color = "red", linetype="dashed") +
   theme_minimal()
 ```
 
@@ -968,12 +962,19 @@ We can actually visualize the difference between the strong and weak LLNs, and i
 #| fig-cap: "A single simulation realization of the sample mean over a range of sample sizes. The area within the red dashed lines is the set |μ - Sample Mean| < 0.5"
 #| code-summary: "Show code which generates figure"
 #| warning: false
-
-iter(1e5, 1, rexp, list(1/5)) %>% 
+mean_n_increases(
+  n = 1e5,
+  dist = rexp,
+  dist_label = "rexp",
+  dist_params = list(
+    rate = 1/5
+  ),
+  t = 1
+) %>% 
   ggplot(aes(sample_size, estimate)) + 
   geom_line() + 
-  geom_hline(yintercept = 5 - epsilon, color = "red", linetype="dashed") +
-  geom_hline(yintercept = 5 + epsilon, color = "red", linetype="dashed") +
+  geom_hline(yintercept = 5 - 0.5, color = "red", linetype="dashed") +
+  geom_hline(yintercept = 5 + 0.5, color = "red", linetype="dashed") +
   theme_minimal() 
 ```
 
@@ -1276,33 +1277,15 @@ should see that the distribution of our realizations becomes
 approximately normal as we increase the sample size.
 
 ```{r}
-iter <- function(n, dist, dist_params, s){
-  output <- tibble(
-    value = do.call(dist, append(n, dist_params))
-  ) %>% 
-    summarize(
-      sample_size = n,
-      iter_num = s, 
-      estimate = sqrt(n)*(mean(value) - 1)
-    ) 
-  return(output)
-}
-
-sim <- function(N, n, dist, dist_params){
-  output <- 1:N %>% 
-    map(iter, n = n, dist = dist, dist_params = dist_params) %>% 
-    bind_rows()
-  return(output)
-}
-
-outer_sim <- function(n_vals, N, dist, dist_params){
-  output <- n_vals %>% 
-    map(sim, N = N, dist = dist, dist_params = dist_params) %>% 
-    bind_rows()
-  return(output)
-}
-
-results <- outer_sim(c(1:25, 50, (1:10)*100), 1e4, rexp, list(1))
+results <- draw_N_estimates_over_n(
+  theta = function(X){sqrt(length(X))*(mean(X) - 1)},
+  N = 1e4,
+  n_vals = c(1:25, 50, (1:10)*100),
+  dist = rexp,
+  dist_params = list(
+    rate = 1
+  )
+)
 ```
 
 Even for modest values of $n$, we can see that
@@ -1483,8 +1466,13 @@ draw_X <- function(n,...){
   (1:n)^2*prob_pos_i - (1:n)^2*prob_neg_i
 }
 
-results <- c(1, 5, 10, 25, 100, 1000) %>% 
-  outer_sim(., 200, draw_X, list(0))
+results <- draw_N_estimates_over_n(
+  theta = function(X){sqrt(length(X))*(mean(X) - 1)},
+  N = 200,
+  n_vals = c(1, 5, 10, 25, 100, 1000),
+  dist = draw_X,
+  dist_params = list(0)
+)
 ```
 
 ```{r}
@@ -1643,25 +1631,15 @@ g <- function(t){
   t^2 + 3
 }
 
-iter <- function(g, n, dist, dist_params, s){
-  output <- tibble(
-    value = do.call(dist, append(n, dist_params))
-  ) %>% 
-    summarize(
-      sample_size = n,
-      iter_num = s, 
-      estimate = sqrt(n)*(g(mean(value)) - g(1))
-    ) 
-  return(output)
-}
-
-sim <- function(N, g, n, dist, dist_params){
-  output <- 1:N %>% 
-    map(iter, g = g, n = n, dist = dist, dist_params = dist_params) %>% 
-    bind_rows()
-}
-
-results <- sim(1e4, g, 1e5, rexp, list(1))
+results <- draw_N_estimates(
+  theta = function(X){sqrt(length(X))*(g(mean(X)) - g(1))},
+  N = 1e4,
+  n = 1e5,
+  dist = rexp,
+  dist_params = list(
+    rate = 1
+  )
+)
 ```
 
 We can plot a histogram of our estimates and overlay the distribution
@@ -1678,7 +1656,7 @@ $N(0,4)$.
 
 results %>% 
   ggplot(aes(estimate)) +
-  geom_histogram(aes(y = ..density..), colour = 1, fill = "white", bins = 100) + 
+  geom_histogram(aes(y = after_stat(density)), color = 1, fill = "white", bins = 100) + 
   xlab("Estimates of √n(g(X) - g(1)) ") +
   theme_minimal() +
   stat_function(fun = dnorm, args = list(mean = 0, sd = 2), color = "red")

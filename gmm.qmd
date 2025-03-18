@@ -2,31 +2,235 @@
 
 
 ```{r}
-library(pracma)
-
-beta <- c(2,4)
-n <- 1e5
-k <- 2
-
-x1 <- runif(n, 0, 10)
-e <- runif(n, -5, 5)
-X <- cbind(1, x1)
-y <- X %*% beta + e
-
-# method of moments 
-g <- function(beta){
-  (1/n) * t(X) %*% (y - X%*% beta)
-}
-
-MM <- fsolve(g, c(1,1), tol = 1e-8)$x
-print(MM)
-
-GMM_objective <- function(beta, Ω){
-  t(g(beta)) %*% Ω %*% g(beta)
-}
-
-# GMM
-GMM <- optim(c(1,1), GMM_objective, Ω = eye(k))$par
-print(GMM)
+library(tidyverse)
+library(gmm)
+library(nloptr)
+library(magrittr)
+options(scipen=9)
 ```
 
+```{r}
+# define g'(θ)Wg(θ)
+gmm_objective <- function(g, data, W){
+  output <- function(theta){
+    g_bar <- g(theta, data) %>% 
+      colMeans()
+    output <- as.numeric(t(g_bar) %*% W %*% g_bar) 
+    return(output)
+  }
+  return(output)
+}
+
+# define the gradient of the gmm_objective
+grad_gmm_objective <- function(g, grad_g, data, W){
+  output <- function(theta){
+    g_bar <- g(theta, data) %>% 
+      colMeans()
+    grad_g_bar <-  map(data, \(x) t(grad_g(theta, x))) %>% 
+      reduce(`+`) / n
+    output <- as.numeric(grad_g_bar %*% W %*% g_bar) 
+    return(output)
+  }
+  return(output)
+}
+
+# Given an estimate of θ, estimate (G'S⁻¹G)⁻¹/n
+gmm_vcov <- function(g, grad_g, theta, data){
+  n <- length(data)
+  hat_S <- map(data, \(x) t(g(theta, x)) %*% g(theta, x)) %>% 
+    reduce(`+`) / n
+  hat_G <- map(data, \(x) grad_g(theta, x)) %>% 
+    reduce(`+`) / n
+  output <- solve(t(hat_G) %*% solve(hat_S)  %*% hat_G) / n
+  return(output)
+}
+
+# Perform Two Step GMM 
+gmm <- function(K, n_moments, data, g, grad_g, init){
+  n <- length(data)
+  
+  # First Step
+  step_1 <- nloptr(
+    x0 = init,
+    eval_f = gmm_objective(
+      g = g, 
+      data = data, 
+      W = diag(n_moments)
+    ),
+    eval_grad_f = grad_gmm_objective(
+      g = g, 
+      grad_g = grad_g,
+      data = data, 
+      W = diag(n_moments)
+    ),
+    opts = list(
+      "algorithm" = "NLOPT_LD_LBFGS",
+      "xtol_rel" = 1.0e-8
+    )
+  )
+  
+  # second step using theta_1 to calculate optimal weighting matrix 
+  S <- map(data, \(x) t(g(step_1$solution, x)) %*% g(step_1$solution, x)) %>% 
+    reduce(`+`) / n
+  step_2 <- nloptr(
+    x0 = step_1$solution,
+    eval_f = gmm_objective(
+      g = g, 
+      data = data, 
+      W = solve(S)
+    ),
+    eval_grad_f = grad_gmm_objective(
+      g = g, 
+      grad_g = grad_g,
+      data = data, 
+      W = solve(S)
+    ),
+    opts = list(
+      "algorithm" = "NLOPT_LD_LBFGS",
+      "xtol_rel" = 1.0e-8
+    )
+  )
+  hat_theta <- step_2$solution
+  
+  # calculate SEs
+  var_hat <- gmm_vcov(g, grad_g, step_2$solution, data)
+  se_hat <- sqrt(diag(var_hat))
+  
+  #t-stat, confidence intervals, p values
+  t <- hat_theta/se_hat
+  lower_CI <- hat_theta - qnorm(0.975)*se_hat
+  upper_CI <- hat_theta + qnorm(0.975)*se_hat
+  p_val <- 2*(1 - pt(t, n-K))
+  
+  # combine estimation related values into a table to return
+  estimates <- tibble(
+    parameter = paste0("θ", 1:K),
+    estimate = hat_theta,
+    std_error = se_hat,
+    t_stat = t,
+    lower_95_CI = lower_CI,
+    upper_95_CI = upper_CI,
+    p_value = p_val
+  )
+  # store optimization related info
+  optim_info <- tibble(
+    step = c("First Step", "Second Step"),
+    solution = c(
+      paste0(step_1$solution, collapse = ", "),
+      paste0(step_2$solution, collapse = ", ")
+    ),
+    objective_value = c(step_1$objective, step_2$objective),
+    iterations = c(step_1$iterations, step_2$iterations)
+  )
+  output <- list(
+    "estimates" = estimates,
+    "optim_info" = optim_info,
+    "optimal_weighting_matrix" = solve(S)
+  )
+  return(output)
+}
+```
+
+```{r}
+g <- function(theta, x){
+  cbind(
+    theta[1]-x,
+    theta[2]^2 - (x - theta[1])^2,
+    x^3-theta[1]*(theta[1]^2+3*theta[2]^2)
+  )
+}
+
+grad_g <- function(theta, x){
+  rbind(
+    c(1, 0),
+    c(2*(x-theta[1]), 2*theta[2]),
+    c(-3*(theta[1]^2 + theta[2]^2), -6*theta[1]*theta[2])
+  )
+}
+
+set.seed(123)
+n <- 1e3
+x <- rnorm(n, mean = 4, sd = 2)
+
+results <- gmm(
+  K = 2,
+  n_moments = 3,
+  data = x, 
+  g = g,
+  grad_g = grad_g,
+  init = c(0,1)
+)
+results$estimates
+```
+
+
+```{r}
+kth_sample_raw_moment <- function(x, k){
+  return(mean(x^k))
+}
+
+kth_raw_moment <- function(k, df){
+  return(prod(df + 0:(k-1)*2))
+}
+
+draw_sample_moment <- function(df, n, k, i){
+  x <- rchisq(n, df = df)
+  output <- tibble(
+    estimate = kth_sample_raw_moment(x, k),
+    kth_moment = k,
+    df = df,
+    sample_size = n,
+    true_value = kth_raw_moment(k, df),
+    iter_num = i,
+  )
+  return(output)
+}
+
+draw_N_sample_moments <- function(N, df, n, k){
+  output <- 1:N %>% 
+    map_df(\(i) draw_sample_moment(df, n, k, i))
+  return(output)
+}
+
+bias_of_estimator <- function(N, df, n, k){
+  output <- draw_N_sample_moments(N, df, n, k) %>% 
+    summarize(
+      bias = mean(estimate - true_value),
+      var_est = var(estimate)
+    ) %>% 
+    mutate(
+      df = df,
+      kth_moment = k, 
+      sample_size = n,
+      iterations = N
+    )
+  return(output)
+}
+```
+
+```{r}
+x <- rchisq(1e3, 1)
+g <- function(theta, x){
+  cbind(
+    theta - x,
+    theta^2 + 2*theta - x^2
+  )
+}
+
+grad_g <- function(theta, x){
+  rbind(
+    1, 
+    2*theta - theta
+  )
+}
+
+results <- gmm(
+  K = 1,
+  n_moments = 2,
+  data = x, 
+  g = g,
+  grad_g = grad_g,
+  init = 1
+)
+results
+```

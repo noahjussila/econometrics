@@ -251,13 +251,29 @@ tibble(
 To make this more concrete, we can perform a Monte Carlo simulation for fixed values of $\mu_0$, $\mu$, $\sigma^2$, and $n$. For all simulations, let's fix $\mu_0 = 2$, $n = 100$ and $\sigma^2 =1$. First, assume $\mu = \mu_0 = 2$, and record $\delta(\X)$ for 100,000 simulations. In this case we should expect to make the correct decision (fail to reject the null hypothesis) about 95% of the time, as the size of our test is $\alpha = 0.05$ which corresponds to the maximum level which occurs at $\mu = \mu_0$. 
 
 ```{r}
+# draw on realization of a test stat and report decision
+draw_test <- function(delta, test_stat, critical_region, mu_0, sigma, n, dist, dist_params, s){
+  X <- do.call(dist, append(n, dist_params))
+  output <- delta(test_stat, critical_region, X, mu_0, sigma) %>% 
+    mutate(iter = s)
+  return(output)
+}
+
+# draw N realizations of a test stat
+draw_N_tests <- function(N, delta, test_stat, critical_region, mu_0, sigma, n, dist, dist_params){
+  output <- 1:N %>% 
+    map_df(\(s) draw_test(delta, test_stat, critical_region, mu_0, sigma, n, dist, dist_params, s))
+  return(output)
+}
+
+# define test stat for this particular example
 test_stat <- function(X, mu_0, sigma){
   n <- length(X)
   output <- (mean(X)-mu_0)/(sigma/sqrt(n))
   return(output)
 }
 
-# Supply critical region as a list of bounds, ex: list(c(-Inf, -3), c(0, 1), c(3, Inf))
+# Define decision function, supply critical region as a list of bounds, ex: list(c(-Inf, -3), c(0, 1), c(3, Inf))
 delta <- function(test_stat, critical_region, X, mu_0, sigma){
   stat <- test_stat(X, mu_0, sigma)
   # determine if the test stat falls within any of the interval comprising the critical region
@@ -274,32 +290,8 @@ delta <- function(test_stat, critical_region, X, mu_0, sigma){
   return(output)
 }
 
-test_iter <- function(delta, test_stat, critical_region, mu_0, sigma, n, dist, dist_params, s){
-  X <- do.call(dist, append(n, dist_params))
-  output <- delta(test_stat, critical_region, X, mu_0, sigma) %>% 
-    mutate(iter = s)
-  return(output)
-}
-
-test_sim <- function(N, delta, test_stat, critical_region, mu_0, sigma, n, dist, dist_params){
-  output <- 1:N %>% 
-    map(
-      test_iter, 
-      delta = delta, 
-      test_stat = test_stat, 
-      critical_region = critical_region, 
-      mu_0 = mu_0, 
-      sigma = sigma,
-      n = n, 
-      dist = dist, 
-      dist_params = dist_params
-    ) %>% 
-    bind_rows()
-  return(output)
-}
-
-results <- test_sim(
-  N = 1e3, ## update to 1e5
+results <- draw_N_tests(
+  N = 1e5,
   delta = delta, 
   test_stat = test_stat, 
   critical_region = list(c(1.645, Inf)), 
@@ -307,7 +299,10 @@ results <- test_sim(
   sigma = 1, 
   n = 100, 
   dist = rnorm, 
-  dist_params = list(2, 1)
+  dist_params = list(
+    mean = 2, 
+    sd= 1
+  )
 )
 
 results %>% 
@@ -320,36 +315,25 @@ mean(results$decision)
 This simulation calculated the power of our test given $\mu$. Let's define the power function using this simulation, and calculate the power for $\mu\in[1.8,2.4]$
 
 ```{r}
-# This function assumes dist = rnorm and dist_params = list(mu, 1)
+# Approximate the power of a test for a given μ using N simulations, assume normal distribution
 power <- function(mu, N, delta, test_stat, critical_region, mu_0, sigma, n){
-  dist <- rnorm
-  dist_params <- list(mu, sigma)
-  output <- test_sim(N, delta, test_stat, critical_region, mu_0, sigma, n, dist, dist_params) %>% 
+  output <- draw_N_tests(N, delta, test_stat, critical_region, mu_0, sigma, n, rnorm, list(mu, sigma)) %>% 
     summarize(
       simulated_power = mean(decision),
       t = mu
     )
+  return(output)
 }
 
 power_curve <- function(domain, N, delta, test_stat, critical_region, mu_0, sigma, n){
-  output <- domain %>% 
-    map(
-      power,
-      N = N,
-      delta = delta,
-      test_stat = test_stat,
-      critical_region = critical_region,
-      mu_0 = mu_0,
-      sigma = sigma,
-      n = n
-    ) %>% 
-    bind_rows()
+  output <- domain %>%
+      map_df(\(mu) power(mu, N, delta, test_stat, critical_region, mu_0, sigma, n))
   return(output)
 }
 
 results <- power_curve(
   domain = seq(1.8, 2.4, length = 25), 
-  N = 1e2, ## update to 1e4
+  N = 1e4,
   delta = delta, 
   test_stat = test_stat, 
   critical_region = list(c(1.645, Inf)), 
